@@ -78,12 +78,22 @@ dependencies {
         implementation(sharedPreference)
         implementation(ui)
     }
+    /*** Core Modules ***/
 
     /*** Feature Modules ***/
     with(projects) {
         implementation(feature.home)
-        implementation(feature.settings)
+        implementation(feature.albums)
+        implementation(feature.songs)
+        implementation(feature.playlists)
+        implementation(featurePlayer)
+        implementation(featureQueue)
+        implementation(featureFavourite)
+        implementation(featureTools.featureAbout)
+        implementation(featureTools.featureFeedback)
+        implementation(featureTools.settings)
     }
+    /*** Feature Modules ***/
 
     /*** Other Dependencies ***/
     implementation(libs.androidx.core.ktx)
@@ -113,4 +123,5 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    /*** Other Dependencies ***/
 }

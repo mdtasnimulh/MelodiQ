@@ -11,7 +11,9 @@ import com.tasnimulhasan.ui.NavRoutes.HOME_ROUTE
 
 fun NavController.navigateToHome(navOptions: NavOptions) = navigate(HOME_ROUTE, navOptions)
 
-fun NavGraphBuilder.homeScreen() {
+fun NavGraphBuilder.homeScreen(
+    navigateToPlayer: () -> Unit
+) {
     composable(
         route = HOME_ROUTE,
         deepLinks = listOf(
@@ -19,6 +21,6 @@ fun NavGraphBuilder.homeScreen() {
         ),
         arguments = emptyList(),
     ) {
-        HomeRoute()
+        HomeRoute(navigateToPlayer = navigateToPlayer)
     }
 }

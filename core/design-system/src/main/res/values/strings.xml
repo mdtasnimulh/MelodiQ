@@ -2,4 +2,17 @@
     <string name="app_name">MelodiQ</string>
     <string name="navigation_icon_content_description">Top App Bar Menu Button</string>
     <string name="navigation_back_content_description">Top App Bar Back Button</string>
+
+    <string name="title_home">Home</string>
+    <string name="title_songs">Songs</string>
+    <string name="title_albums">Albums</string>
+    <string name="title_playlists">Playlists</string>
+    <string name="title_settings">Settings</string>
+    <string name="title_favourite">Favourite</string>
+    <string name="title_player">Player</string>
+    <string name="title_queue">Queue</string>
+    <string name="title_about">About</string>
+    <string name="title_feedback">Feedback</string>
+
+    <string name="label_now_playing">Now Playing</string>
 </resources>

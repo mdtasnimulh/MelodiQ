@@ -34,9 +34,17 @@ import com.tasnimulhasan.designsystem.component.MmNavigationSuiteScaffold
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 import com.tasnimulhasan.melodiq.navigation.MelodiqNavHost
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
+import com.tasnimulhasan.ui.NavRoutes.ABOUT_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.ALBUMS_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.FAVOURITE_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.FEEDBACK_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.HOME_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.PLAYER_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.PLAYLISTS_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.QUEUE_ROUTE
 import com.tasnimulhasan.ui.NavRoutes.SETTINGS_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.SONGS_ROUTE
 import com.tasnimulhasan.designsystem.R as Res
-import com.tasnimulhasan.settings.R as settingsR
 
 @Composable
 fun MelodiqApp(
@@ -77,7 +85,16 @@ internal fun MmApp(
 
     // Determine the title for the current destination.
     val currentTitleRes = when (currentDestination?.route) {
-        SETTINGS_ROUTE -> settingsR.string.feature_settings_title
+        HOME_ROUTE -> Res.string.app_name
+        SONGS_ROUTE -> Res.string.title_songs
+        ALBUMS_ROUTE -> Res.string.title_albums
+        PLAYLISTS_ROUTE -> Res.string.title_playlists
+        SETTINGS_ROUTE -> Res.string.title_settings
+        PLAYER_ROUTE -> Res.string.label_now_playing
+        FAVOURITE_ROUTE -> Res.string.title_queue
+        QUEUE_ROUTE -> Res.string.title_queue
+        ABOUT_ROUTE -> Res.string.title_about
+        FEEDBACK_ROUTE -> Res.string.title_feedback
         else -> Res.string.app_name
     }
 
@@ -106,7 +123,7 @@ internal fun MmApp(
                 navigationIcon = navigationIcon,
                 navigationIconContentDescription = navigationIconContentDescription,
                 actionIcon = MelodiqIcons.ActionMore,
-                actionIconsContentDescription = stringResource(id = settingsR.string.feature_settings_title),
+                actionIconsContentDescription = stringResource(id = Res.string.title_settings),
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent),
                 onActionClick = { onTopAppBarActionClick() },
                 onNavigationClick = {
@@ -141,7 +158,7 @@ private fun GetContent(appState: MelodiqAppState) {
     Box(modifier = Modifier.consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
         MelodiqNavHost(
             appState = appState,
-            navigateToInsert = { appState.navigateToInsertIncomeExpense() }
+            navigateToPlayer = { appState.navigateToPlayer() }
         )
     }
 }

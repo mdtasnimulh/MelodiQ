@@ -39,8 +39,17 @@
             <option value="$PROJECT_DIR$/core/shared-preference" />
             <option value="$PROJECT_DIR$/core/ui" />
             <option value="$PROJECT_DIR$/feature" />
+            <option value="$PROJECT_DIR$/feature-favourite" />
+            <option value="$PROJECT_DIR$/feature-player" />
+            <option value="$PROJECT_DIR$/feature-queue" />
+            <option value="$PROJECT_DIR$/feature-tools" />
+            <option value="$PROJECT_DIR$/feature-tools/feature-about" />
+            <option value="$PROJECT_DIR$/feature-tools/feature-feedback" />
+            <option value="$PROJECT_DIR$/feature-tools/settings" />
+            <option value="$PROJECT_DIR$/feature/albums" />
             <option value="$PROJECT_DIR$/feature/home" />
-            <option value="$PROJECT_DIR$/feature/settings" />
+            <option value="$PROJECT_DIR$/feature/playlists" />
+            <option value="$PROJECT_DIR$/feature/songs" />
           </set>
         </option>
         <option name="resolveExternalAnnotations" value="false" />

@@ -10,11 +10,22 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
+import com.tasnimulhasan.albums.navigation.navigateToAlbums
+import com.tasnimulhasan.featureabout.navigation.navigateToAbout
+import com.tasnimulhasan.featurefavourite.navigation.navigateToFavourite
+import com.tasnimulhasan.featurefeedback.navigation.navigateToFeedback
+import com.tasnimulhasan.featureplayer.navigation.navigateToPlayer
+import com.tasnimulhasan.featurequeue.navigation.navigateToQueue
 import com.tasnimulhasan.home.navigation.navigateToHome
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
+import com.tasnimulhasan.playlists.navigation.navigateToPlaylists
 import com.tasnimulhasan.settings.navigation.navigateToSettings
+import com.tasnimulhasan.songs.navigation.navigateToSongs
+import com.tasnimulhasan.ui.NavRoutes.ALBUMS_ROUTE
 import com.tasnimulhasan.ui.NavRoutes.HOME_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.PLAYLISTS_ROUTE
 import com.tasnimulhasan.ui.NavRoutes.SETTINGS_ROUTE
+import com.tasnimulhasan.ui.NavRoutes.SONGS_ROUTE
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
@@ -45,6 +56,9 @@ class MelodiqAppState(
     @Composable get() =
         when (currentDestination?.route) {
             HOME_ROUTE -> TopLevelDestination.HOME
+            SONGS_ROUTE -> TopLevelDestination.SONGS
+            ALBUMS_ROUTE -> TopLevelDestination.ALBUMS
+            PLAYLISTS_ROUTE -> TopLevelDestination.PLAYLISTS
             SETTINGS_ROUTE -> TopLevelDestination.SETTINGS
             else -> null
         }
@@ -62,20 +76,56 @@ class MelodiqAppState(
 
         when (topLevelDestination) {
             TopLevelDestination.HOME -> navController.navigateToHome(topLevelNavOptions)
+            TopLevelDestination.SONGS -> navController.navigateToSongs(topLevelNavOptions)
+            TopLevelDestination.ALBUMS -> navController.navigateToAlbums(topLevelNavOptions)
+            TopLevelDestination.PLAYLISTS -> navController.navigateToPlaylists(topLevelNavOptions)
             TopLevelDestination.SETTINGS -> navController.navigateToSettings(topLevelNavOptions)
         }
     }
 
-    fun navigateToInsertIncomeExpense() {
+    fun navigateToPlayer() {
         val topLevelNavOptions = navOptions {
-            popUpTo(navController.graph.findStartDestination().id) {
-                saveState = true
-            }
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
             launchSingleTop = true
             restoreState = true
         }
+        navController.navigateToPlayer(topLevelNavOptions)
+    }
 
-        //navController.navigateToInsertIncomeExpense(topLevelNavOptions)
+    fun navigateToQueue() {
+        val topLevelNavOptions = navOptions {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        navController.navigateToQueue(topLevelNavOptions)
+    }
+
+    fun navigateToFavourite() {
+        val topLevelNavOptions = navOptions {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        navController.navigateToFavourite(topLevelNavOptions)
+    }
+
+    fun navigateToAbout() {
+        val topLevelNavOptions = navOptions {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        navController.navigateToAbout(topLevelNavOptions)
+    }
+
+    fun navigateToFeedBack() {
+        val topLevelNavOptions = navOptions {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        navController.navigateToFeedback(topLevelNavOptions)
     }
 
     fun navigateBack() {

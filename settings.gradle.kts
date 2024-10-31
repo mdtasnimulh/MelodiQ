@@ -1,7 +1,5 @@
 @file:Suppress("UnstableApiUsage")
 
-include(":feature:home")
-
 pluginManagement {
     includeBuild("build-logic")
     repositories {
@@ -33,7 +31,7 @@ rootProject.name = "MelodiQ"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 include(":app")
 
-//Core module
+/*** Core Modules ***/
 include(":core:common")
 include(":core:data")
 include(":core:database")
@@ -45,7 +43,17 @@ include(":core:model:entity")
 include(":core:ui")
 include(":core:notifications")
 include(":core:shared-preference")
+/*** Core Modules ***/
 
-//Feature module
+/*** Feature Modules ***/
 include(":feature:home")
-include(":feature:settings")
+include(":feature:albums")
+include(":feature:songs")
+include(":feature:playlists")
+include(":feature-player")
+include(":feature-queue")
+include(":feature-favourite")
+include(":feature-tools:feature-about")
+include(":feature-tools:feature-feedback")
+include(":feature-tools:settings")
+/*** Feature Modules ***/

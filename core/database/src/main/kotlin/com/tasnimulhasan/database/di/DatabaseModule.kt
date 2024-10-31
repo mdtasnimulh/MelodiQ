@@ -2,7 +2,7 @@ package com.tasnimulhasan.database.di
 
 import android.content.Context
 import androidx.room.Room
-import com.tasnimulhasan.database.MmDatabase
+import com.tasnimulhasan.database.MelodiQDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,9 +17,9 @@ internal object DatabaseModule {
     @Singleton
     fun providesMmDatabase(
         @ApplicationContext context: Context
-    ): MmDatabase = Room.databaseBuilder(
+    ): MelodiQDatabase = Room.databaseBuilder(
         context,
-        MmDatabase::class.java,
+        MelodiQDatabase::class.java,
         "mm_database"
     ).build()
 }

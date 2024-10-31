@@ -1,7 +1,7 @@
 package com.tasnimulhasan.database.di
 
-import com.tasnimulhasan.database.MmDatabase
-import com.tasnimulhasan.database.dao.IncomeExpenseDao
+import com.tasnimulhasan.database.MelodiQDatabase
+import com.tasnimulhasan.database.dao.MelodiQDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,7 +13,7 @@ internal object DaoModule {
 
     @Provides
     fun providesIncomeExpenseDao(
-        database: MmDatabase
-    ): IncomeExpenseDao = database.incomeExpenseDao()
+        database: MelodiQDatabase
+    ): MelodiQDao = database.melodiQDao()
 
 }

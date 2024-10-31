@@ -17,21 +17,26 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 internal fun HomeRoute(
     modifier: Modifier = Modifier,
+    navigateToPlayer: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     HomeScreen(
-        modifier
+        modifier,
+        navigateToPlayer
     )
 }
 
 @Composable
-internal fun HomeScreen(modifier: Modifier) {
+internal fun HomeScreen(
+    modifier: Modifier,
+    navigateToPlayer: () -> Unit
+) {
     Box (
         modifier = modifier.fillMaxSize()
     ) {
         FloatingActionButton(
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp),
-            onClick = {  },
+            onClick = { navigateToPlayer.invoke() },
         ) {
             Icon(Icons.Filled.Add, "Floating action button.")
         }
@@ -41,5 +46,5 @@ internal fun HomeScreen(modifier: Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
-    HomeScreen(modifier = Modifier)
+    HomeScreen(modifier = Modifier) {}
 }

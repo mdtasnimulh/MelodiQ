@@ -2,8 +2,7 @@ package com.tasnimulhasan.melodiq.navigation
 
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
-import com.tasnimulhasan.home.R as homeR
-import com.tasnimulhasan.settings.R as settingsR
+import com.tasnimulhasan.designsystem.R as Res
 
 enum class TopLevelDestination(
     val selectedIcon: ImageVector,
@@ -14,14 +13,35 @@ enum class TopLevelDestination(
     HOME(
         selectedIcon = MelodiqIcons.Home,
         unSelectedIcon = MelodiqIcons.HomeOutline,
-        iconTextId = homeR.string.feature_home_title,
-        titleTextId = homeR.string.feature_home_title
+        iconTextId = Res.string.title_home,
+        titleTextId = Res.string.title_home
+    ),
+
+    SONGS(
+        selectedIcon = MelodiqIcons.Songs,
+        unSelectedIcon = MelodiqIcons.SongsOutline,
+        iconTextId = Res.string.title_songs,
+        titleTextId = Res.string.title_songs
+    ),
+
+    ALBUMS(
+        selectedIcon = MelodiqIcons.Album,
+        unSelectedIcon = MelodiqIcons.AlbumOutline,
+        iconTextId = Res.string.title_albums,
+        titleTextId = Res.string.title_albums
+    ),
+
+    PLAYLISTS(
+        selectedIcon = MelodiqIcons.Playlists,
+        unSelectedIcon = MelodiqIcons.PlaylistsOutline,
+        iconTextId = Res.string.title_playlists,
+        titleTextId = Res.string.title_playlists
     ),
 
     SETTINGS(
         selectedIcon = MelodiqIcons.Settings,
         unSelectedIcon = MelodiqIcons.SettingsOutline,
-        iconTextId = settingsR.string.feature_settings_title,
-        titleTextId = settingsR.string.feature_settings_title
+        iconTextId = Res.string.title_settings,
+        titleTextId = Res.string.title_settings
     )
 }
