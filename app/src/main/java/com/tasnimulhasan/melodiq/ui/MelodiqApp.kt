@@ -1,15 +1,24 @@
 package com.tasnimulhasan.melodiq.ui
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -20,18 +29,32 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.tasnimulhasan.designsystem.component.MelodiqTopAppBar
 import com.tasnimulhasan.designsystem.component.MmNavigationSuiteScaffold
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
+import com.tasnimulhasan.melodiq.component.CustomDrawer
+import com.tasnimulhasan.melodiq.component.CustomDrawerState
+import com.tasnimulhasan.melodiq.component.CustomNavigationItem
+import com.tasnimulhasan.melodiq.component.coloredShadow
+import com.tasnimulhasan.melodiq.component.isOpened
+import com.tasnimulhasan.melodiq.component.opposite
 import com.tasnimulhasan.melodiq.navigation.MelodiqNavHost
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
 import com.tasnimulhasan.ui.NavRoutes.ABOUT_ROUTE
@@ -44,6 +67,7 @@ import com.tasnimulhasan.ui.NavRoutes.PLAYLISTS_ROUTE
 import com.tasnimulhasan.ui.NavRoutes.QUEUE_ROUTE
 import com.tasnimulhasan.ui.NavRoutes.SETTINGS_ROUTE
 import com.tasnimulhasan.ui.NavRoutes.SONGS_ROUTE
+import kotlin.math.roundToInt
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
@@ -106,13 +130,54 @@ internal fun MmApp(
     val navigationIconContentDescription = if (isTopLevelDestination) stringResource(id = Res.string.navigation_icon_content_description)
     else stringResource(id = Res.string.navigation_back_content_description)
 
+    var customDrawerState by remember { mutableStateOf(CustomDrawerState.CLOSED) }
+    var selectedNavigationItem by remember { mutableStateOf(CustomNavigationItem.ABOUT) }
+
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current.density
+
+    val screenWidth = remember {
+        derivedStateOf { (configuration.screenWidthDp * density).roundToInt() }
+    }
+    val offsetValue by remember { derivedStateOf { (screenWidth.value / 4.5).dp } }
+    val animatedOffset by animateDpAsState(
+        targetValue = if (customDrawerState.isOpened()) offsetValue else 0.dp,
+        label = "Animated Offset"
+    )
+    val animatedScale by animateFloatAsState(
+        targetValue = if (customDrawerState.isOpened()) 0.9f else 1f,
+        label = "Animated Scale"
+    )
+    BackHandler(enabled = customDrawerState.isOpened()) {
+        customDrawerState = CustomDrawerState.CLOSED
+    }
+
     Scaffold(
+        modifier = modifier
+            .offset(x = animatedOffset)
+            .scale(scale = animatedScale)
+            .coloredShadow(
+                color = Color.Black,
+                alpha = 0.1f,
+                shadowRadius = 50.dp
+            )
+            .clickable(enabled = customDrawerState == CustomDrawerState.OPENED) {
+                customDrawerState = CustomDrawerState.CLOSED
+            },
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
+        CustomDrawer(
+            selectedNavigationItem = selectedNavigationItem,
+            onNavigationItemClick = {
+                selectedNavigationItem = it
+            },
+            onDrawerCloseClick = { customDrawerState = CustomDrawerState.CLOSED }
+        )
         Column(
-            modifier.fillMaxSize()
+            modifier
+                .fillMaxSize()
                 .padding(padding)
                 .consumeWindowInsets(padding)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
@@ -128,7 +193,14 @@ internal fun MmApp(
                 onActionClick = { onTopAppBarActionClick() },
                 onNavigationClick = {
                     if (!isTopLevelDestination) appState.navigateBack()
-                    else Toast.makeText(appState.navController.context, "Menu Icon", Toast.LENGTH_SHORT).show()
+                    else {
+                        Toast.makeText(
+                            appState.navController.context,
+                            "Menu Icon",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        customDrawerState = customDrawerState.opposite()
+                    }
                 }
             )
 
