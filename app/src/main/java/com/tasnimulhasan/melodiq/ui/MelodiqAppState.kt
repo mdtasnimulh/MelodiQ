@@ -29,15 +29,15 @@ import com.tasnimulhasan.ui.NavRoutes.SONGS_ROUTE
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
-fun rememberMelodiqAppState(
+fun rememberMelodiQAppState(
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     navController: NavHostController = rememberNavController(),
-) : MelodiqAppState {
+) : MelodiQAppState {
     return remember(
         navController,
         coroutineScope
     ) {
-        MelodiqAppState(
+        MelodiQAppState(
             navController = navController,
             coroutineScope = coroutineScope
         )
@@ -45,7 +45,7 @@ fun rememberMelodiqAppState(
 }
 
 @Stable
-class MelodiqAppState(
+class MelodiQAppState(
     val navController: NavHostController,
     coroutineScope: CoroutineScope
 ) {

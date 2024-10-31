@@ -1,8 +1,6 @@
 package com.tasnimulhasan.melodiq.ui
 
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -37,9 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -55,7 +51,7 @@ import com.tasnimulhasan.melodiq.component.CustomNavigationItem
 import com.tasnimulhasan.melodiq.component.coloredShadow
 import com.tasnimulhasan.melodiq.component.isOpened
 import com.tasnimulhasan.melodiq.component.opposite
-import com.tasnimulhasan.melodiq.navigation.MelodiqNavHost
+import com.tasnimulhasan.melodiq.navigation.MelodiQNavHost
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
 import com.tasnimulhasan.ui.NavRoutes.ABOUT_ROUTE
 import com.tasnimulhasan.ui.NavRoutes.ALBUMS_ROUTE
@@ -71,19 +67,16 @@ import kotlin.math.roundToInt
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
-fun MelodiqApp(
-    appState: MelodiqAppState,
+fun MelodiQApp(
+    appState: MelodiQAppState,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
-    val shouldShowGradientBackground = appState.currentTopLevelDestination == TopLevelDestination.HOME
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
 
     MmApp(
         appState = appState,
         modifier = modifier,
-        showSettingsDialog = showSettingsDialog,
-        onSettingsDismissed = { showSettingsDialog = false },
         onTopAppBarActionClick = { showSettingsDialog = true },
         windowAdaptiveInfo = windowAdaptiveInfo,
     )
@@ -92,22 +85,17 @@ fun MelodiqApp(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MmApp(
-    appState: MelodiqAppState,
+    appState: MelodiQAppState,
     modifier: Modifier = Modifier,
-    showSettingsDialog: Boolean,
-    onSettingsDismissed: () -> Unit,
     onTopAppBarActionClick: () -> Unit,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
-    // Getting the reference for current destination
     val currentDestination = appState.currentDestination
 
-    // Determine if the current destination is a top-level destination
     val isTopLevelDestination = appState.topLevelDestination.any { destination ->
         currentDestination?.route?.contains(destination.name, true) == true
     }
 
-    // Determine the title for the current destination.
     val currentTitleRes = when (currentDestination?.route) {
         HOME_ROUTE -> Res.string.app_name
         SONGS_ROUTE -> Res.string.title_songs
@@ -122,15 +110,13 @@ internal fun MmApp(
         else -> Res.string.app_name
     }
 
-    // Set the navigation icon based on the current destination.
     val navigationIcon = if (isTopLevelDestination) MelodiqIcons.NavigationMenu
     else MelodiqIcons.NavigationBack
 
-    // Set the navigation icon content description.
     val navigationIconContentDescription = if (isTopLevelDestination) stringResource(id = Res.string.navigation_icon_content_description)
     else stringResource(id = Res.string.navigation_back_content_description)
 
-    var customDrawerState by remember { mutableStateOf(CustomDrawerState.CLOSED) }
+    var customDrawerState by remember { mutableStateOf(CustomDrawerState.Closed) }
     var selectedNavigationItem by remember { mutableStateOf(CustomNavigationItem.ABOUT) }
 
     val configuration = LocalConfiguration.current
@@ -149,86 +135,87 @@ internal fun MmApp(
         label = "Animated Scale"
     )
     BackHandler(enabled = customDrawerState.isOpened()) {
-        customDrawerState = CustomDrawerState.CLOSED
+        customDrawerState = CustomDrawerState.Closed
     }
 
-    Scaffold(
-        modifier = modifier
-            .offset(x = animatedOffset)
-            .scale(scale = animatedScale)
-            .coloredShadow(
-                color = Color.Black,
-                alpha = 0.1f,
-                shadowRadius = 50.dp
-            )
-            .clickable(enabled = customDrawerState == CustomDrawerState.OPENED) {
-                customDrawerState = CustomDrawerState.CLOSED
-            },
-        containerColor = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-    ) { padding ->
+    Box(
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .fillMaxSize()
+    ) {
         CustomDrawer(
             selectedNavigationItem = selectedNavigationItem,
             onNavigationItemClick = {
                 selectedNavigationItem = it
             },
-            onDrawerCloseClick = { customDrawerState = CustomDrawerState.CLOSED }
+            onDrawerCloseClick = { customDrawerState = CustomDrawerState.Closed }
         )
-        Column(
-            modifier
-                .fillMaxSize()
-                .padding(padding)
-                .consumeWindowInsets(padding)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-        ) {
-            // Showing the top app bar for all destinations.
-            MelodiqTopAppBar(
-                titleRes = currentTitleRes,
-                navigationIcon = navigationIcon,
-                navigationIconContentDescription = navigationIconContentDescription,
-                actionIcon = MelodiqIcons.ActionMore,
-                actionIconsContentDescription = stringResource(id = Res.string.title_settings),
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent),
-                onActionClick = { onTopAppBarActionClick() },
-                onNavigationClick = {
-                    if (!isTopLevelDestination) appState.navigateBack()
-                    else {
-                        Toast.makeText(
-                            appState.navController.context,
-                            "Menu Icon",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        customDrawerState = customDrawerState.opposite()
+        Scaffold(
+            modifier = modifier
+                .offset(x = animatedOffset)
+                .scale(scale = animatedScale)
+                .coloredShadow(
+                    color = Color.Black,
+                    alpha = 0.1f,
+                    shadowRadius = 50.dp
+                )
+                .clickable(enabled = customDrawerState == CustomDrawerState.Opened) {
+                    customDrawerState = CustomDrawerState.Closed
+                },
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        ) { padding ->
+            Column(
+                modifier
+                    .fillMaxSize()
+                    .background(color = MaterialTheme.colorScheme.background)
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            ) {
+                MelodiqTopAppBar(
+                    titleRes = currentTitleRes,
+                    navigationIcon = navigationIcon,
+                    navigationIconContentDescription = navigationIconContentDescription,
+                    actionIcon = MelodiqIcons.ActionMore,
+                    actionIconsContentDescription = stringResource(id = Res.string.title_settings),
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent),
+                    onActionClick = { onTopAppBarActionClick() },
+                    onNavigationClick = {
+                        if (!isTopLevelDestination) appState.navigateBack()
+                        else customDrawerState = customDrawerState.opposite()
                     }
-                }
-            )
+                )
 
-            // Showing the navigation suite for only top-level destinations.
-            if (isTopLevelDestination)
-                MmNavigationSuiteScaffold(
-                    navigationSuiteItems = {
-                        appState.topLevelDestination.forEach { destination ->
-                            item(
-                                selected = currentDestination.isTopLevelDestinationInHierarchy(destination),
-                                onClick = { appState.navigateToTopLevelDestination(destination) },
-                                icon = { Icon(imageVector = destination.unSelectedIcon, contentDescription = null) },
-                                selectedIcon = { Icon(imageVector = destination.selectedIcon, contentDescription = null) },
-                                label = { Text(stringResource(destination.iconTextId)) },
-                            )
-                        }
-                    },
-                    windowAdaptiveInfo = windowAdaptiveInfo,
-                ) { GetContent(appState = appState) }
-            else GetContent(appState = appState)
+                if (isTopLevelDestination)
+                    MmNavigationSuiteScaffold(
+                        navigationSuiteItems = {
+                            appState.topLevelDestination.forEach { destination ->
+                                item(
+                                    selected = currentDestination.isTopLevelDestinationInHierarchy(destination),
+                                    onClick = { appState.navigateToTopLevelDestination(destination) },
+                                    icon = { Icon(imageVector = destination.unSelectedIcon, contentDescription = null) },
+                                    selectedIcon = { Icon(imageVector = destination.selectedIcon, contentDescription = null) },
+                                    label = { Text(stringResource(destination.iconTextId)) },
+                                )
+                            }
+                        },
+                        windowAdaptiveInfo = windowAdaptiveInfo,
+                    ) { GetContent(appState = appState) }
+                else GetContent(appState = appState)
+            }
         }
     }
 }
 
 @Composable
-private fun GetContent(appState: MelodiqAppState) {
+private fun GetContent(appState: MelodiQAppState) {
     Box(modifier = Modifier.consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
-        MelodiqNavHost(
+        MelodiQNavHost(
             appState = appState,
             navigateToPlayer = { appState.navigateToPlayer() }
         )

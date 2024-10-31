@@ -1,8 +1,8 @@
 package com.tasnimulhasan.melodiq.component
 
 enum class CustomDrawerState {
-    OPENED,
-    CLOSED
+    Opened,
+    Closed
 }
 
 fun CustomDrawerState.isOpened(): Boolean {
@@ -10,6 +10,6 @@ fun CustomDrawerState.isOpened(): Boolean {
 }
 
 fun CustomDrawerState.opposite(): CustomDrawerState {
-    return if (this == CustomDrawerState.OPENED) CustomDrawerState.CLOSED
-    else CustomDrawerState.OPENED
+    return if (this == CustomDrawerState.Opened) CustomDrawerState.Closed
+    else CustomDrawerState.Opened
 }

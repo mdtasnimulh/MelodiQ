@@ -5,8 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
-import com.tasnimulhasan.melodiq.ui.MelodiqApp
-import com.tasnimulhasan.melodiq.ui.rememberMelodiqAppState
+import com.tasnimulhasan.melodiq.ui.MelodiQApp
+import com.tasnimulhasan.melodiq.ui.rememberMelodiQAppState
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -15,9 +15,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val appState = rememberMelodiqAppState()
+            val appState = rememberMelodiQAppState()
             MelodiqTheme {
-                MelodiqApp(appState = appState)
+                MelodiQApp(appState = appState)
             }
         }
     }

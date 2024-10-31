@@ -10,15 +10,15 @@ import com.tasnimulhasan.featurefeedback.navigation.feedbackScreen
 import com.tasnimulhasan.featureplayer.navigation.playerScreen
 import com.tasnimulhasan.featurequeue.navigation.queueScreen
 import com.tasnimulhasan.home.navigation.homeScreen
-import com.tasnimulhasan.melodiq.ui.MelodiqAppState
+import com.tasnimulhasan.melodiq.ui.MelodiQAppState
 import com.tasnimulhasan.playlists.navigation.playlistsScreen
 import com.tasnimulhasan.settings.navigation.settingsScreen
 import com.tasnimulhasan.songs.navigation.songsScreen
 import com.tasnimulhasan.ui.NavRoutes.HOME_ROUTE
 
 @Composable
-fun MelodiqNavHost(
-    appState: MelodiqAppState,
+fun MelodiQNavHost(
+    appState: MelodiQAppState,
     modifier: Modifier = Modifier,
     startDestination: String = HOME_ROUTE,
     navigateToPlayer: () -> Unit
