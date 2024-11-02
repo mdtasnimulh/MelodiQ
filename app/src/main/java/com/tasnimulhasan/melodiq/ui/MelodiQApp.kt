@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -155,7 +156,7 @@ internal fun MmApp(
         )
         Scaffold(
             modifier = modifier
-                .offset(x = animatedOffset)
+                .offset{ IntOffset(x =  animatedOffset.roundToPx(), y = 0) }
                 .scale(scale = animatedScale)
                 .coloredShadow(
                     color = Color.Black,
