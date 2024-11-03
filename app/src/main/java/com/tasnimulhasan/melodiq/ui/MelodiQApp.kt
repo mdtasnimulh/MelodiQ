@@ -104,7 +104,7 @@ internal fun MmApp(
         PLAYLISTS_ROUTE -> Res.string.title_playlists
         SETTINGS_ROUTE -> Res.string.title_settings
         PLAYER_ROUTE -> Res.string.label_now_playing
-        FAVOURITE_ROUTE -> Res.string.title_queue
+        FAVOURITE_ROUTE -> Res.string.title_favourite
         QUEUE_ROUTE -> Res.string.title_queue
         ABOUT_ROUTE -> Res.string.title_about
         FEEDBACK_ROUTE -> Res.string.title_feedback
