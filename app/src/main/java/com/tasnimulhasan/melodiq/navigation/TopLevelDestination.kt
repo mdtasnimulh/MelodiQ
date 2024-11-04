@@ -36,12 +36,5 @@ enum class TopLevelDestination(
         unSelectedIcon = MelodiqIcons.PlaylistsOutline,
         iconTextId = Res.string.title_playlists,
         titleTextId = Res.string.title_playlists
-    ),
-
-    SETTINGS(
-        selectedIcon = MelodiqIcons.Settings,
-        unSelectedIcon = MelodiqIcons.SettingsOutline,
-        iconTextId = Res.string.title_settings,
-        titleTextId = Res.string.title_settings
     )
 }

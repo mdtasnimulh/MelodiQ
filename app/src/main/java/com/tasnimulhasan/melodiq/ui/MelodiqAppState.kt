@@ -59,7 +59,6 @@ class MelodiQAppState(
             SONGS_ROUTE -> TopLevelDestination.SONGS
             ALBUMS_ROUTE -> TopLevelDestination.ALBUMS
             PLAYLISTS_ROUTE -> TopLevelDestination.PLAYLISTS
-            SETTINGS_ROUTE -> TopLevelDestination.SETTINGS
             else -> null
         }
 
@@ -79,7 +78,6 @@ class MelodiQAppState(
             TopLevelDestination.SONGS -> navController.navigateToSongs(topLevelNavOptions)
             TopLevelDestination.ALBUMS -> navController.navigateToAlbums(topLevelNavOptions)
             TopLevelDestination.PLAYLISTS -> navController.navigateToPlaylists(topLevelNavOptions)
-            TopLevelDestination.SETTINGS -> navController.navigateToSettings(topLevelNavOptions)
         }
     }
 
