@@ -91,7 +91,7 @@ class HomeViewModel @Inject constructor() : BaseViewModel() {
 
     fun loadBitmapIfNeeded(context: Context, index: Int) {
         if (musics[index].cover != null) return
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.Default) {
             val bitmap = getAlbumArt(context, musics[index].contentUri)
             musics[index] = musics[index].copy(cover = bitmap)
         }
