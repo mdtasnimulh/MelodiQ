@@ -1,6 +1,7 @@
-package com.tasnimulhasan.melodiq
+package com.tasnimulhasan.melodiq.application
 
 import android.app.Application
+import com.tasnimulhasan.melodiq.BuildConfig
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 

@@ -128,6 +128,15 @@ class MelodiQAppState(
         navController.navigateToFeedback(topLevelNavOptions)
     }
 
+    fun navigateToSettings() {
+        val topLevelNavOptions = navOptions {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        navController.navigateToSettings(topLevelNavOptions)
+    }
+
     fun navigateBack() {
         navController.navigateUp()
     }

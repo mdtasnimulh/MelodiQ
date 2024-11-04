@@ -1,4 +1,4 @@
-package com.tasnimulhasan.melodiq.component
+package com.tasnimulhasan.common.utils
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed

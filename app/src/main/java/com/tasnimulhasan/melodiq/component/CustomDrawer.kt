@@ -19,13 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
 fun CustomDrawer(
-    selectedNavigationItem: CustomNavigationItem,
-    onNavigationItemClick: (CustomNavigationItem) -> Unit,
-    onDrawerCloseClick: () -> Unit
+    onDrawerCloseClick: () -> Unit,
+    onAboutClick: () -> Unit,
+    onFeedBackClick: () -> Unit,
+    onFavouriteClick: () -> Unit,
+    onSettingsClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -53,28 +56,31 @@ fun CustomDrawer(
             contentDescription = "App Logo"
         )
         Spacer(modifier = Modifier.height(40.dp))
-        CustomNavigationItem.entries.toTypedArray().take(3).forEach { navigationItem ->
+        CustomNavigationItem.entries.toTypedArray().forEach { navigationItem ->
             CustomNavigationItemView(
                 navigationItem = navigationItem,
-                selected = navigationItem == selectedNavigationItem,
-                onClick = { onNavigationItemClick(navigationItem) }
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        CustomNavigationItem.entries.toTypedArray().takeLast(1).forEach { navigationItem ->
-            CustomNavigationItemView(
-                navigationItem = navigationItem,
-                selected = false,
                 onClick = {
-                    when (navigationItem) {
-                        CustomNavigationItem.SETTINGS -> {
-                            onNavigationItemClick(CustomNavigationItem.SETTINGS)
+                    when(navigationItem) {
+                        CustomNavigationItem.ABOUT -> {
+                            onAboutClick.invoke()
+                            onDrawerCloseClick.invoke()
                         }
-                        else -> {}
+                        CustomNavigationItem.FEEDBACK -> {
+                            onFeedBackClick.invoke()
+                            onDrawerCloseClick.invoke()
+                        }
+                        CustomNavigationItem.FAVOURITE -> {
+                            onFavouriteClick.invoke()
+                            onDrawerCloseClick.invoke()
+                        }
+                        CustomNavigationItem.SETTINGS -> {
+                            onSettingsClick.invoke()
+                            onDrawerCloseClick.invoke()
+                        }
                     }
                 }
             )
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

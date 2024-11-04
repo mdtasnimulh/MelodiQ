@@ -1,4 +1,4 @@
-package com.tasnimulhasan.melodiq.component
+package com.tasnimulhasan.melodiq.ui
 
 enum class CustomDrawerState {
     Opened,

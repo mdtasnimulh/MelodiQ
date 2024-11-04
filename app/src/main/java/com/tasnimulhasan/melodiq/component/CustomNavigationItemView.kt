@@ -16,16 +16,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
 
 @Composable
 fun CustomNavigationItemView(
     navigationItem: CustomNavigationItem,
-    selected: Boolean,
     onClick: () -> Unit
 ) {
     Row(
@@ -34,8 +33,7 @@ fun CustomNavigationItemView(
             .clip(RoundedCornerShape(size = 99.dp))
             .clickable { onClick() }
             .background(
-                color = if (selected) MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
-                else Color.Unspecified,
+                color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
                 shape = RoundedCornerShape(99.dp)
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -44,15 +42,13 @@ fun CustomNavigationItemView(
         Icon(
             painter = painterResource(id = navigationItem.icon),
             contentDescription = "Navigation Item Icon",
-            tint = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface
+            tint = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = navigationItem.title,
-            color = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Medium,
             lineHeight = 20.sp
         )
     }

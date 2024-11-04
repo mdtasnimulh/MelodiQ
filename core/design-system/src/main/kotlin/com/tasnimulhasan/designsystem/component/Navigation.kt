@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
 
 @Composable
-fun RowScope.MMNavigationBarItem(
+fun RowScope.MelodiQNavigationBarItem(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -57,30 +57,30 @@ fun RowScope.MMNavigationBarItem(
         label = label,
         alwaysShowLabel = alwaysShowLabel,
         colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedIconColor = MmNavigationDefaults.navigationContentColor(),
-            selectedTextColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedTextColor = MmNavigationDefaults.navigationContentColor(),
-            indicatorColor = MmNavigationDefaults.navigationIndicatorColor(),
+            selectedIconColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedIconColor = MelodiQNavigationDefaults.navigationContentColor(),
+            selectedTextColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedTextColor = MelodiQNavigationDefaults.navigationContentColor(),
+            indicatorColor = MelodiQNavigationDefaults.navigationIndicatorColor(),
         )
     )
 }
 
 @Composable
-fun MmNavigationBar(
+fun MelodiQNavigationBar(
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
 ) {
     NavigationBar(
         modifier = modifier,
-        contentColor = MmNavigationDefaults.navigationContentColor(),
+        contentColor = MelodiQNavigationDefaults.navigationContentColor(),
         tonalElevation = 0.dp,
         content = content,
     )
 }
 
 @Composable
-fun MmNavigationRailItem(
+fun MelodiQNavigationRailItem(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -99,17 +99,17 @@ fun MmNavigationRailItem(
         label = label,
         alwaysShowLabel = alwaysShowLabel,
         colors = NavigationRailItemDefaults.colors(
-            selectedIconColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedIconColor = MmNavigationDefaults.navigationContentColor(),
-            selectedTextColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedTextColor = MmNavigationDefaults.navigationContentColor(),
-            indicatorColor = MmNavigationDefaults.navigationIndicatorColor(),
+            selectedIconColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedIconColor = MelodiQNavigationDefaults.navigationContentColor(),
+            selectedTextColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedTextColor = MelodiQNavigationDefaults.navigationContentColor(),
+            indicatorColor = MelodiQNavigationDefaults.navigationIndicatorColor(),
         ),
     )
 }
 
 @Composable
-fun MmNavigationRail(
+fun MelodiQNavigationRail(
     modifier: Modifier = Modifier,
     header: @Composable (ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
@@ -117,15 +117,15 @@ fun MmNavigationRail(
     NavigationRail(
         modifier = modifier,
         containerColor = Color.Transparent,
-        contentColor = MmNavigationDefaults.navigationContentColor(),
+        contentColor = MelodiQNavigationDefaults.navigationContentColor(),
         header = header,
         content = content,
     )
 }
 
 @Composable
-fun MmNavigationSuiteScaffold(
-    navigationSuiteItems: MmNavigationSuiteScope.() -> Unit,
+fun MelodiQNavigationSuiteScaffold(
+    navigationSuiteItems: MelodiQNavigationSuiteScope.() -> Unit,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
     content: @Composable () -> Unit,
@@ -134,30 +134,30 @@ fun MmNavigationSuiteScaffold(
         .calculateFromAdaptiveInfo(windowAdaptiveInfo)
     val navigationSuiteItemColors = NavigationSuiteItemColors(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
-            selectedIconColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedIconColor = MmNavigationDefaults.navigationContentColor(),
-            selectedTextColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedTextColor = MmNavigationDefaults.navigationContentColor(),
-            indicatorColor = MmNavigationDefaults.navigationIndicatorColor(),
+            selectedIconColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedIconColor = MelodiQNavigationDefaults.navigationContentColor(),
+            selectedTextColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedTextColor = MelodiQNavigationDefaults.navigationContentColor(),
+            indicatorColor = MelodiQNavigationDefaults.navigationIndicatorColor(),
         ),
         navigationRailItemColors = NavigationRailItemDefaults.colors(
-            selectedIconColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedIconColor = MmNavigationDefaults.navigationContentColor(),
-            selectedTextColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedTextColor = MmNavigationDefaults.navigationContentColor(),
-            indicatorColor = MmNavigationDefaults.navigationIndicatorColor(),
+            selectedIconColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedIconColor = MelodiQNavigationDefaults.navigationContentColor(),
+            selectedTextColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedTextColor = MelodiQNavigationDefaults.navigationContentColor(),
+            indicatorColor = MelodiQNavigationDefaults.navigationIndicatorColor(),
         ),
         navigationDrawerItemColors = NavigationDrawerItemDefaults.colors(
-            selectedIconColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedIconColor = MmNavigationDefaults.navigationContentColor(),
-            selectedTextColor = MmNavigationDefaults.navigationSelectedItemColor(),
-            unselectedTextColor = MmNavigationDefaults.navigationContentColor(),
+            selectedIconColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedIconColor = MelodiQNavigationDefaults.navigationContentColor(),
+            selectedTextColor = MelodiQNavigationDefaults.navigationSelectedItemColor(),
+            unselectedTextColor = MelodiQNavigationDefaults.navigationContentColor(),
         ),
     )
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
-            MmNavigationSuiteScope(
+            MelodiQNavigationSuiteScope(
                 navigationSuiteScope = this,
                 navigationSuiteItemColors = navigationSuiteItemColors,
             ).run(navigationSuiteItems)
@@ -165,7 +165,7 @@ fun MmNavigationSuiteScaffold(
         layoutType = layoutType,
         containerColor = Color.Transparent,
         navigationSuiteColors = NavigationSuiteDefaults.colors(
-            navigationBarContentColor = MmNavigationDefaults.navigationContentColor(),
+            navigationBarContentColor = MelodiQNavigationDefaults.navigationContentColor(),
             navigationRailContainerColor = Color.Transparent,
         ),
         modifier = modifier,
@@ -174,7 +174,7 @@ fun MmNavigationSuiteScaffold(
     }
 }
 
-class MmNavigationSuiteScope internal constructor(
+class MelodiQNavigationSuiteScope internal constructor(
     private val navigationSuiteScope: NavigationSuiteScope,
     private val navigationSuiteItemColors: NavigationSuiteItemColors,
 ) {
@@ -203,7 +203,7 @@ class MmNavigationSuiteScope internal constructor(
 
 @Preview
 @Composable
-fun NiaNavigationBarPreview() {
+fun MelodiQNavigationBarPreview() {
     val items = listOf("Home", "Songs", "Albums", "Playlists", "Settings")
     val icons = listOf(
         Icons.Filled.Home,
@@ -221,9 +221,9 @@ fun NiaNavigationBarPreview() {
     )
 
     MelodiqTheme {
-        MmNavigationBar {
+        MelodiQNavigationBar {
             items.forEachIndexed { index, item ->
-                MMNavigationBarItem(
+                MelodiQNavigationBarItem(
                     icon = {
                         Icon(
                             imageVector = icons[index],
@@ -247,7 +247,7 @@ fun NiaNavigationBarPreview() {
 
 @Preview
 @Composable
-fun NiaNavigationRailPreview() {
+fun MelodiQNavigationRailPreview() {
     val items = listOf("Home", "Songs", "Albums", "Playlists", "Settings")
     val icons = listOf(
         Icons.Filled.Home,
@@ -265,9 +265,9 @@ fun NiaNavigationRailPreview() {
     )
 
     MelodiqTheme {
-        MmNavigationRail {
+        MelodiQNavigationRail {
             items.forEachIndexed { index, item ->
-                MmNavigationRailItem(
+                MelodiQNavigationRailItem(
                     icon = {
                         Icon(
                             imageVector = icons[index],
@@ -289,7 +289,7 @@ fun NiaNavigationRailPreview() {
     }
 }
 
-object MmNavigationDefaults {
+object MelodiQNavigationDefaults {
     @Composable
     fun navigationContentColor() = MaterialTheme.colorScheme.onSurfaceVariant
 

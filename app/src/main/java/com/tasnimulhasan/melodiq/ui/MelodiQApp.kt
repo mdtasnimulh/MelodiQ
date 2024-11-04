@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,15 +42,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
+import com.tasnimulhasan.designsystem.component.MelodiQNavigationBarItem
 import com.tasnimulhasan.designsystem.component.MelodiqTopAppBar
-import com.tasnimulhasan.designsystem.component.MmNavigationSuiteScaffold
+import com.tasnimulhasan.designsystem.component.MelodiQNavigationBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 import com.tasnimulhasan.melodiq.component.CustomDrawer
-import com.tasnimulhasan.melodiq.component.CustomDrawerState
-import com.tasnimulhasan.melodiq.component.CustomNavigationItem
-import com.tasnimulhasan.melodiq.component.coloredShadow
-import com.tasnimulhasan.melodiq.component.isOpened
-import com.tasnimulhasan.melodiq.component.opposite
+import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
+import com.tasnimulhasan.common.utils.coloredShadow
 import com.tasnimulhasan.melodiq.navigation.MelodiQNavHost
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
 import com.tasnimulhasan.ui.NavRoutes.ABOUT_ROUTE
@@ -148,15 +145,15 @@ internal fun MmApp(
             .fillMaxSize()
     ) {
         CustomDrawer(
-            selectedNavigationItem = selectedNavigationItem,
-            onNavigationItemClick = {
-                selectedNavigationItem = it
-            },
-            onDrawerCloseClick = { customDrawerState = CustomDrawerState.Closed }
+            onDrawerCloseClick = { customDrawerState = CustomDrawerState.Closed },
+            onAboutClick = { appState.navigateToAbout() },
+            onFeedBackClick = { appState.navigateToFeedBack() },
+            onFavouriteClick = { appState.navigateToFavourite() },
+            onSettingsClick = { appState.navigateToSettings() }
         )
         Scaffold(
             modifier = modifier
-                .offset{ IntOffset(x =  animatedOffset.roundToPx(), y = 0) }
+                .offset { IntOffset(x = animatedOffset.roundToPx(), y = 0) }
                 .scale(scale = animatedScale)
                 .coloredShadow(
                     color = Color.Black,
@@ -166,18 +163,7 @@ internal fun MmApp(
                 .clickable(enabled = customDrawerState == CustomDrawerState.Opened) {
                     customDrawerState = CustomDrawerState.Closed
                 },
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        ) { padding ->
-            Column(
-                modifier
-                    .fillMaxSize()
-                    .background(color = MaterialTheme.colorScheme.background)
-                    .padding(padding)
-                    .consumeWindowInsets(padding)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-            ) {
+            topBar = {
                 MelodiqTopAppBar(
                     titleRes = currentTitleRes,
                     navigationIcon = navigationIcon,
@@ -191,23 +177,34 @@ internal fun MmApp(
                         else customDrawerState = customDrawerState.opposite()
                     }
                 )
-
-                if (isTopLevelDestination)
-                    MmNavigationSuiteScaffold(
-                        navigationSuiteItems = {
-                            appState.topLevelDestination.forEach { destination ->
-                                item(
-                                    selected = currentDestination.isTopLevelDestinationInHierarchy(destination),
-                                    onClick = { appState.navigateToTopLevelDestination(destination) },
-                                    icon = { Icon(imageVector = destination.unSelectedIcon, contentDescription = null) },
-                                    selectedIcon = { Icon(imageVector = destination.selectedIcon, contentDescription = null) },
-                                    label = { Text(stringResource(destination.iconTextId)) },
-                                )
-                            }
-                        },
-                        windowAdaptiveInfo = windowAdaptiveInfo,
-                    ) { GetContent(appState = appState) }
-                else GetContent(appState = appState)
+            },
+            bottomBar = {
+                if (isTopLevelDestination){
+                    MelodiQNavigationBar {
+                        appState.topLevelDestination.forEach { destination ->
+                            MelodiQNavigationBarItem(
+                                selected = currentDestination.isTopLevelDestinationInHierarchy(destination),
+                                onClick = { appState.navigateToTopLevelDestination(destination) },
+                                icon = { Icon(imageVector = destination.unSelectedIcon, contentDescription = null) },
+                                selectedIcon = { Icon(imageVector = destination.selectedIcon, contentDescription = null) },
+                                label = { Text(stringResource(destination.iconTextId)) },
+                            )
+                        }
+                    }
+                }
+            },
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        ) { padding ->
+            Column(
+                modifier
+                    .fillMaxSize()
+                    .background(color = MaterialTheme.colorScheme.background)
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
+            ) {
+                GetContent(appState = appState)
             }
         }
     }

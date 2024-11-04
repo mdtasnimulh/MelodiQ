@@ -1,8 +1,6 @@
-package com.tasnimulhasan.melodiq.component
+package com.tasnimulhasan.melodiq.navigation
 
-import androidx.compose.ui.graphics.vector.ImageVector
 import com.tasnimulhasan.designsystem.R as Res
-import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 
 enum class CustomNavigationItem(
     val title: String,
