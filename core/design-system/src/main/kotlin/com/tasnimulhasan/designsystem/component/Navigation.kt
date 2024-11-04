@@ -3,11 +3,15 @@ package com.tasnimulhasan.designsystem.component
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Money
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Money
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -200,15 +204,19 @@ class MmNavigationSuiteScope internal constructor(
 @Preview
 @Composable
 fun NiaNavigationBarPreview() {
-    val items = listOf("Home", "Budget", "Settings")
+    val items = listOf("Home", "Songs", "Albums", "Playlists", "Settings")
     val icons = listOf(
         Icons.Filled.Home,
-        Icons.Filled.Money,
+        Icons.Filled.MusicNote,
+        Icons.Filled.Album,
+        Icons.Filled.LibraryMusic,
         Icons.Filled.Settings
     )
     val selectedIcons = listOf(
         Icons.Outlined.Home,
-        Icons.Outlined.Money,
+        Icons.Outlined.MusicNote,
+        Icons.Outlined.Album,
+        Icons.Outlined.LibraryMusic,
         Icons.Outlined.Settings
     )
 
@@ -240,15 +248,19 @@ fun NiaNavigationBarPreview() {
 @Preview
 @Composable
 fun NiaNavigationRailPreview() {
-    val items = listOf("Home", "Budget", "Settings")
+    val items = listOf("Home", "Songs", "Albums", "Playlists", "Settings")
     val icons = listOf(
         Icons.Filled.Home,
-        Icons.Filled.Money,
+        Icons.Filled.MusicNote,
+        Icons.Filled.Album,
+        Icons.Filled.LibraryMusic,
         Icons.Filled.Settings
     )
     val selectedIcons = listOf(
         Icons.Outlined.Home,
-        Icons.Outlined.Money,
+        Icons.Outlined.MusicNote,
+        Icons.Outlined.Album,
+        Icons.Outlined.LibraryMusic,
         Icons.Outlined.Settings
     )
 
