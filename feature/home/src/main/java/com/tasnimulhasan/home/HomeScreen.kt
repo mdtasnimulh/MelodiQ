@@ -57,7 +57,8 @@ internal fun HomeScreen(
                             bitmap = item.cover,
                             title = item.songTitle,
                             artist = item.artist,
-                            duration = item.duration
+                            duration = item.duration,
+                            onMusicClicked = { navigateToPlayer.invoke() }
                         )
                     }
                 }

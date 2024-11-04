@@ -40,7 +40,8 @@ fun MusicCard(
     bitmap: Bitmap?,
     title: String,
     artist: String,
-    duration: String
+    duration: String,
+    onMusicClicked: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -51,7 +52,7 @@ fun MusicCard(
             .height(120.dp)
             .padding(vertical = 8.dp, horizontal = 16.dp),
         elevation = CardDefaults.cardElevation(2.dp),
-        onClick = {},
+        onClick = { onMusicClicked.invoke() },
     ) {
         Row(
             modifier.fillMaxWidth(),
@@ -140,5 +141,5 @@ fun convertLongToReadableDateTime(time: Long, format: String): String {
 @Preview(showBackground = true)
 @Composable
 fun MusicCardPreview() {
-    MusicCard(bitmap = null, title = "Song df afdasdfadsf fasdf asdfasdf dasffsa Title", artist = "Artist Name", duration = "134654")
+    MusicCard(bitmap = null, title = "Song df afdasdfadsf fasdf asdfasdf dasffsa Title", artist = "Artist Name", duration = "134654", onMusicClicked = {})
 }
