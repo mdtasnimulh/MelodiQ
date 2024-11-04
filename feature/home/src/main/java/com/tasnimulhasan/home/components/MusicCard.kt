@@ -1,7 +1,6 @@
 package com.tasnimulhasan.home.components
 
 import android.graphics.Bitmap
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,13 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.tasnimulhasan.designsystem.R as Res
@@ -58,31 +57,18 @@ fun MusicCard(
             modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (bitmap != null) {
-                Image(
-                    modifier = modifier
-                        .width(100.dp)
-                        .height(100.dp)
-                        .clip(shape = MaterialTheme.shapes.medium)
-                        .weight(2f),
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Cover art",
-                    contentScale = ContentScale.FillHeight
-                )
-            } else {
-                Image(
-                    modifier = modifier
-                        .width(100.dp)
-                        .height(120.dp)
-                        .clip(shape = MaterialTheme.shapes.medium)
-                        .weight(2f),
-                    painter = painterResource(
-                        id = Res.drawable.ic_launcher_foreground
-                    ),
-                    contentDescription = "Null Cover Art",
-                    contentScale = ContentScale.FillHeight
-                )
-            }
+            AsyncImage(
+                model = bitmap,
+                contentDescription = "Cover art",
+                modifier = modifier
+                    .width(100.dp)
+                    .height(100.dp)
+                    .clip(shape = MaterialTheme.shapes.medium)
+                    .weight(2f),
+                contentScale = ContentScale.FillHeight,
+                placeholder = painterResource(Res.drawable.ic_launcher_foreground),
+                error = painterResource(Res.drawable.ic_launcher_foreground)
+            )
 
             Column(
                 modifier = Modifier
