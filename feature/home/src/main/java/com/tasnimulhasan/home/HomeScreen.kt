@@ -1,52 +1,68 @@
 package com.tasnimulhasan.home
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tasnimulhasan.home.components.MusicCard
 
 @Composable
 internal fun HomeRoute(
+    viewModel: HomeViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
     navigateToPlayer: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
 ) {
     HomeScreen(
+        context = LocalContext.current,
+        viewModel,
         modifier,
-        navigateToPlayer
+        navigateToPlayer,
     )
 }
 
 @Composable
 internal fun HomeScreen(
+    context: Context,
+    viewModel: HomeViewModel,
     modifier: Modifier,
-    navigateToPlayer: () -> Unit
+    navigateToPlayer: () -> Unit,
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.initializeListIfNeeded(context)
+    }
+
     Box (
         modifier = modifier.fillMaxSize()
     ) {
-        Text(
-            text = "Home",
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(24.dp),
-        )
+        when (val state = viewModel.uiState.value) {
+            is UiState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+            is UiState.MusicList -> {
+                LazyColumn {
+                    itemsIndexed(state.musics) { index, item ->
+                        LaunchedEffect(Unit) {
+                            viewModel.loadBitmapIfNeeded(context, index)
+                        }
+                        MusicCard(
+                            modifier = modifier,
+                            bitmap = item.cover,
+                            title = item.songTitle,
+                            artist = item.artist,
+                            duration = item.duration
+                        )
+                    }
+                }
+            }
+            is UiState.Error -> {}
+        }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    HomeScreen(modifier = Modifier) {}
 }
