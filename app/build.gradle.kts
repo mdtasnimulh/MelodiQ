@@ -115,6 +115,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.window.core)
     implementation(libs.coil.kt)
+    implementation(libs.gson)
 
     ksp(libs.hilt.compiler)
     implementation(libs.timber)
