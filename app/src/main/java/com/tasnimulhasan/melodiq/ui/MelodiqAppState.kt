@@ -5,27 +5,26 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
+import com.tasnimulhasan.albums.navigation.AlbumRoute
 import com.tasnimulhasan.albums.navigation.navigateToAlbums
 import com.tasnimulhasan.featureabout.navigation.navigateToAbout
 import com.tasnimulhasan.featurefavourite.navigation.navigateToFavourite
 import com.tasnimulhasan.featurefeedback.navigation.navigateToFeedback
 import com.tasnimulhasan.featureplayer.navigation.navigateToPlayer
 import com.tasnimulhasan.featurequeue.navigation.navigateToQueue
+import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.home.navigation.navigateToHome
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
 import com.tasnimulhasan.playlists.navigation.navigateToPlaylists
 import com.tasnimulhasan.settings.navigation.navigateToSettings
+import com.tasnimulhasan.songs.navigation.SongsRoute
 import com.tasnimulhasan.songs.navigation.navigateToSongs
-import com.tasnimulhasan.ui.NavRoutes.ALBUMS_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.HOME_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.PLAYLISTS_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.SETTINGS_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.SONGS_ROUTE
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
@@ -49,17 +48,15 @@ class MelodiQAppState(
     val navController: NavHostController,
     coroutineScope: CoroutineScope
 ) {
-    val currentDestination: NavDestination? @Composable get() =
-        navController.currentBackStackEntryAsState().value?.destination
+    val currentDestination: NavDestination?
+        @Composable get() = navController
+            .currentBackStackEntryAsState().value?.destination
 
     val currentTopLevelDestination: TopLevelDestination?
-    @Composable get() =
-        when (currentDestination?.route) {
-            HOME_ROUTE -> TopLevelDestination.HOME
-            SONGS_ROUTE -> TopLevelDestination.SONGS
-            ALBUMS_ROUTE -> TopLevelDestination.ALBUMS
-            PLAYLISTS_ROUTE -> TopLevelDestination.PLAYLISTS
-            else -> null
+        @Composable get() {
+            return TopLevelDestination.entries.firstOrNull { topLevelDestination ->
+                currentDestination?.hasRoute(route = topLevelDestination.route) ?: false
+            }
         }
 
     val topLevelDestination: List<TopLevelDestination> = TopLevelDestination.entries
@@ -81,59 +78,17 @@ class MelodiQAppState(
         }
     }
 
-    fun navigateToPlayer() {
-        val topLevelNavOptions = navOptions {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
-        navController.navigateToPlayer(topLevelNavOptions)
-    }
+    fun navigateToPlayer() = navController.navigateToPlayer()
 
-    fun navigateToQueue() {
-        val topLevelNavOptions = navOptions {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
-        navController.navigateToQueue(topLevelNavOptions)
-    }
+    fun navigateToQueue() = navController.navigateToQueue()
 
-    fun navigateToFavourite() {
-        val topLevelNavOptions = navOptions {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
-        navController.navigateToFavourite(topLevelNavOptions)
-    }
+    fun navigateToFavourite() = navController.navigateToFavourite()
 
-    fun navigateToAbout() {
-        val topLevelNavOptions = navOptions {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
-        navController.navigateToAbout(topLevelNavOptions)
-    }
+    fun navigateToAbout() = navController.navigateToAbout()
 
-    fun navigateToFeedBack() {
-        val topLevelNavOptions = navOptions {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
-        navController.navigateToFeedback(topLevelNavOptions)
-    }
+    fun navigateToFeedBack() = navController.navigateToFeedback()
 
-    fun navigateToSettings() {
-        val topLevelNavOptions = navOptions {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
-        navController.navigateToSettings(topLevelNavOptions)
-    }
+    fun navigateToSettings() = navController.navigateToSettings()
 
     fun navigateBack() {
         navController.navigateUp()

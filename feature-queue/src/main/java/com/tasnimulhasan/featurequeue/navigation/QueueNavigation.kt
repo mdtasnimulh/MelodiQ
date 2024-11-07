@@ -1,23 +1,28 @@
 package com.tasnimulhasan.featurequeue.navigation
 
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavOptions
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
-import androidx.navigation.navDeepLink
 import com.tasnimulhasan.featurequeue.QueueRoute
-import com.tasnimulhasan.ui.DeepLinks.DEEP_LINK_QUEUE
-import com.tasnimulhasan.ui.NavRoutes.QUEUE_ROUTE
+import kotlinx.serialization.Serializable
 
-fun NavController.navigateToQueue(navOptions: NavOptions) = navigate(QUEUE_ROUTE, navOptions)
+@Serializable object QueueRoute
+
+fun NavController.navigateToQueue(navOptions: NavOptionsBuilder.() -> Unit = {}){
+    navigate(route = QueueRoute){
+        navOptions()
+    }
+}
 
 fun NavGraphBuilder.queueScreen() {
-    composable(
-        route = QUEUE_ROUTE,
-        deepLinks = listOf(
-            navDeepLink { uriPattern = DEEP_LINK_QUEUE },
-        ),
-        arguments = emptyList(),
+    composable<QueueRoute>(
+        enterTransition = { slideInHorizontally {it} },
+        exitTransition = { slideOutHorizontally { -it } },
+        popEnterTransition = { slideInHorizontally { -it } },
+        popExitTransition = { slideOutHorizontally { it } }
     ) {
         QueueRoute()
     }

@@ -1,23 +1,28 @@
 package com.tasnimulhasan.settings.navigation
 
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavOptions
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
-import androidx.navigation.navDeepLink
 import com.tasnimulhasan.settings.SettingsRoute
-import com.tasnimulhasan.ui.DeepLinks.DEEP_LINK_SETTINGS
-import com.tasnimulhasan.ui.NavRoutes.SETTINGS_ROUTE
+import kotlinx.serialization.Serializable
 
-fun NavController.navigateToSettings(navOptions: NavOptions) = navigate(SETTINGS_ROUTE, navOptions)
+@Serializable object SettingsRoute
+
+fun NavController.navigateToSettings(navOptions: NavOptionsBuilder.() -> Unit = {}){
+    navigate(route = SettingsRoute){
+        navOptions()
+    }
+}
 
 fun NavGraphBuilder.settingsScreen() {
-    composable(
-        route = SETTINGS_ROUTE,
-        deepLinks = listOf(
-            navDeepLink { uriPattern = DEEP_LINK_SETTINGS },
-        ),
-        arguments = emptyList(),
+    composable<SettingsRoute>(
+        enterTransition = { slideInHorizontally {it} },
+        exitTransition = { slideOutHorizontally { -it } },
+        popEnterTransition = { slideInHorizontally { -it } },
+        popExitTransition = { slideOutHorizontally { it } }
     ) {
         SettingsRoute()
     }

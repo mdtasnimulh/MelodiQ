@@ -1,23 +1,28 @@
 package com.tasnimulhasan.featurefeedback.navigation
 
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavOptions
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
-import androidx.navigation.navDeepLink
 import com.tasnimulhasan.featurefeedback.FeedbackRoute
-import com.tasnimulhasan.ui.DeepLinks.DEEP_LINK_FEEDBACK
-import com.tasnimulhasan.ui.NavRoutes.FEEDBACK_ROUTE
+import kotlinx.serialization.Serializable
 
-fun NavController.navigateToFeedback(navOptions: NavOptions) = navigate(FEEDBACK_ROUTE, navOptions)
+@Serializable object FeedbackRoute
+
+fun NavController.navigateToFeedback(navOptions: NavOptionsBuilder.() -> Unit = {}){
+    navigate(route = FeedbackRoute){
+        navOptions()
+    }
+}
 
 fun NavGraphBuilder.feedbackScreen() {
-    composable(
-        route = FEEDBACK_ROUTE,
-        deepLinks = listOf(
-            navDeepLink { uriPattern = DEEP_LINK_FEEDBACK },
-        ),
-        arguments = emptyList(),
+    composable<FeedbackRoute>(
+        enterTransition = { slideInHorizontally {it} },
+        exitTransition = { slideOutHorizontally { -it } },
+        popEnterTransition = { slideInHorizontally { -it } },
+        popExitTransition = { slideOutHorizontally { it } }
     ) {
         FeedbackRoute()
     }

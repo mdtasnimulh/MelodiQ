@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.melodiq.android.application)
     alias(libs.plugins.melodiq.android.application.compose)
     alias(libs.plugins.melodiq.android.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -116,6 +117,7 @@ dependencies {
     implementation(libs.androidx.window.core)
     implementation(libs.coil.kt)
     implementation(libs.gson)
+    implementation(libs.kotlinx.serialization.json)
 
     ksp(libs.hilt.compiler)
     implementation(libs.timber)

@@ -41,27 +41,28 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import com.tasnimulhasan.albums.navigation.AlbumRoute
+import com.tasnimulhasan.common.utils.coloredShadow
+import com.tasnimulhasan.designsystem.component.MelodiQNavigationBar
 import com.tasnimulhasan.designsystem.component.MelodiQNavigationBarItem
 import com.tasnimulhasan.designsystem.component.MelodiqTopAppBar
-import com.tasnimulhasan.designsystem.component.MelodiQNavigationBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
+import com.tasnimulhasan.featureabout.navigation.AboutRoute
+import com.tasnimulhasan.featurefavourite.navigation.FavouriteRoute
+import com.tasnimulhasan.featurefeedback.navigation.FeedbackRoute
+import com.tasnimulhasan.featureplayer.navigation.PlayerRoute
+import com.tasnimulhasan.featurequeue.navigation.QueueRoute
+import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.melodiq.component.CustomDrawer
 import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
-import com.tasnimulhasan.common.utils.coloredShadow
 import com.tasnimulhasan.melodiq.navigation.MelodiQNavHost
-import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
-import com.tasnimulhasan.ui.NavRoutes.ABOUT_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.ALBUMS_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.FAVOURITE_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.FEEDBACK_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.HOME_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.PLAYER_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.PLAYLISTS_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.QUEUE_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.SETTINGS_ROUTE
-import com.tasnimulhasan.ui.NavRoutes.SONGS_ROUTE
+import com.tasnimulhasan.playlists.navigation.PlaylistsRoute
+import com.tasnimulhasan.settings.navigation.SettingsRoute
+import com.tasnimulhasan.songs.navigation.SongsRoute
 import kotlin.math.roundToInt
+import kotlin.reflect.KClass
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
@@ -94,19 +95,19 @@ internal fun MmApp(
         currentDestination?.route?.contains(destination.name, true) == true
     }
 
-    val currentTitleRes = when (currentDestination?.route) {
-        HOME_ROUTE -> Res.string.app_name
-        SONGS_ROUTE -> Res.string.title_songs
-        ALBUMS_ROUTE -> Res.string.title_albums
-        PLAYLISTS_ROUTE -> Res.string.title_playlists
-        SETTINGS_ROUTE -> Res.string.title_settings
-        PLAYER_ROUTE -> Res.string.label_now_playing
-        FAVOURITE_ROUTE -> Res.string.title_favourite
-        QUEUE_ROUTE -> Res.string.title_queue
-        ABOUT_ROUTE -> Res.string.title_about
-        FEEDBACK_ROUTE -> Res.string.title_feedback
+    /*val currentTitleRes = when (currentDestination?.route) { TODO need some work here for top bar title
+        HomeRoute -> Res.string.app_name
+        SongsRoute -> Res.string.title_songs
+        AlbumRoute -> Res.string.title_albums
+        PlaylistsRoute -> Res.string.title_playlists
+        SettingsRoute -> Res.string.title_settings
+        PlayerRoute -> Res.string.label_now_playing
+        FavouriteRoute -> Res.string.title_favourite
+        QueueRoute -> Res.string.title_queue
+        AboutRoute -> Res.string.title_about
+        FeedbackRoute -> Res.string.title_feedback
         else -> Res.string.app_name
-    }
+    }*/
 
     val navigationIcon = if (isTopLevelDestination) MelodiqIcons.NavigationMenu
     else MelodiqIcons.NavigationBack
@@ -165,7 +166,7 @@ internal fun MmApp(
                 },
             topBar = {
                 MelodiqTopAppBar(
-                    titleRes = currentTitleRes,
+                    titleRes = Res.string.app_name, // TODO need some work here
                     navigationIcon = navigationIcon,
                     navigationIconContentDescription = navigationIconContentDescription,
                     actionIcon = MelodiqIcons.ActionMore,
@@ -183,7 +184,7 @@ internal fun MmApp(
                     MelodiQNavigationBar {
                         appState.topLevelDestination.forEach { destination ->
                             MelodiQNavigationBarItem(
-                                selected = currentDestination.isTopLevelDestinationInHierarchy(destination),
+                                selected = currentDestination.isRouteInHierarchy(destination.route),
                                 onClick = { appState.navigateToTopLevelDestination(destination) },
                                 icon = { Icon(imageVector = destination.unSelectedIcon, contentDescription = null) },
                                 selectedIcon = { Icon(imageVector = destination.selectedIcon, contentDescription = null) },
@@ -220,5 +221,7 @@ private fun GetContent(appState: MelodiQAppState) {
     }
 }
 
-private fun NavDestination?.isTopLevelDestinationInHierarchy(destination: TopLevelDestination) =
-    this?.hierarchy?.any { it.route?.contains(destination.name, true) ?: false } ?: false
+private fun NavDestination?.isRouteInHierarchy(route: KClass<*>) =
+    this?.hierarchy?.any {
+        it.hasRoute(route)
+    } ?: false

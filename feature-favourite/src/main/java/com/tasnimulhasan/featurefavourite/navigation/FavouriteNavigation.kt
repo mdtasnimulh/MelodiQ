@@ -1,23 +1,30 @@
 package com.tasnimulhasan.featurefavourite.navigation
 
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navDeepLink
 import com.tasnimulhasan.featurefavourite.FavouriteRoute
-import com.tasnimulhasan.ui.DeepLinks.DEEP_LINK_FAVOURITE
-import com.tasnimulhasan.ui.NavRoutes.FAVOURITE_ROUTE
+import kotlinx.serialization.Serializable
 
-fun NavController.navigateToFavourite(navOptions: NavOptions) = navigate(FAVOURITE_ROUTE, navOptions)
+@Serializable object FavouriteRoute
+
+fun NavController.navigateToFavourite(navOptions: NavOptionsBuilder.() -> Unit = {}){
+    navigate(route = FavouriteRoute){
+        navOptions()
+    }
+}
 
 fun NavGraphBuilder.favouriteScreen() {
-    composable(
-        route = FAVOURITE_ROUTE,
-        deepLinks = listOf(
-            navDeepLink { uriPattern = DEEP_LINK_FAVOURITE },
-        ),
-        arguments = emptyList(),
+    composable<FavouriteRoute>(
+        enterTransition = { slideInHorizontally {it} },
+        exitTransition = { slideOutHorizontally { -it } },
+        popEnterTransition = { slideInHorizontally { -it } },
+        popExitTransition = { slideOutHorizontally { it } }
     ) {
         FavouriteRoute()
     }

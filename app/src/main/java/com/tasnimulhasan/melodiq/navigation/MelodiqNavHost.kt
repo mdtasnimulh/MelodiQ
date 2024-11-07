@@ -9,24 +9,23 @@ import com.tasnimulhasan.featurefavourite.navigation.favouriteScreen
 import com.tasnimulhasan.featurefeedback.navigation.feedbackScreen
 import com.tasnimulhasan.featureplayer.navigation.playerScreen
 import com.tasnimulhasan.featurequeue.navigation.queueScreen
+import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.home.navigation.homeScreen
 import com.tasnimulhasan.melodiq.ui.MelodiQAppState
 import com.tasnimulhasan.playlists.navigation.playlistsScreen
 import com.tasnimulhasan.settings.navigation.settingsScreen
 import com.tasnimulhasan.songs.navigation.songsScreen
-import com.tasnimulhasan.ui.NavRoutes.HOME_ROUTE
 
 @Composable
 fun MelodiQNavHost(
     appState: MelodiQAppState,
     modifier: Modifier = Modifier,
-    startDestination: String = HOME_ROUTE,
     navigateToPlayer: () -> Unit
 ) {
     val navController = appState.navController
     NavHost(
         navController = navController,
-        startDestination = startDestination,
+        startDestination = HomeRoute,
         modifier = modifier,
     ) {
         homeScreen(navigateToPlayer = navigateToPlayer)
