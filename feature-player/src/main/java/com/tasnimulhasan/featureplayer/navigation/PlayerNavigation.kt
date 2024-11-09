@@ -6,13 +6,13 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
-import com.tasnimulhasan.featureplayer.PlayerRoute
+import com.tasnimulhasan.featureplayer.PlayerScreen
 import kotlinx.serialization.Serializable
 
-@Serializable object PlayerRoute
+@Serializable class PlayerRoute(val musicId: String)
 
-fun NavController.navigateToPlayer(navOptions: NavOptionsBuilder.() -> Unit = {}){
-    navigate(route = PlayerRoute){
+fun NavController.navigateToPlayer(musicId: String, navOptions: NavOptionsBuilder.() -> Unit = {}){
+    navigate(route = PlayerRoute(musicId = musicId)){
         navOptions()
     }
 }
@@ -23,7 +23,8 @@ fun NavGraphBuilder.playerScreen() {
         exitTransition = { slideOutHorizontally { -it } },
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
-    ) {
-        PlayerRoute()
+    ) { backStackEntry ->
+        val musicId = backStackEntry.arguments?.getString("musicId") ?: ""
+        PlayerScreen(musicId = musicId)
     }
 }

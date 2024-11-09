@@ -13,20 +13,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
-internal fun PlayerRoute(
+internal fun PlayerScreen(
+    musicId: String,
     modifier: Modifier = Modifier,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
-    PlayerScreen(
-        modifier
-    )
-}
-
-@Composable
-internal fun PlayerScreen(modifier: Modifier) {
-    Box (modifier = Modifier.fillMaxSize()) {
+    Box (modifier = modifier.fillMaxSize()) {
         Text(
-            text = "Player",
+            text = "Player for $musicId",
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(24.dp),
         )
@@ -36,5 +30,5 @@ internal fun PlayerScreen(modifier: Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun PlayerScreenPreview() {
-    PlayerScreen(modifier = Modifier)
+    PlayerScreen("12345",modifier = Modifier)
 }

@@ -216,7 +216,9 @@ private fun GetContent(appState: MelodiQAppState) {
     Box(modifier = Modifier.consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
         MelodiQNavHost(
             appState = appState,
-            navigateToPlayer = { appState.navigateToPlayer() }
+            navigateToPlayer = { musicId ->
+                appState.navigateToPlayer(musicId)  // Pass the musicId here
+            }
         )
     }
 }

@@ -78,7 +78,7 @@ class MelodiQAppState(
         }
     }
 
-    fun navigateToPlayer() = navController.navigateToPlayer()
+    fun navigateToPlayer(musicId: String) = navController.navigateToPlayer(musicId)
 
     fun navigateToQueue() = navController.navigateToQueue()
 

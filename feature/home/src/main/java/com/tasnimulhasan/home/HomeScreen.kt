@@ -18,7 +18,7 @@ import com.tasnimulhasan.home.components.MusicCard
 internal fun HomeRoute(
     viewModel: HomeViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
-    navigateToPlayer: () -> Unit,
+    navigateToPlayer: (String) -> Unit,
 ) {
     HomeScreen(
         context = LocalContext.current,
@@ -33,7 +33,7 @@ internal fun HomeScreen(
     context: Context,
     viewModel: HomeViewModel,
     modifier: Modifier,
-    navigateToPlayer: () -> Unit,
+    navigateToPlayer: (String) -> Unit,
 ) {
     LaunchedEffect(Unit) {
         viewModel.initializeListIfNeeded(context)
@@ -58,7 +58,7 @@ internal fun HomeScreen(
                             title = item.songTitle,
                             artist = item.artist,
                             duration = item.duration,
-                            onMusicClicked = { navigateToPlayer.invoke() }
+                            onMusicClicked = { navigateToPlayer(item.songId.toString()) }
                         )
                     }
                 }

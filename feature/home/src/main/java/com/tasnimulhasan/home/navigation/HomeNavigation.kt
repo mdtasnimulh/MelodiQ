@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
 fun NavController.navigateToHome(navOptions: NavOptions) = navigate(route = HomeRoute, navOptions)
 
 fun NavGraphBuilder.homeScreen(
-    navigateToPlayer: () -> Unit
+    navigateToPlayer: (musicId: String) -> Unit
 ) {
     composable<HomeRoute>(
         enterTransition = { slideInHorizontally {it} },
