@@ -20,7 +20,7 @@ internal fun PlayerScreen(
 ) {
     Box (modifier = modifier.fillMaxSize()) {
         Text(
-            text = "Player for $musicId",
+            text = viewModel.getSelectedMusic(musicId).songTitle,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(24.dp),
         )
