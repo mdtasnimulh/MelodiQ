@@ -36,7 +36,7 @@ internal fun HomeScreen(
     navigateToPlayer: (String) -> Unit,
 ) {
     LaunchedEffect(Unit) {
-        viewModel.initializeListIfNeeded(context)
+        viewModel.initializeListIfNeeded()
     }
 
     Box (

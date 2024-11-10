@@ -22,6 +22,10 @@ object ApplicationModule {
 
     @Provides
     @Singleton
+    fun provideContext(@ApplicationContext context: Context) = context
+
+    @Provides
+    @Singleton
     fun provideGson(): Gson {
         val gsonBuilder = GsonBuilder()
         return gsonBuilder.create()
