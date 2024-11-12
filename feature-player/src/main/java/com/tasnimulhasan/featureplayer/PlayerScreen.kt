@@ -221,7 +221,6 @@ internal fun PlayerScreen(
                         //        })
                     },
                     valueRange = 0f..max,
-                    modifier = Modifier.weight(1f),
                 )
                 Text(text = max.div(1000).toString())
             }

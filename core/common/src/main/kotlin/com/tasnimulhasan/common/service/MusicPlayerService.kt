@@ -9,7 +9,9 @@ import android.graphics.BitmapFactory
 import android.media.MediaPlayer
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -64,29 +66,17 @@ class MusicPlayerService: Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.let {
             when (intent.action) {
-                INTENT_PREV -> {
-                    prev()
-                }
-                INTENT_PLAY_PAUSE -> {
-                    playPause()
-                }
-                INTENT_NEXT -> {
-                    next()
-                }
+                INTENT_PREV -> { prev() }
+                INTENT_PLAY_PAUSE -> { playPause() }
+                INTENT_NEXT -> { next() }
                 else -> {
                     if (musicList.isNotEmpty()) {
                         currentTrack.update { musicList.first() }
                         currentTrack.value?.let { track -> play(track) }
                     }
-
-                    /*musicList.firstOrNull()?.let { track ->
-                        currentTrack.update { track }
-                        play(track)
-                    } ?: Timber.e("Music list is empty, unable to play current track!")*/
                 }
             }
         }
-
         return START_STICKY
     }
 
@@ -97,8 +87,9 @@ class MusicPlayerService: Service() {
         mediaPlayer.prepareAsync()
         mediaPlayer.setOnPreparedListener {
             mediaPlayer.start()
-            sendNotification(track)
             updateDuration()
+            isPlaying.update { true }
+            sendNotification(track)
         }
     }
 
@@ -120,8 +111,10 @@ class MusicPlayerService: Service() {
         val nextIndex = index?.plus(1)?.mod(musicList.size)
         val nextItem = nextIndex?.let { musicList[it] }
         currentTrack.update { nextItem }
-        currentTrack.value?.contentUri?.let { mediaPlayer.setDataSource(this, it) }
-        mediaPlayer.prepareAsync()
+        nextItem?.contentUri?.let {
+            mediaPlayer.setDataSource(this, it)
+            mediaPlayer.prepareAsync()
+        }
         mediaPlayer.setOnPreparedListener {
             mediaPlayer.start()
             currentTrack.value?.let { sendNotification(it) }
@@ -137,8 +130,10 @@ class MusicPlayerService: Service() {
         val prevIndex = if (index?.let { it < 0 } == true) musicList.size.minus(1) else index?.minus(1)
         val prevItem = prevIndex?.let { musicList[it] }
         currentTrack.update { prevItem }
-        currentTrack.value?.contentUri?.let { mediaPlayer.setDataSource(this, it) }
-        mediaPlayer.prepareAsync()
+        prevItem?.contentUri?.let {
+            mediaPlayer.setDataSource(this, it)
+            mediaPlayer.prepareAsync()
+        }
         mediaPlayer.setOnPreparedListener {
             mediaPlayer.start()
             currentTrack.value?.let { sendNotification(it) }
@@ -148,9 +143,9 @@ class MusicPlayerService: Service() {
 
     private fun updateDuration() {
         job = scope.launch {
-            maxDuration.update { mediaPlayer.duration.toFloat() }
+            maxDuration.value = mediaPlayer.duration.toFloat()
             while (mediaPlayer.isPlaying) {
-                currentDuration.update { mediaPlayer.currentPosition.toFloat() }
+                currentDuration.value = mediaPlayer.currentPosition.toFloat()
                 delay(1000)
             }
         }
