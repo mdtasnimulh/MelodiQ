@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -49,8 +50,11 @@ internal fun HomeScreen(
             is UiState.MusicList -> {
                 LazyColumn {
                     itemsIndexed(state.musics) { index, item ->
-                        LaunchedEffect(Unit) {
-                            viewModel.loadBitmapIfNeeded(context, index)
+                        val shouldLoadBitmap = remember(item.songId) { true }
+                        if (shouldLoadBitmap) {
+                            LaunchedEffect(item.songId) {
+                                viewModel.loadBitmapIfNeeded(context, index)
+                            }
                         }
                         MusicCard(
                             modifier = modifier,

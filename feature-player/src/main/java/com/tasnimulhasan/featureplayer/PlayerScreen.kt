@@ -43,14 +43,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.tasnimulhasan.common.service.MusicService
+import com.tasnimulhasan.common.service.MusicPlayerService
 import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
-import kotlin.math.max
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
@@ -67,12 +65,12 @@ internal fun PlayerScreen(
     val maxDuration = MutableStateFlow(0f)
     val currentDuration = MutableStateFlow(0f)
     val currentTrack = MutableStateFlow<MusicEntity?>(null)
-    var service: MusicService? = null
+    var musicPlayerService: MusicPlayerService? = null
     var isBound = false
 
     val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            service = (binder as MusicService.MusicBinder).getService()
+            musicPlayerService = (binder as MusicPlayerService.MusicBinder).getService()
             binder.setMusicList(viewModel.musics)
             scope.launch {
                 binder.isPlaying().collectLatest {
@@ -163,14 +161,14 @@ internal fun PlayerScreen(
 
         Row {
             IconButton(onClick = {
-                val intent = Intent(context, MusicService::class.java)
+                val intent = Intent(context, MusicPlayerService::class.java)
                 context.startService(intent)
                 context.bindService(intent, connection, BIND_AUTO_CREATE)
             }) {
                 Icon(imageVector = Icons.Default.PlayArrow, null)
             }
             IconButton(onClick = {
-                val intent = Intent(context, MusicService::class.java)
+                val intent = Intent(context, MusicPlayerService::class.java)
                 context.stopService(intent)
                 context.unbindService(connection)
             }) {
@@ -216,19 +214,19 @@ internal fun PlayerScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 IconButton(
-                    onClick = { service?.prev() }
+                    onClick = { musicPlayerService?.prev() }
                 ) {
                     Icon(painter = painterResource(Res.drawable.ic_backward), null)
                 }
 
                 IconButton(
-                    onClick = { service?.playPause() }
+                    onClick = { musicPlayerService?.playPause() }
                 ) {
                     Icon(painter = if (playing) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle), null)
                 }
 
                 IconButton(
-                    onClick = { service?.next() }
+                    onClick = { musicPlayerService?.next() }
                 ) {
                     Icon(painter = painterResource(Res.drawable.ic_next), null)
                 }
