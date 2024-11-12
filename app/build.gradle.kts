@@ -118,6 +118,7 @@ dependencies {
     implementation(libs.coil.kt)
     implementation(libs.gson)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.media)
 
     ksp(libs.hilt.compiler)
     implementation(libs.timber)

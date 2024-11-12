@@ -15,4 +15,6 @@
     <string name="title_feedback">Feedback</string>
 
     <string name="label_now_playing">Now Playing</string>
+
+    <string name="desc_album_cover_art">Album Cover Art</string>
 </resources>

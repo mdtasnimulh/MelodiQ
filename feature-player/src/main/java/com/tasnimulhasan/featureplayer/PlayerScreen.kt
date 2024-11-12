@@ -1,18 +1,35 @@
 package com.tasnimulhasan.featureplayer
 
+import android.content.ComponentName
+import android.content.Context.BIND_AUTO_CREATE
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,7 +43,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.tasnimulhasan.common.service.MusicService
+import com.tasnimulhasan.entity.home.MusicEntity
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
+import kotlin.math.max
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
@@ -37,6 +61,46 @@ internal fun PlayerScreen(
 ) {
     val pagerState = rememberPagerState { viewModel.musics.size }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val isPlaying = MutableStateFlow(false)
+    val maxDuration = MutableStateFlow(0f)
+    val currentDuration = MutableStateFlow(0f)
+    val currentTrack = MutableStateFlow<MusicEntity?>(null)
+    var service: MusicService? = null
+    var isBound = false
+
+    val connection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            service = (binder as MusicService.MusicBinder).getService()
+            binder.setMusicList(viewModel.musics)
+            scope.launch {
+                binder.isPlaying().collectLatest {
+                    isPlaying.value = it
+                }
+            }
+            scope.launch {
+                binder.maxDuration().collectLatest {
+                    maxDuration.value = it
+                }
+            }
+            scope.launch {
+                binder.currentDuration().collectLatest {
+                    currentDuration.value = it
+                }
+            }
+            scope.launch {
+                binder.currentTrack().collectLatest {
+                    currentTrack.value = it
+                }
+            }
+            isBound = true
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            isBound = false
+        }
+    }
 
     // Find the index of the selected music
     val initialPageIndex = viewModel.musics.indexOfFirst { it.songId.toString() == musicId }
@@ -86,7 +150,7 @@ internal fun PlayerScreen(
             ) {
                 AsyncImage(
                     model = selectedMusic.cover,
-                    contentDescription = "Cover art",
+                    contentDescription = context.getString(Res.string.desc_album_cover_art),
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(shape = MaterialTheme.shapes.medium),
@@ -94,6 +158,80 @@ internal fun PlayerScreen(
                     placeholder = painterResource(Res.drawable.ic_launcher_foreground),
                     error = painterResource(Res.drawable.ic_launcher_foreground)
                 )
+            }
+        }
+
+        Row {
+            IconButton(onClick = {
+                val intent = Intent(context, MusicService::class.java)
+                context.startService(intent)
+                context.bindService(intent, connection, BIND_AUTO_CREATE)
+            }) {
+                Icon(imageVector = Icons.Default.PlayArrow, null)
+            }
+            IconButton(onClick = {
+                val intent = Intent(context, MusicService::class.java)
+                context.stopService(intent)
+                context.unbindService(connection)
+            }) {
+                Icon(imageVector = Icons.Default.Close, null)
+            }
+        }
+
+        Spacer(modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val track by currentTrack.collectAsState()
+            val playing by isPlaying.collectAsState()
+            val max by maxDuration.collectAsState()
+            val current by currentDuration.collectAsState()
+
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = current.div(1000).toString())
+                Slider(
+                    modifier = Modifier.weight(1f),
+                    value = current,
+                    onValueChange = {
+                        //service?.seekTo(it.toLong())
+                    },
+                    valueRange = 0f..max
+                )
+                Text(text = max.div(1000).toString())
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                IconButton(
+                    onClick = { service?.prev() }
+                ) {
+                    Icon(painter = painterResource(Res.drawable.ic_backward), null)
+                }
+
+                IconButton(
+                    onClick = { service?.playPause() }
+                ) {
+                    Icon(painter = if (playing) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle), null)
+                }
+
+                IconButton(
+                    onClick = { service?.next() }
+                ) {
+                    Icon(painter = painterResource(Res.drawable.ic_next), null)
+                }
             }
         }
     }
