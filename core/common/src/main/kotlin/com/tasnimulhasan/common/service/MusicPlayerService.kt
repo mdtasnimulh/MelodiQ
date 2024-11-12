@@ -221,9 +221,4 @@ class MusicPlayerService: Service() {
         )
     }
 
-    override fun onDestroy() {
-        mediaPlayer.release()
-        super.onDestroy()
-    }
-
 }
