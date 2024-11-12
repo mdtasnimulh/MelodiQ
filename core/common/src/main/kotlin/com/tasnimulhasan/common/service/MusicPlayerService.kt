@@ -45,7 +45,7 @@ class MusicPlayerService: Service() {
 
         fun isPlaying() = this@MusicPlayerService.isPlaying
 
-        fun currentTrack() = this@MusicPlayerService.currentTrack
+        fun getCurrentTrack() = this@MusicPlayerService.currentTrack
     }
 
     private var mediaPlayer = MediaPlayer()
@@ -90,7 +90,7 @@ class MusicPlayerService: Service() {
         return START_STICKY
     }
 
-    private fun play(track: MusicEntity) {
+    fun play(track: MusicEntity) {
         mediaPlayer.reset()
         mediaPlayer = MediaPlayer()
         mediaPlayer.setDataSource(this, track.contentUri)
@@ -108,6 +108,7 @@ class MusicPlayerService: Service() {
         } else {
             mediaPlayer.start()
         }
+        isPlaying.update { mediaPlayer.isPlaying }
         currentTrack.value?.let { sendNotification(it) }
     }
 
@@ -119,7 +120,7 @@ class MusicPlayerService: Service() {
         val nextIndex = index?.plus(1)?.mod(musicList.size)
         val nextItem = nextIndex?.let { musicList[it] }
         currentTrack.update { nextItem }
-        nextItem?.contentUri?.let { mediaPlayer.setDataSource(this, it) }
+        currentTrack.value?.contentUri?.let { mediaPlayer.setDataSource(this, it) }
         mediaPlayer.prepareAsync()
         mediaPlayer.setOnPreparedListener {
             mediaPlayer.start()
@@ -136,7 +137,7 @@ class MusicPlayerService: Service() {
         val prevIndex = if (index?.let { it < 0 } == true) musicList.size.minus(1) else index?.minus(1)
         val prevItem = prevIndex?.let { musicList[it] }
         currentTrack.update { prevItem }
-        prevItem?.contentUri?.let { mediaPlayer.setDataSource(this, it) }
+        currentTrack.value?.contentUri?.let { mediaPlayer.setDataSource(this, it) }
         mediaPlayer.prepareAsync()
         mediaPlayer.setOnPreparedListener {
             mediaPlayer.start()
@@ -147,9 +148,8 @@ class MusicPlayerService: Service() {
 
     private fun updateDuration() {
         job = scope.launch {
-            if (mediaPlayer.isPlaying.not()) return@launch
             maxDuration.update { mediaPlayer.duration.toFloat() }
-            while (true) {
+            while (mediaPlayer.isPlaying) {
                 currentDuration.update { mediaPlayer.currentPosition.toFloat() }
                 delay(1000)
             }

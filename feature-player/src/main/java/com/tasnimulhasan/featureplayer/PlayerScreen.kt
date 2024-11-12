@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,6 +74,9 @@ internal fun PlayerScreen(
             musicPlayerService = (binder as MusicPlayerService.MusicBinder).getService()
             binder.setMusicList(viewModel.musics)
             scope.launch {
+                musicPlayerService?.play(currentTrack.value ?: viewModel.musics.first())
+            }
+            scope.launch {
                 binder.isPlaying().collectLatest {
                     isPlaying.value = it
                 }
@@ -88,7 +92,7 @@ internal fun PlayerScreen(
                 }
             }
             scope.launch {
-                binder.currentTrack().collectLatest {
+                binder.getCurrentTrack().collectLatest {
                     currentTrack.value = it
                 }
             }
@@ -97,6 +101,20 @@ internal fun PlayerScreen(
 
         override fun onServiceDisconnected(name: ComponentName?) {
             isBound = false
+        }
+    }
+
+    // Connect to the service on launch
+    LaunchedEffect(Unit) {
+        val intent = Intent(context, MusicPlayerService::class.java)
+        context.bindService(intent, connection, BIND_AUTO_CREATE)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (isBound) {
+                context.unbindService(connection)
+            }
         }
     }
 
@@ -110,6 +128,12 @@ internal fun PlayerScreen(
     val currentMusic = viewModel.musics.getOrNull(currentPage)
 
     Column(modifier = modifier.fillMaxSize()) {
+
+        val track by currentTrack.collectAsState()
+        val playing by isPlaying.collectAsState()
+        val max by maxDuration.collectAsState()
+        val current by currentDuration.collectAsState()
+
         currentMusic?.let {
             Text(
                 text = it.songTitle,
@@ -168,9 +192,8 @@ internal fun PlayerScreen(
                 Icon(imageVector = Icons.Default.PlayArrow, null)
             }
             IconButton(onClick = {
-                val intent = Intent(context, MusicPlayerService::class.java)
-                context.stopService(intent)
-                context.unbindService(connection)
+                context.stopService(Intent(context, MusicPlayerService::class.java))
+                if (isBound) context.unbindService(connection)
             }) {
                 Icon(imageVector = Icons.Default.Close, null)
             }
@@ -184,10 +207,6 @@ internal fun PlayerScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val track by currentTrack.collectAsState()
-            val playing by isPlaying.collectAsState()
-            val max by maxDuration.collectAsState()
-            val current by currentDuration.collectAsState()
 
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
@@ -195,12 +214,14 @@ internal fun PlayerScreen(
             ) {
                 Text(text = current.div(1000).toString())
                 Slider(
-                    modifier = Modifier.weight(1f),
                     value = current,
                     onValueChange = {
-                        //service?.seekTo(it.toLong())
+                        //if (isBound) {
+                        //            musicPlayerService?.seekTo(it.toLong())
+                        //        })
                     },
-                    valueRange = 0f..max
+                    valueRange = 0f..max,
+                    modifier = Modifier.weight(1f),
                 )
                 Text(text = max.div(1000).toString())
             }
@@ -213,22 +234,26 @@ internal fun PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                IconButton(
-                    onClick = { musicPlayerService?.prev() }
-                ) {
-                    Icon(painter = painterResource(Res.drawable.ic_backward), null)
+                IconButton(onClick = {
+                    if (isBound) musicPlayerService?.prev()
+                }) {
+                    Icon(painter = painterResource(Res.drawable.ic_backward), contentDescription = null)
                 }
 
-                IconButton(
-                    onClick = { musicPlayerService?.playPause() }
-                ) {
-                    Icon(painter = if (playing) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle), null)
+
+                IconButton(onClick = {
+                    if (isBound) musicPlayerService?.playPause()
+                }) {
+                    Icon(
+                        painter = if (playing) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle),
+                        contentDescription = null
+                    )
                 }
 
-                IconButton(
-                    onClick = { musicPlayerService?.next() }
-                ) {
-                    Icon(painter = painterResource(Res.drawable.ic_next), null)
+                IconButton(onClick = {
+                    if (isBound) musicPlayerService?.next()
+                }) {
+                    Icon(painter = painterResource(Res.drawable.ic_next), contentDescription = null)
                 }
             }
         }

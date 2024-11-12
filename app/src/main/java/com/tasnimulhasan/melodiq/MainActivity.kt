@@ -1,6 +1,7 @@
 package com.tasnimulhasan.melodiq
 
 import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,7 +26,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appState = rememberMelodiQAppState()
             val permissionState = rememberPermissionState(
-                permission = Manifest.permission.READ_EXTERNAL_STORAGE
+                permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Manifest.permission.READ_MEDIA_AUDIO
+                } else Manifest.permission.READ_EXTERNAL_STORAGE
             )
             MelodiqTheme {
                 if (permissionState.status.isGranted) {
