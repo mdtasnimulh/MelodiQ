@@ -88,7 +88,6 @@ class MusicPlayerService: Service() {
         mediaPlayer.setOnPreparedListener {
             mediaPlayer.start()
             updateDuration()
-            isPlaying.update { true }
             sendNotification(track)
         }
     }
@@ -99,7 +98,6 @@ class MusicPlayerService: Service() {
         } else {
             mediaPlayer.start()
         }
-        isPlaying.update { mediaPlayer.isPlaying }
         currentTrack.value?.let { sendNotification(it) }
     }
 

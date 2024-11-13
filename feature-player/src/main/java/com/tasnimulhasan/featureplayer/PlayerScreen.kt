@@ -107,6 +107,7 @@ internal fun PlayerScreen(
     // Connect to the service on launch
     LaunchedEffect(Unit) {
         val intent = Intent(context, MusicPlayerService::class.java)
+        context.startService(intent)
         context.bindService(intent, connection, BIND_AUTO_CREATE)
     }
 
@@ -151,7 +152,7 @@ internal fun PlayerScreen(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(400.dp)
+                .height(250.dp)
         ) { page ->
             val selectedMusic = viewModel.musics[page]
             val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
@@ -183,79 +184,67 @@ internal fun PlayerScreen(
             }
         }
 
-        Row {
-            IconButton(onClick = {
-                val intent = Intent(context, MusicPlayerService::class.java)
-                context.startService(intent)
-                context.bindService(intent, connection, BIND_AUTO_CREATE)
-            }) {
-                Icon(imageVector = Icons.Default.PlayArrow, null)
+        /*context.stopService(Intent(context, MusicPlayerService::class.java))
+                if (isBound) context.unbindService(connection)*/
+
+        Spacer(modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = current.div(1000).toString())
+            Slider(
+                value = current,
+                onValueChange = {
+                    //if (isBound) {
+                    //            musicPlayerService?.seekTo(it.toLong())
+                    //        })
+                },
+                valueRange = 0f..max,
+            )
+            Text(text = max.div(1000).toString())
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            IconButton(onClick = { if (isBound) musicPlayerService?.prev() }) {
+                Icon(painter = painterResource(Res.drawable.ic_backward), contentDescription = null)
             }
-            IconButton(onClick = {
-                context.stopService(Intent(context, MusicPlayerService::class.java))
-                if (isBound) context.unbindService(connection)
-            }) {
-                Icon(imageVector = Icons.Default.Close, null)
+
+            IconButton(onClick = { if (isBound) musicPlayerService?.MusicBinder()?.getService()?.playPause() }) {
+                Icon(
+                    painter = if (playing) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle),
+                    contentDescription = null
+                )
+            }
+
+            IconButton(onClick = { if (isBound) musicPlayerService?.next() }) {
+                Icon(painter = painterResource(Res.drawable.ic_next), contentDescription = null)
             }
         }
 
         Spacer(modifier.height(16.dp))
 
-        Column(
-            modifier = Modifier.fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = current.div(1000).toString())
-                Slider(
-                    value = current,
-                    onValueChange = {
-                        //if (isBound) {
-                        //            musicPlayerService?.seekTo(it.toLong())
-                        //        })
-                    },
-                    valueRange = 0f..max,
-                )
-                Text(text = max.div(1000).toString())
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                IconButton(onClick = {
-                    if (isBound) musicPlayerService?.prev()
-                }) {
-                    Icon(painter = painterResource(Res.drawable.ic_backward), contentDescription = null)
-                }
-
-
-                IconButton(onClick = {
-                    if (isBound) musicPlayerService?.playPause()
-                }) {
-                    Icon(
-                        painter = if (playing) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle),
-                        contentDescription = null
-                    )
-                }
-
-                IconButton(onClick = {
-                    if (isBound) musicPlayerService?.next()
-                }) {
-                    Icon(painter = painterResource(Res.drawable.ic_next), contentDescription = null)
-                }
-            }
-        }
+        track?.songTitle?.let {
+            Text(
+                text = it,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
+            )
+        } ?: Text(
+            text = "Unknown Track",
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier.fillMaxWidth().padding(24.dp)
+        )
     }
 }
 
