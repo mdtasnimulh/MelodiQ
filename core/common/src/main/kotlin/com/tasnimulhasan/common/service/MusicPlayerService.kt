@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import com.tasnimulhasan.designsystem.R as Res
 
 class MusicPlayerService: Service() {
@@ -79,14 +80,19 @@ class MusicPlayerService: Service() {
     }
 
     fun play(track: MusicEntity) {
-        mediaPlayer.reset()
-        mediaPlayer = MediaPlayer()
-        mediaPlayer.setDataSource(this, track.contentUri)
-        mediaPlayer.prepareAsync()
-        mediaPlayer.setOnPreparedListener {
-            mediaPlayer.start()
-            updateDuration()
-            sendNotification(track)
+        try {
+            mediaPlayer.reset()
+            mediaPlayer = MediaPlayer()
+            mediaPlayer.setDataSource(this, track.contentUri)
+            mediaPlayer.prepareAsync()
+            mediaPlayer.setOnPreparedListener {
+                mediaPlayer.start()
+                updateDuration()
+                sendNotification(track)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Timber.e("chkPlayError: $e")
         }
     }
 
@@ -123,10 +129,10 @@ class MusicPlayerService: Service() {
         mediaPlayer.reset()
         mediaPlayer = MediaPlayer()
         val index = currentTrack.value?.let { musicList.indexOf(it) }
-        val prevIndex = if (index?.let { it < 0 } == true) musicList.size.minus(1) else index?.minus(1)
-        val prevItem = prevIndex?.let { musicList[it] }
+        val prevIndex = ((index?.minus(1)?.takeIf { it >= 0 } ?: (musicList.size - 1)))
+        val prevItem = prevIndex.let { musicList[it] }
         currentTrack.update { prevItem }
-        prevItem?.contentUri?.let {
+        prevItem.contentUri.let {
             mediaPlayer.setDataSource(this, it)
             mediaPlayer.prepareAsync()
         }
@@ -210,6 +216,12 @@ class MusicPlayerService: Service() {
             this, AppConstants.NOTIFICATION_REQUEST_CODE, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        job?.cancel()
+        mediaPlayer.release()
     }
 
 }
