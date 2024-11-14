@@ -21,7 +21,7 @@ class HomeViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
 ) : BaseViewModel() {
 
-    private val musics = mutableStateListOf<MusicEntity>()
+    val musics = mutableStateListOf<MusicEntity>()
     private var initialized = false
 
     private val _uiState = mutableStateOf<UiState>(UiState.Loading)
