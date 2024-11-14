@@ -9,17 +9,15 @@ import android.graphics.BitmapFactory
 import android.media.MediaPlayer
 import android.os.Binder
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.tasnimulhasan.common.constant.AppConstants
 import com.tasnimulhasan.common.constant.AppConstants.CHANNEL_ID
-import com.tasnimulhasan.common.constant.AppConstants.INTENT_NEXT
-import com.tasnimulhasan.common.constant.AppConstants.INTENT_PLAY_PAUSE
-import com.tasnimulhasan.common.constant.AppConstants.INTENT_PREV
+import com.tasnimulhasan.common.constant.AppConstants.ACTION_NEXT
+import com.tasnimulhasan.common.constant.AppConstants.ACTION_PLAY_PAUSE
+import com.tasnimulhasan.common.constant.AppConstants.ACTION_PREVIOUS
 import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,9 +64,9 @@ class MusicPlayerService: Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.let {
             when (intent.action) {
-                INTENT_PREV -> { prev() }
-                INTENT_PLAY_PAUSE -> { playPause() }
-                INTENT_NEXT -> { next() }
+                ACTION_PREVIOUS -> { prev() }
+                ACTION_PLAY_PAUSE -> { playPause() }
+                ACTION_NEXT -> { next() }
                 else -> {
                     if (musicList.isNotEmpty()) {
                         currentTrack.update { musicList.first() }
@@ -160,13 +158,13 @@ class MusicPlayerService: Service() {
             .setStyle(style)
             .setContentTitle(music.songTitle)
             .setContentText(music.artist)
-            .addAction(Res.drawable.ic_backward, INTENT_PREV, createPrevPendingIntent())
+            .addAction(Res.drawable.ic_backward, ACTION_PREVIOUS, createPrevPendingIntent())
             .addAction(
                 if (mediaPlayer.isPlaying) Res.drawable.ic_pause_circle else Res.drawable.ic_play_circle,
-                INTENT_PLAY_PAUSE,
+                ACTION_PLAY_PAUSE,
                 createPlayPausePendingIntent()
             )
-            .addAction(Res.drawable.ic_next, INTENT_NEXT, createNextPendingIntent())
+            .addAction(Res.drawable.ic_next, ACTION_NEXT, createNextPendingIntent())
             .setSmallIcon(Res.drawable.ic_notification)
             .setLargeIcon(BitmapFactory.decodeResource(resources, Res.drawable.ic_launcher_background))
             .build()
@@ -186,7 +184,7 @@ class MusicPlayerService: Service() {
 
     private fun createPrevPendingIntent(): PendingIntent {
         val intent = Intent(this, MusicPlayerService::class.java).apply {
-            action = INTENT_PREV
+            action = ACTION_PREVIOUS
         }
         return PendingIntent.getService(
             this, AppConstants.NOTIFICATION_REQUEST_CODE, intent,
@@ -196,7 +194,7 @@ class MusicPlayerService: Service() {
 
     private fun createPlayPausePendingIntent(): PendingIntent {
         val intent = Intent(this, MusicPlayerService::class.java).apply {
-            action = INTENT_PLAY_PAUSE
+            action = ACTION_PLAY_PAUSE
         }
         return PendingIntent.getService(
             this, AppConstants.NOTIFICATION_REQUEST_CODE, intent,
@@ -206,7 +204,7 @@ class MusicPlayerService: Service() {
 
     private fun createNextPendingIntent(): PendingIntent {
         val intent = Intent(this, MusicPlayerService::class.java).apply {
-            action = INTENT_NEXT
+            action = ACTION_NEXT
         }
         return PendingIntent.getService(
             this, AppConstants.NOTIFICATION_REQUEST_CODE, intent,

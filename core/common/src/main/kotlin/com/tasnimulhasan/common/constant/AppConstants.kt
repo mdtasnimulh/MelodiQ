@@ -7,8 +7,8 @@ object AppConstants {
 
     const val FOREGROUND_ID = 122
 
-    const val INTENT_PREV = "prev"
-    const val INTENT_PLAY_PAUSE = "play_pause"
-    const val INTENT_NEXT = "next"
+    const val ACTION_PREVIOUS = "previous"
+    const val ACTION_PLAY_PAUSE = "play_pause"
+    const val ACTION_NEXT = "next"
 
 }
