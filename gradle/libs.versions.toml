@@ -13,7 +13,7 @@ composeBom = "2024.10.00"
 accompanist = "0.34.0"
 androidDesugarJdkLibs = "2.1.2"
 androidxAppCompat = "1.7.0"
-androidxComposeAlpha = "1.7.4"
+androidxComposeAlpha = "1.7.5"
 androidxComposeMaterial3Adaptive = "1.0.0"
 androidxComposeMaterial3AdaptiveNavigationSuite = "1.3.0"
 androidxCoreSplashscreen = "1.0.1"
@@ -27,21 +27,42 @@ coroutinesVersion = "1.8.1"
 gmsPlugin = "4.4.2"
 hilt = "2.51.1"
 hiltExt = "1.2.0"
-kotlinxDatetime = "0.5.0"
+kotlinxDatetime = "0.6.1"
 kotlinxSerializationJson = "1.6.3"
 ksp = "2.0.10-1.0.24"
 media = "1.7.0"
 room = "2.6.1"
 material = "1.12.0"
-coil = "2.6.0"
+coil = "2.7.0"
 androidxMetrics = "1.0.0-beta01"
 timberVersion = "5.0.1"
 gsonVersion = "2.10.1"
 preferenceVersion = "1.2.1"
 
+media3 = "1.4.1"
+palette-ktx = "1.0.0"
+media3-ui = "1.4.1"
+exoplayer = "2.19.1"
+
+accompanist-pager = "0.32.0"
+accompanist-insets = "0.30.1"
+accompanist-systemuicontroller = "0.32.0"
+
 [libraries]
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 android-desugarJdkLibs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "androidDesugarJdkLibs" }
+accompanist-pager = { module = "com.google.accompanist:accompanist-pager", version.ref = "accompanist-pager" }
+accompanist-insets = { module = "com.google.accompanist:accompanist-insets", version.ref = "accompanist-insets" }
+accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanist-systemuicontroller" }
+
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
+palette-ktx = { module = "androidx.palette:palette-ktx", version.ref = "palette-ktx" }
+media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3-ui" }
+
+exoplayer-core = { module = "com.google.android.exoplayer:exoplayer-core", version.ref = "exoplayer" }
+extension-mediasession = { module = "com.google.android.exoplayer:extension-mediasession", version.ref = "exoplayer" }
+exoplayer-ui = { module = "com.google.android.exoplayer:exoplayer-ui", version.ref = "exoplayer" }
 
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppCompat" }
@@ -131,6 +152,12 @@ androidx-metrics = { group = "androidx.metrics", name = "metrics-performance", v
 javax-inject = { module = "javax.inject:javax.inject", version = "1" }
 
 [bundles]
+accompanist = [
+    "accompanist-insets",
+    "accompanist-pager",
+    "accompanist-systemuicontroller"
+]
+
 androidx-core-dependencies = [
     "androidx-appcompat",
     "androidx-core-ktx",
@@ -160,6 +187,12 @@ androidx-lifecycle-dependencies = [
     "androidx-lifecycle-runtime-ktx",
     "androidx-lifecycle-runtimeCompose",
     "androidx-lifecycle-service",
+]
+
+exoplayer = [
+    "exoplayer-core",
+    "exoplayer-ui",
+    "extension-mediasession"
 ]
 
 room-dependencies = [
