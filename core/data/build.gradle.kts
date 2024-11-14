@@ -18,6 +18,8 @@ dependencies {
     implementation(projects.core.model.apiResponse)
     implementation(projects.core.notifications)
 
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
     implementation(libs.kotlin.coroutines)
     testImplementation(libs.kotlinx.serialization.json)
 }

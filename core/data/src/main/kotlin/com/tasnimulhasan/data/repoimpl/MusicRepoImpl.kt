@@ -59,7 +59,7 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
 
                 musics.add(
                     MusicEntity(
-                        contentUri = contentUri,
+                        contentUri = contentUri.toString(),
                         songId = id,
                         cover = null,
                         songTitle = title,

@@ -11,4 +11,5 @@ object AppConstants {
     const val INTENT_PLAY_PAUSE = "play_pause"
     const val INTENT_NEXT = "next"
 
+    const val SONG_COLLECTION = "songs"
 }

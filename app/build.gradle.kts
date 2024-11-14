@@ -120,6 +120,12 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.media)
 
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
+    implementation(libs.bundles.accompanist)
+    implementation(libs.bundles.exoplayer)
+    implementation(libs.palette.ktx)
+
     ksp(libs.hilt.compiler)
     implementation(libs.timber)
 

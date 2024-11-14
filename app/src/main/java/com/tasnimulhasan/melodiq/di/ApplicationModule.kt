@@ -3,6 +3,8 @@ package com.tasnimulhasan.melodiq.di
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.tasnimulhasan.domain.service.MusicController
+import com.tasnimulhasan.melodiq.service.MusicControllerImpl
 import com.tasnimulhasan.sharedpreference.SharedPrefHelper
 import dagger.Module
 import dagger.Provides
@@ -30,5 +32,10 @@ object ApplicationModule {
         val gsonBuilder = GsonBuilder()
         return gsonBuilder.create()
     }
+
+    @Singleton
+    @Provides
+    fun provideMusicController(@ApplicationContext context: Context): MusicController =
+        MusicControllerImpl(context)
 
 }
