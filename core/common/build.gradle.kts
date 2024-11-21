@@ -16,5 +16,4 @@ dependencies {
     implementation(libs.bundles.androidx.material.dependencies)
     implementation(libs.bundles.androidx.lifecycle.dependencies)
     implementation(libs.bundles.androidx.navigation.dependencies)
-    implementation(libs.androidx.media)
 }

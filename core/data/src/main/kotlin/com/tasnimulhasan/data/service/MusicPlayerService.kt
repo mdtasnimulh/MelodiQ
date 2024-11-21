@@ -1,4 +1,4 @@
-package com.tasnimulhasan.common.service
+package com.tasnimulhasan.data.service
 
 import android.Manifest.permission.POST_NOTIFICATIONS
 import android.app.PendingIntent
@@ -19,6 +19,7 @@ import com.tasnimulhasan.common.constant.AppConstants.ACTION_NEXT
 import com.tasnimulhasan.common.constant.AppConstants.ACTION_PLAY_PAUSE
 import com.tasnimulhasan.common.constant.AppConstants.ACTION_PREVIOUS
 import com.tasnimulhasan.entity.home.MusicEntity
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,9 +27,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import com.tasnimulhasan.designsystem.R as Res
 
+@AndroidEntryPoint
 class MusicPlayerService: Service() {
 
     private val binder = MusicBinder()
@@ -79,7 +80,7 @@ class MusicPlayerService: Service() {
         return START_STICKY
     }
 
-    fun play(track: MusicEntity) {
+    private fun play(track: MusicEntity) {
         try {
             mediaPlayer.reset()
             mediaPlayer = MediaPlayer()
@@ -92,7 +93,6 @@ class MusicPlayerService: Service() {
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            Timber.e("chkPlayError: $e")
         }
     }
 
@@ -154,7 +154,7 @@ class MusicPlayerService: Service() {
     }
 
     private fun sendNotification(music: MusicEntity) {
-        val session = MediaSessionCompat(this, "music")
+        val session = MediaSessionCompat(this, "melodiq")
         isPlaying.update { mediaPlayer.isPlaying }
         val style = androidx.media.app.NotificationCompat.MediaStyle()
             .setShowActionsInCompactView(0,1,2)
