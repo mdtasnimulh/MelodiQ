@@ -17,7 +17,6 @@ dependencies {
     implementation(projects.core.model.entity)
     implementation(projects.core.model.apiResponse)
     implementation(projects.core.notifications)
-    implementation(libs.androidx.media)
 
     implementation(libs.kotlin.coroutines)
     testImplementation(libs.kotlinx.serialization.json)

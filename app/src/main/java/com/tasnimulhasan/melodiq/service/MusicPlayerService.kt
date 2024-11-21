@@ -1,4 +1,4 @@
-package com.tasnimulhasan.data.service
+package com.tasnimulhasan.melodiq.service
 
 import android.Manifest.permission.POST_NOTIFICATIONS
 import android.app.PendingIntent
