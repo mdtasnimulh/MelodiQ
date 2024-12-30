@@ -8,7 +8,7 @@ import com.tasnimulhasan.entity.room.incomeexpense.MelodiQEntity
 @Database(
     entities = [MelodiQEntity::class],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 internal abstract class MelodiQDatabase : RoomDatabase() {
     abstract fun melodiQDao(): MelodiQDao
