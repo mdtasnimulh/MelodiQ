@@ -72,10 +72,10 @@ internal fun HomeScreen(
 
         MiniPlayer(
             modifier = Modifier.align(Alignment.BottomCenter),
-            cover = viewModel.musics[7].cover,
-            songTitle = viewModel.musics[7].songTitle,
+            cover = viewModel.audioList[7].cover,
+            songTitle = viewModel.audioList[7].songTitle,
             onMiniPlayerClick = {
-                navigateToPlayer(viewModel.musics[7].songId.toString())
+                navigateToPlayer(viewModel.audioList[7].songId.toString())
             }
         )
     }
