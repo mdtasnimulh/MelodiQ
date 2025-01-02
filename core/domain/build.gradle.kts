@@ -17,4 +17,5 @@ dependencies {
     implementation(libs.bundles.androidx.core.dependencies)
     implementation(libs.bundles.androidx.material.dependencies)
     implementation(libs.bundles.room.dependencies)
+    implementation(libs.bundles.media3.dependencies)
 }
