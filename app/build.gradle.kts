@@ -123,6 +123,8 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.timber)
 
+    implementation(libs.bundles.media3.dependencies)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

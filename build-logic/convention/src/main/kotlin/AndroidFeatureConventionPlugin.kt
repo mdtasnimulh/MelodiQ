@@ -36,6 +36,7 @@ class AndroidFeatureConventionPlugin : Plugin<Project> {
                 add("implementation", libs.findBundle("androidx.material.dependencies").get())
                 add("implementation", libs.findBundle("androidx.lifecycle.dependencies").get())
                 add("implementation", libs.findBundle("androidx.navigation.dependencies").get())
+                add("implementation", libs.findBundle("media3.dependencies").get())
 
                 add("implementation", libs.findLibrary("timber").get())
                 add("implementation", libs.findLibrary("gson").get())
