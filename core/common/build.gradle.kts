@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.melodiq.android.library)
     alias(libs.plugins.melodiq.android.library.compose)
+    alias(libs.plugins.melodiq.android.hilt)
 }
 
 android {
@@ -16,4 +17,6 @@ dependencies {
     implementation(libs.bundles.androidx.material.dependencies)
     implementation(libs.bundles.androidx.lifecycle.dependencies)
     implementation(libs.bundles.androidx.navigation.dependencies)
+    implementation(libs.bundles.media3.dependencies)
+    implementation(libs.compose)
 }
