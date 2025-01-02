@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.melodiq.android.library)
     alias(libs.plugins.melodiq.android.library.compose)
+    id("kotlin-parcelize")
 }
 
 android {

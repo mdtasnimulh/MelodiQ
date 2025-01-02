@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.melodiq.android.application.compose)
     alias(libs.plugins.melodiq.android.hilt)
     alias(libs.plugins.kotlin.serialization)
+    id("kotlin-parcelize")
 }
 
 android {

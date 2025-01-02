@@ -1,6 +1,7 @@
 package com.tasnimulhasan.home
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.home.components.MusicCard
 
 @Composable
@@ -62,7 +64,12 @@ internal fun HomeScreen(
                             title = item.songTitle,
                             artist = item.artist,
                             duration = item.duration,
-                            onMusicClicked = { navigateToPlayer(item.songId.toString()) }
+                            onMusicClicked = {
+                                viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
+                                val intent = Intent(context, MelodiqPlayerService::class.java)
+                                context.startService(intent)
+                                //navigateToPlayer(item.songId.toString())
+                            }
                         )
                     }
                 }
