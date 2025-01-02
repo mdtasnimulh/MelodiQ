@@ -61,7 +61,7 @@ class MelodiqNotificationManager @Inject constructor(
             .setSmallIconResourceId(R.drawable.ic_android)
             .build()
             .also {
-                it.setMediaSessionToken(mediaSession.sessionCompatToken)
+                it.setMediaSessionToken(mediaSession.platformToken)
                 it.setUseFastForwardActionInCompactView(true)
                 it.setUseRewindActionInCompactView(true)
                 it.setUseNextActionInCompactView(true)
