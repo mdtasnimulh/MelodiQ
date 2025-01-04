@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -49,18 +50,24 @@ internal fun PlayerScreen(
     modifier: Modifier = Modifier,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
-    val pagerState = rememberPagerState { viewModel.musics.size }
+    val pagerState = rememberPagerState { viewModel.audioList.size }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val audioList = viewModel.audioList
 
     // Find the index of the selected music
-    val initialPageIndex = viewModel.musics.indexOfFirst { it.songId.toString() == musicId }
+    val initialPageIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
     LaunchedEffect(initialPageIndex) {
         pagerState.scrollToPage(initialPageIndex)
     }
 
+    LaunchedEffect(pagerState.currentPage) {
+        val currentPageIndex = pagerState.currentPage
+        viewModel.onUiEvents(UIEvents.SelectedAudioChange(currentPageIndex))
+    }
+
     val currentPage = pagerState.currentPage
-    val currentMusic = viewModel.musics.getOrNull(currentPage)
+    val currentMusic = viewModel.audioList.getOrNull(currentPage)
 
     Column(modifier = modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(16.dp))
@@ -73,7 +80,6 @@ internal fun PlayerScreen(
                 .fillMaxWidth()
                 .height(350.dp)
         ) { page ->
-            val selectedMusic = viewModel.musics[page]
             val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
 
             LaunchedEffect(page) {
@@ -91,7 +97,7 @@ internal fun PlayerScreen(
                     }
             ) {
                 AsyncImage(
-                    model = selectedMusic.cover,
+                    model = currentMusic?.cover,
                     contentDescription = context.getString(Res.string.desc_album_cover_art),
                     modifier = Modifier
                         .fillMaxSize()
@@ -105,12 +111,12 @@ internal fun PlayerScreen(
 
         Spacer(modifier.height(24.dp))
 
-        currentMusic?.let {
+        currentMusic?.let { currentTrack ->
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                text = it.songTitle,
+                text = currentTrack.songTitle,
                 maxLines = 1,
                 style = TextStyle(
                     color = Color.Black,
@@ -126,7 +132,7 @@ internal fun PlayerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                text = it.artist,
+                text = currentTrack.artist,
                 maxLines = 1,
                 style = TextStyle(
                     color = Color.Gray,
@@ -135,46 +141,47 @@ internal fun PlayerScreen(
                     textAlign = TextAlign.Center,
                 ),
             )
-        }
 
-        Spacer(modifier.height(16.dp))
+            Spacer(modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                modifier = Modifier.weight(1f),
-                text = "00:00",
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = viewModel.convertLongToReadableDateTime(currentTrack.duration.toLong(), "mm:ss"),
+                    textAlign = TextAlign.Center,
+                    style = TextStyle(
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 )
-            )
 
-            Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
-            Slider(
-                modifier = Modifier.weight(4f),
-                value = 0.5f,
-                onValueChange = {}
-            )
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Text(
-                modifier = Modifier.weight(1f),
-                text = "00:00",
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                Slider(
+                    modifier = Modifier.weight(4f),
+                    value = viewModel.progress,
+                    onValueChange = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
+                    valueRange = 0f..100f
                 )
-            )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = viewModel.progressString,
+                    textAlign = TextAlign.Center,
+                    style = TextStyle(
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
         }
 
         Spacer(modifier.height(16.dp))
@@ -190,8 +197,9 @@ internal fun PlayerScreen(
                     if (currentPage > 0)
                         pagerState.animateScrollToPage(currentPage - 1)
                     else
-                        pagerState.animateScrollToPage(viewModel.musics.size - 1)
+                        pagerState.animateScrollToPage(audioList.size - 1)
                 }
+                viewModel.onUiEvents(UIEvents.SeekToPrevious)
             } ) {
                 Icon(
                     modifier = Modifier.size(32.dp),
@@ -200,21 +208,22 @@ internal fun PlayerScreen(
                 )
             }
 
-            IconButton(onClick = {  }) {
+            IconButton(onClick = { viewModel.onUiEvents(UIEvents.PlayPause) }) {
                 Icon(
                     modifier = Modifier.size(40.dp),
-                    painter = painterResource(Res.drawable.ic_play_circle),
+                    painter = if (viewModel.isPlaying) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle),
                     contentDescription = null
                 )
             }
 
             IconButton(onClick = {
                 scope.launch {
-                    if (currentPage == viewModel.musics.size-1)
+                    if (currentPage == viewModel.audioList.size-1)
                         pagerState.animateScrollToPage(0)
                     else
                         pagerState.animateScrollToPage(currentPage + 1)
                 }
+                viewModel.onUiEvents(UIEvents.SeekToNext)
             }) {
                 Icon(
                     modifier = Modifier.size(32.dp),

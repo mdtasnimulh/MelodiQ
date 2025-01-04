@@ -47,6 +47,7 @@ class MelodiqServiceHandler @Inject constructor(
             MelodiqPlayerEvent.PlayPause -> playOrPause()
             MelodiqPlayerEvent.SeekTo -> exoPlayer.seekTo(seekPosition)
             MelodiqPlayerEvent.SeekToNext -> exoPlayer.seekToNext()
+            MelodiqPlayerEvent.SeekToPrevious -> exoPlayer.seekToPrevious()
             MelodiqPlayerEvent.SelectAudioChange -> {
                 when (selectedAudionIndex) {
                     exoPlayer.currentMediaItemIndex -> {
@@ -121,6 +122,7 @@ sealed class MelodiqPlayerEvent {
     data object SelectAudioChange : MelodiqPlayerEvent()
     data object Backward : MelodiqPlayerEvent()
     data object SeekToNext : MelodiqPlayerEvent()
+    data object SeekToPrevious : MelodiqPlayerEvent()
     data object Forward : MelodiqPlayerEvent()
     data object SeekTo : MelodiqPlayerEvent()
     data object Stop : MelodiqPlayerEvent()
