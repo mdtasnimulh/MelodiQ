@@ -81,7 +81,7 @@ internal fun HomeScreen(
             onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
             isPlaying = viewModel.isPlaying,
             onMiniPlayerClick = {
-                navigateToPlayer(viewModel.audioList[7].songId.toString())
+                navigateToPlayer(viewModel.currentSelectedAudio.songId.toString())
             },
             onPlayPauseClick = {
                 viewModel.onUiEvents(UIEvents.PlayPause)
