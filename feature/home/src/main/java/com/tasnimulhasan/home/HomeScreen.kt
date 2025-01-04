@@ -67,7 +67,7 @@ internal fun HomeScreen(
                             context.startService(intent)
                             isServiceRunning = true
                         }
-                        //navigateToPlayer(item.songId.toString())
+                        navigateToPlayer(item.songId.toString())
                     }
                 )
             }

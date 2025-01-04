@@ -175,7 +175,7 @@ class HomeViewModel @Inject constructor(
 
     private fun calculateProgressValue(currentProgress: Long) {
         progress =
-            if (currentProgress > 0) ((currentProgress.toFloat()) / duration.toFloat()) * 100f
+            if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
             else 0f
         progressString = formatDuration(currentProgress)
     }
