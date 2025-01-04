@@ -13,8 +13,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.lifecycle.viewmodel.compose.saveable
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
@@ -42,14 +40,7 @@ class PlayerViewModel @Inject constructor(
 ) : BaseViewModel() {
 
     private val dummyAudio = MusicEntity(
-        contentUri = "".toUri(),
-        songId = 0L,
-        cover = null,
-        songTitle = "",
-        artist = "",
-        duration = "",
-        albumId = 0L,
-        album = ""
+        contentUri = "".toUri(), songId = 0L, cover = null, songTitle = "", artist = "", duration = "", albumId = 0L, album = ""
     )
 
     var duration by savedStateHandle.saveable { mutableLongStateOf(0L) }
