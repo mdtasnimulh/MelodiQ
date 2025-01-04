@@ -42,8 +42,8 @@ class MelodiqServiceHandler @Inject constructor(
         seekPosition: Long = 0
     ) {
         when (playerEvent) {
-            MelodiqPlayerEvent.Backward -> exoPlayer.seekBack()
-            MelodiqPlayerEvent.Forward -> exoPlayer.seekForward()
+            MelodiqPlayerEvent.Backward -> exoPlayer.seekTo(exoPlayer.currentPosition - 5_000)
+            MelodiqPlayerEvent.Forward -> exoPlayer.seekTo(exoPlayer.currentPosition + 5_000)
             MelodiqPlayerEvent.PlayPause -> playOrPause()
             MelodiqPlayerEvent.SeekTo -> exoPlayer.seekTo(seekPosition)
             MelodiqPlayerEvent.SeekToNext -> exoPlayer.seekToNext()
