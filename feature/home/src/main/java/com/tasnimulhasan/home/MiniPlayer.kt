@@ -16,8 +16,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,17 +32,24 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.R
+import com.tasnimulhasan.designsystem.theme.MelodiqTheme
 
 @Composable
 fun MiniPlayer(
     modifier: Modifier,
     cover: Bitmap?,
     songTitle: String,
+    progress: Float,
+    onProgress: (Float) -> Unit,
+    isPlaying: Boolean,
     onMiniPlayerClick: () -> Unit,
+    onPlayPauseClick: () -> Unit,
+    onNextClick: () -> Unit,
 ) {
     Column(
         modifier = modifier
@@ -45,12 +57,13 @@ fun MiniPlayer(
                 onMiniPlayerClick.invoke()
             }
             .fillMaxWidth()
-            .height(75.dp)
+            .height(150.dp)
             .background(color = Color.White.copy(alpha = 1f))
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 10.dp, vertical = 12.dp)
+                .weight(1f),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -70,28 +83,68 @@ fun MiniPlayer(
 
             Spacer(modifier = Modifier.width(6.dp))
 
-            Text(
-                modifier = Modifier
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
                     .weight(4f)
-                    .padding(horizontal = 2.dp),
-                text = songTitle,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    color = Color.Black,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+            ) {
+                Text(
+                    modifier = Modifier
+                        .padding(horizontal = 2.dp),
+                    text = songTitle,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                    style = TextStyle(
+                        color = Color.Black,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 )
-            )
 
-            Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = modifier.height(6.dp))
 
-            IconButton(onClick = { }) {
+                Slider(
+                    modifier = modifier.fillMaxWidth(),
+                    value = progress,
+                    onValueChange = { onProgress(it) },
+                    valueRange = 0f..100f
+                )
+            }
+        }
+
+        Row (
+            modifier = modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            IconButton(
+                onClick = {
+                    onPlayPauseClick.invoke()
+                }
+            ) {
                 Icon(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(32.dp)
                         .weight(1f),
-                    painter = painterResource(R.drawable.ic_play_circle),
+                    painter = if (isPlaying) painterResource(R.drawable.ic_pause_circle) else painterResource(
+                        R.drawable.ic_play_circle
+                    ),
+                    contentDescription = null
+                )
+            }
+
+            Spacer(modifier = modifier.width(16.dp))
+
+            IconButton(
+                onClick = {
+                    onNextClick.invoke()
+                }
+            ) {
+                Icon(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .weight(1f),
+                    painter = painterResource(R.drawable.ic_next),
                     contentDescription = null
                 )
             }
@@ -101,6 +154,24 @@ fun MiniPlayer(
             modifier = Modifier.fillMaxWidth(),
             color = Color.Gray,
             thickness = 1.dp
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun PreviewMiniPlayer() {
+    MelodiqTheme {
+        MiniPlayer(
+            modifier = Modifier,
+            cover = null,
+            songTitle = "Song Title",
+            progress = 50f,
+            onProgress = {},
+            isPlaying = true,
+            onMiniPlayerClick = {},
+            onPlayPauseClick = {},
+            onNextClick = {}
         )
     }
 }

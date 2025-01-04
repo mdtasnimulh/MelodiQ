@@ -22,6 +22,10 @@ class MelodiqServiceHandler @Inject constructor(
 
     private var job: Job? = null
 
+    init {
+        exoPlayer.addListener(this)
+    }
+
     fun addMediaItem(mediaItem: MediaItem) {
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
@@ -77,7 +81,7 @@ class MelodiqServiceHandler @Inject constructor(
         _audioState.value = MelodiqAudioState.Playing(isPlaying = isPlaying)
         _audioState.value = MelodiqAudioState.CurrentPlaying(exoPlayer.currentMediaItemIndex)
         if (isPlaying) {
-            GlobalScope.launch(Dispatchers.IO) {
+            GlobalScope.launch(Dispatchers.Main) {
                 startProgressUpdate()
             }
         } else {

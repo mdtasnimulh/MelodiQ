@@ -38,6 +38,7 @@ internal fun HomeScreen(
     modifier: Modifier,
     navigateToPlayer: (String) -> Unit,
 ) {
+    var isServiceRunning = false
     LaunchedEffect(Unit) {
         viewModel.initializeListIfNeeded()
     }
@@ -45,44 +46,48 @@ internal fun HomeScreen(
     Box (
         modifier = modifier.fillMaxSize()
     ) {
-        when (val state = viewModel.uiState.value) {
-            is UiState.Loading -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
-            is UiState.MusicList -> {
-                LazyColumn {
-                    itemsIndexed(state.musics) { index, item ->
-                        val shouldLoadBitmap = remember(item.songId) { true }
-                        if (shouldLoadBitmap) {
-                            LaunchedEffect(item.songId) {
-                                viewModel.loadBitmapIfNeeded(context, index)
-                            }
-                        }
-                        MusicCard(
-                            modifier = modifier,
-                            bitmap = item.cover,
-                            title = item.songTitle,
-                            artist = item.artist,
-                            duration = item.duration,
-                            onMusicClicked = {
-                                viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
-                                val intent = Intent(context, MelodiqPlayerService::class.java)
-                                context.startService(intent)
-                                //navigateToPlayer(item.songId.toString())
-                            }
-                        )
+        LazyColumn {
+            itemsIndexed(viewModel.audioList) { index, item ->
+                val shouldLoadBitmap = remember(item.songId) { true }
+                if (shouldLoadBitmap) {
+                    LaunchedEffect(item.songId) {
+                        viewModel.loadBitmapIfNeeded(context, index)
                     }
                 }
+                MusicCard(
+                    modifier = modifier,
+                    bitmap = item.cover,
+                    title = item.songTitle,
+                    artist = item.artist,
+                    duration = item.duration,
+                    onMusicClicked = {
+                        viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
+                        if (!isServiceRunning) {
+                            val intent = Intent(context, MelodiqPlayerService::class.java)
+                            context.startService(intent)
+                            isServiceRunning = true
+                        }
+                        //navigateToPlayer(item.songId.toString())
+                    }
+                )
             }
-            is UiState.Error -> {}
         }
 
         MiniPlayer(
             modifier = Modifier.align(Alignment.BottomCenter),
-            cover = viewModel.audioList[7].cover,
-            songTitle = viewModel.audioList[7].songTitle,
+            cover = viewModel.currentSelectedAudio.cover,
+            songTitle = viewModel.currentSelectedAudio.songTitle,
+            progress = viewModel.progress,
+            onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
+            isPlaying = viewModel.isPlaying,
             onMiniPlayerClick = {
                 navigateToPlayer(viewModel.audioList[7].songId.toString())
+            },
+            onPlayPauseClick = {
+                viewModel.onUiEvents(UIEvents.PlayPause)
+            },
+            onNextClick = {
+                viewModel.onUiEvents(UIEvents.SeekToNext)
             }
         )
     }

@@ -5,10 +5,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -58,11 +61,7 @@ class HomeViewModel @Inject constructor(
     var progressString by savedStateHandle.saveable { mutableStateOf("00:00") }
     var isPlaying by savedStateHandle.saveable { mutableStateOf(false) }
     var currentSelectedAudio by savedStateHandle.saveable { mutableStateOf(dummyAudio) }
-
-    val audioList = mutableStateListOf<MusicEntity>()
-
-    private val _uiState = mutableStateOf<UiState>(UiState.Loading)
-    val uiState get() = _uiState
+    var audioList by savedStateHandle.saveable { mutableStateOf(listOf<MusicEntity>()) }
 
     private val _uIState: MutableStateFlow<UIState> = MutableStateFlow(UIState.Initial)
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
@@ -75,7 +74,7 @@ class HomeViewModel @Inject constructor(
                 when (mediaState) {
                     MelodiqAudioState.Initial -> _uIState.value = UIState.Initial
                     is MelodiqAudioState.Buffering -> calculateProgressValue(mediaState.progress)
-                    is MelodiqAudioState.Playing -> mediaState.isPlaying
+                    is MelodiqAudioState.Playing -> isPlaying = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
                         currentSelectedAudio = audioList[mediaState.mediaItemIndex]
@@ -94,8 +93,8 @@ class HomeViewModel @Inject constructor(
         if (initialized) return
 
         viewModelScope.launch {
-            audioList.addAll(fetchMusicUseCase.execute())
-            _uiState.value = UiState.MusicList(audioList)
+            audioList = fetchMusicUseCase.execute()
+            _uIState.value = UIState.MusicList(audioList)
             setMediaItems()
         }
         initialized = true
@@ -122,7 +121,10 @@ class HomeViewModel @Inject constructor(
         if (audioList[index].cover != null) return
         viewModelScope.launch(Dispatchers.Default) {
             val bitmap = getAlbumArt(context, audioList[index].contentUri)
-            audioList[index] = audioList[index].copy(cover = bitmap)
+            val updatedList = audioList.toMutableList().apply {
+                this[index] = this[index].copy(cover = bitmap)
+            }
+            audioList = updatedList
         }
     }
 
@@ -185,12 +187,6 @@ class HomeViewModel @Inject constructor(
     }
 }
 
-sealed interface UiState {
-    data object Loading : UiState
-    data object Error : UiState
-    data class MusicList(val musics: List<MusicEntity>) : UiState
-}
-
 sealed class UIEvents {
     data object PlayPause : UIEvents()
     data class SelectedAudioChange(val index: Int) : UIEvents()
@@ -202,6 +198,7 @@ sealed class UIEvents {
 }
 
 sealed class UIState {
+    data class MusicList(val musics: List<MusicEntity>) : UIState()
     data object Initial : UIState()
     data object Ready : UIState()
 }
