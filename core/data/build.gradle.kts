@@ -20,4 +20,5 @@ dependencies {
 
     implementation(libs.kotlin.coroutines)
     testImplementation(libs.kotlinx.serialization.json)
+    implementation(libs.bundles.media3.dependencies)
 }
