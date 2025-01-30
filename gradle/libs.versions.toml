@@ -1,27 +1,28 @@
 [versions]
 androidGradlePlugin = "8.7.3"
 compose = "1.0.0-beta01"
+datastorePreferences = "1.1.2"
 kotlin = "2.0.21"
-androidTools = "31.7.3"
+androidTools = "31.8.0"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
-activityVersion = "1.9.3"
+activityVersion = "1.10.0"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.9.3"
-composeBom = "2024.12.01"
+activityCompose = "1.10.0"
+composeBom = "2025.01.01"
 accompanist = "0.36.0"
 androidDesugarJdkLibs = "2.1.4"
 androidxAppCompat = "1.7.0"
-androidxComposeAlpha = "1.7.6"
+androidxComposeAlpha = "1.7.7"
 androidxComposeMaterial3Adaptive = "1.0.0"
 androidxComposeMaterial3AdaptiveNavigationSuite = "1.3.1"
 androidxCoreSplashscreen = "1.0.1"
-androidxDataStore = "1.1.1"
+androidxDataStore = "1.1.2"
 androidxHiltNavigationCompose = "1.2.0"
 androidxLifecycle = "2.8.7"
-androidxNavigation = "2.8.5"
+androidxNavigation = "2.8.6"
 androidxWindowManager = "1.3.0"
 androidxWork = "2.10.0"
 coroutinesVersion = "1.9.0"
@@ -47,11 +48,12 @@ android-desugarJdkLibs = { group = "com.android.tools", name = "desugar_jdk_libs
 
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppCompat" }
-androidx-activity-ktx = {group = "androidx.activity",name = "activity-ktx", version.ref = "activityVersion"}
+androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityVersion" }
+androidx-datastore-preferences = { group = "androidx.datastor", name = "datastore-preferences", version.ref = "datastorePreferences" }
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3Exoplayer" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3Exoplayer" }
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3Exoplayer" }
-androidx-preference = {group = "androidx.preference", name = "preference", version.ref = "preferenceVersion"}
+androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "preferenceVersion" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "androidxComposeAlpha" }
@@ -61,10 +63,10 @@ androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-runtimeCompose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
 androidx-lifecycle-viewModelCompose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
-androidx-viewmodel-ktx = {group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "androidxLifecycle"}
-androidx-viewmodel-save-state = {group = "androidx.lifecycle", name = "lifecycle-viewmodel-savedstate", version.ref = "androidxLifecycle"}
-androidx-livedata = {group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "androidxLifecycle"}
-androidx-lifecycle-service = {group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "androidxLifecycle"}
+androidx-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "androidxLifecycle" }
+androidx-viewmodel-save-state = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-savedstate", version.ref = "androidxLifecycle" }
+androidx-livedata = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "androidxLifecycle" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "androidxLifecycle" }
 androidx-lifecycle-runtimeTesting = { group = "androidx.lifecycle", name = "lifecycle-runtime-testing", version.ref = "androidxLifecycle" }
 
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -101,16 +103,16 @@ hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testi
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
-room-common = {group = "androidx.room", name = "room-common", version.ref = "room"}
+room-common = { group = "androidx.room", name = "room-common", version.ref = "room" }
 
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib-jdk8", version.ref = "kotlin" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 
-kotlin-coroutines = {group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutinesVersion"}
+kotlin-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutinesVersion" }
 androidx-work-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "androidxWork" }
-timber = {group = "com.jakewharton.timber", name = "timber", version.ref = "timberVersion"}
-gson = {group = "com.google.code.gson", name = "gson", version.ref = "gsonVersion"}
+timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timberVersion" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gsonVersion" }
 
 coil-kt = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
 coil-kt-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
