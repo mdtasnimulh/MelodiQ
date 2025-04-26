@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -20,13 +19,12 @@ import com.tasnimulhasan.home.components.MusicCard
 @Composable
 internal fun HomeRoute(
     viewModel: HomeViewModel = hiltViewModel(),
-    modifier: Modifier = Modifier,
     navigateToPlayer: (String) -> Unit,
 ) {
     HomeScreen(
         context = LocalContext.current,
         viewModel,
-        modifier,
+        Modifier,
         navigateToPlayer,
     )
 }
@@ -73,22 +71,24 @@ internal fun HomeScreen(
             }
         }
 
-        MiniPlayer(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            cover = viewModel.currentSelectedAudio.cover,
-            songTitle = viewModel.currentSelectedAudio.songTitle,
-            progress = viewModel.progress,
-            onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
-            isPlaying = viewModel.isPlaying,
-            onMiniPlayerClick = {
-                navigateToPlayer(viewModel.currentSelectedAudio.songId.toString())
-            },
-            onPlayPauseClick = {
-                viewModel.onUiEvents(UIEvents.PlayPause)
-            },
-            onNextClick = {
-                viewModel.onUiEvents(UIEvents.SeekToNext)
-            }
-        )
+        if (viewModel.isPlaying) {
+            MiniPlayer(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                cover = viewModel.currentSelectedAudio.cover,
+                songTitle = viewModel.currentSelectedAudio.songTitle,
+                progress = viewModel.progress,
+                onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
+                isPlaying = viewModel.isPlaying,
+                onMiniPlayerClick = {
+                    navigateToPlayer(viewModel.currentSelectedAudio.songId.toString())
+                },
+                onPlayPauseClick = {
+                    viewModel.onUiEvents(UIEvents.PlayPause)
+                },
+                onNextClick = {
+                    viewModel.onUiEvents(UIEvents.SeekToNext)
+                }
+            )
+        }
     }
 }
