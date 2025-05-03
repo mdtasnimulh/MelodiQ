@@ -11,6 +11,7 @@ android {
 
 dependencies {
     api(projects.core.model.entity)
+    implementation(projects.core.common)
 
     implementation(libs.kotlin.coroutines)
     implementation(libs.javax.inject)

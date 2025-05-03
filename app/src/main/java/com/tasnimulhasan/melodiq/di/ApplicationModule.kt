@@ -12,6 +12,16 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
+import com.tasnimulhasan.domain.localusecase.music.GetCurrentDurationUseCase
+import com.tasnimulhasan.domain.localusecase.music.NextTrackUseCase
+import com.tasnimulhasan.domain.localusecase.music.PauseUseCase
+import com.tasnimulhasan.domain.localusecase.music.PlayUseCase
+import com.tasnimulhasan.domain.localusecase.music.PlayerUseCases
+import com.tasnimulhasan.domain.localusecase.music.PreviousTrackUseCase
+import com.tasnimulhasan.domain.localusecase.music.SeekToUseCase
+import com.tasnimulhasan.domain.localusecase.music.SelectAudioChangeUseCase
+import com.tasnimulhasan.domain.localusecase.music.UpdateProgressUseCase
+import com.tasnimulhasan.domain.repository.PlayerRepository
 import com.tasnimulhasan.sharedpreference.SharedPrefHelper
 import dagger.Module
 import dagger.Provides
@@ -80,5 +90,20 @@ object ApplicationModule {
     @Singleton
     fun provideServiceHandler(exoPlayer: ExoPlayer) : MelodiqServiceHandler =
         MelodiqServiceHandler(exoPlayer = exoPlayer)
+
+    @Provides
+    @Singleton
+    fun providePlayerUseCases(
+        repo: PlayerRepository
+    ): PlayerUseCases = PlayerUseCases(
+        play = PlayUseCase(repo),
+        pause = PauseUseCase(repo),
+        seekTo = SeekToUseCase(repo),
+        next = NextTrackUseCase(repo),
+        previous = PreviousTrackUseCase(repo),
+        getCurrentDuration = GetCurrentDurationUseCase(repo)/*,
+        selectAudioChange = SelectAudioChangeUseCase(serviceHandler),
+        updateProgress = UpdateProgressUseCase(serviceHandler)*/
+    )
 
 }

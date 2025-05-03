@@ -24,6 +24,7 @@ import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
+import com.tasnimulhasan.domain.localusecase.music.PlayerUseCases
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +41,7 @@ import javax.inject.Inject
 @OptIn(SavedStateHandleSaveableApi::class)
 class HomeViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
+    private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
     savedStateHandle: SavedStateHandle
 ) : BaseViewModel() {
@@ -142,29 +144,23 @@ class HomeViewModel @Inject constructor(
 
     fun onUiEvents(uiEvents: UIEvents) = viewModelScope.launch {
         when (uiEvents) {
-            UIEvents.Backward -> audioServiceHandler.onPlayerEvents(MelodiqPlayerEvent.Backward)
-            UIEvents.Forward -> audioServiceHandler.onPlayerEvents(MelodiqPlayerEvent.Forward)
+            UIEvents.Backward -> playerUseCases.previous()
+            UIEvents.Forward -> playerUseCases.next()
             is UIEvents.PlayPause -> {
-                audioServiceHandler.onPlayerEvents(
-                    MelodiqPlayerEvent.PlayPause
-                )
+                if (isPlaying) playerUseCases.pause()
+                else playerUseCases.play()
             }
-
             is UIEvents.SeekTo -> {
-                audioServiceHandler.onPlayerEvents(
-                    MelodiqPlayerEvent.SeekTo,
-                    seekPosition = ((duration * uiEvents.position) / 100f).toLong()
-                )
+                val position = ((duration * uiEvents.position) / 100f).toLong()
+                playerUseCases.seekTo(position)
             }
-
-            UIEvents.SeekToNext -> audioServiceHandler.onPlayerEvents(MelodiqPlayerEvent.SeekToNext)
+            UIEvents.SeekToNext -> playerUseCases.next()
             is UIEvents.SelectedAudioChange -> {
                 audioServiceHandler.onPlayerEvents(
                     MelodiqPlayerEvent.SelectAudioChange,
                     selectedAudionIndex = uiEvents.index
                 )
             }
-
             is UIEvents.UpdateProgress -> {
                 audioServiceHandler.onPlayerEvents(
                     MelodiqPlayerEvent.UpdateProgress(uiEvents.newProgress)
