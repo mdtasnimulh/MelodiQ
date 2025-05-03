@@ -1,4 +1,4 @@
-package com.tasnimulhasan.domain.localusecase.music
+package com.tasnimulhasan.domain.localusecase.player
 
 data class PlayerUseCases(
     val play: PlayUseCase,
@@ -6,7 +6,7 @@ data class PlayerUseCases(
     val seekTo: SeekToUseCase,
     val next: NextTrackUseCase,
     val previous: PreviousTrackUseCase,
-    val getCurrentDuration: GetCurrentDurationUseCase/*,
+    val getCurrentDuration: GetCurrentDurationUseCase,
     val selectAudioChange: SelectAudioChangeUseCase,
-    val updateProgress: UpdateProgressUseCase*/
+    val updateProgress: UpdateProgressUseCase
 )

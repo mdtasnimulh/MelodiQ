@@ -21,6 +21,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +55,10 @@ internal fun PlayerScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val audioList = viewModel.audioList
+
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val progressString by viewModel.progressString.collectAsStateWithLifecycle()
 
     // Find the index of the selected music
     val initialPageIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
@@ -164,7 +169,7 @@ internal fun PlayerScreen(
 
                 Slider(
                     modifier = Modifier.weight(4f),
-                    value = viewModel.progress,
+                    value = progress,
                     onValueChange = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
                     valueRange = 0f..100f
                 )
@@ -173,7 +178,7 @@ internal fun PlayerScreen(
 
                 Text(
                     modifier = Modifier.weight(1f),
-                    text = viewModel.progressString,
+                    text = progressString,
                     textAlign = TextAlign.Center,
                     style = TextStyle(
                         color = Color.Gray,
@@ -211,7 +216,7 @@ internal fun PlayerScreen(
             IconButton(onClick = { viewModel.onUiEvents(UIEvents.PlayPause) }) {
                 Icon(
                     modifier = Modifier.size(40.dp),
-                    painter = if (viewModel.isPlaying) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle),
+                    painter = if (isPlaying) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle),
                     contentDescription = null
                 )
             }

@@ -1,36 +1,43 @@
 package com.tasnimulhasan.data.repoimpl.player
 
-import androidx.media3.session.MediaSession
+import com.tasnimulhasan.common.service.MelodiqPlayerEvent
+import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.repository.PlayerRepository
 import javax.inject.Inject
 
 class PlayerRepositoryImpl @Inject constructor(
-    private val mediaSession: MediaSession
+    private val serviceHandler: MelodiqServiceHandler
 ) : PlayerRepository {
 
-    private val player get() = mediaSession.player
-
-    override fun play() {
-        player.playWhenReady = true
+    override suspend fun play() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.PlayPause)
     }
 
-    override fun pause() {
-        player.playWhenReady = false
+    override suspend fun pause() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.PlayPause)
     }
 
-    override fun seekTo(positionMs: Long) {
-        player.seekTo(positionMs)
+    override suspend fun seekTo(position: Long) {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SeekTo, seekPosition = position)
     }
 
-    override fun skipToNext() {
-        player.seekToNext()
+    override suspend fun next() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SeekToNext)
     }
 
-    override fun skipToPrevious() {
-        player.seekToPrevious()
+    override suspend fun previous() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.Backward)
     }
 
-    override fun getCurrentPosition(): Long {
-        return player.currentPosition
+    override suspend fun getCurrentDuration(): Long {
+        return serviceHandler.getCurrentDuration()
+    }
+
+    override suspend fun selectAudio(index: Int) {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SelectAudioChange, selectedAudionIndex = index)
+    }
+
+    override suspend fun updateProgress(progress: Float) {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.UpdateProgress(progress))
     }
 }

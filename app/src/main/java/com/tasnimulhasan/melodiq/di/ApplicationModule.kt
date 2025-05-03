@@ -12,15 +12,15 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
-import com.tasnimulhasan.domain.localusecase.music.GetCurrentDurationUseCase
-import com.tasnimulhasan.domain.localusecase.music.NextTrackUseCase
-import com.tasnimulhasan.domain.localusecase.music.PauseUseCase
-import com.tasnimulhasan.domain.localusecase.music.PlayUseCase
-import com.tasnimulhasan.domain.localusecase.music.PlayerUseCases
-import com.tasnimulhasan.domain.localusecase.music.PreviousTrackUseCase
-import com.tasnimulhasan.domain.localusecase.music.SeekToUseCase
-import com.tasnimulhasan.domain.localusecase.music.SelectAudioChangeUseCase
-import com.tasnimulhasan.domain.localusecase.music.UpdateProgressUseCase
+import com.tasnimulhasan.domain.localusecase.player.GetCurrentDurationUseCase
+import com.tasnimulhasan.domain.localusecase.player.NextTrackUseCase
+import com.tasnimulhasan.domain.localusecase.player.PauseUseCase
+import com.tasnimulhasan.domain.localusecase.player.PlayUseCase
+import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
+import com.tasnimulhasan.domain.localusecase.player.PreviousTrackUseCase
+import com.tasnimulhasan.domain.localusecase.player.SeekToUseCase
+import com.tasnimulhasan.domain.localusecase.player.SelectAudioChangeUseCase
+import com.tasnimulhasan.domain.localusecase.player.UpdateProgressUseCase
 import com.tasnimulhasan.domain.repository.PlayerRepository
 import com.tasnimulhasan.sharedpreference.SharedPrefHelper
 import dagger.Module
@@ -94,16 +94,25 @@ object ApplicationModule {
     @Provides
     @Singleton
     fun providePlayerUseCases(
-        repo: PlayerRepository
-    ): PlayerUseCases = PlayerUseCases(
-        play = PlayUseCase(repo),
-        pause = PauseUseCase(repo),
-        seekTo = SeekToUseCase(repo),
-        next = NextTrackUseCase(repo),
-        previous = PreviousTrackUseCase(repo),
-        getCurrentDuration = GetCurrentDurationUseCase(repo)/*,
-        selectAudioChange = SelectAudioChangeUseCase(serviceHandler),
-        updateProgress = UpdateProgressUseCase(serviceHandler)*/
-    )
+        play: PlayUseCase,
+        pause: PauseUseCase,
+        seekTo: SeekToUseCase,
+        next: NextTrackUseCase,
+        previous: PreviousTrackUseCase,
+        getCurrentDuration: GetCurrentDurationUseCase,
+        selectAudioChange: SelectAudioChangeUseCase,
+        updateProgress: UpdateProgressUseCase
+    ): PlayerUseCases {
+        return PlayerUseCases(
+            play = play,
+            pause = pause,
+            seekTo = seekTo,
+            next = next,
+            previous = previous,
+            getCurrentDuration = getCurrentDuration,
+            selectAudioChange = selectAudioChange,
+            updateProgress = updateProgress
+        )
+    }
 
 }
