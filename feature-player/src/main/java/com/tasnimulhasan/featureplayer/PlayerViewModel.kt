@@ -70,18 +70,20 @@ class PlayerViewModel @Inject constructor(
 
     init {
         fetchMusicList()
+        observeAudioState()
+    }
 
+    private fun observeAudioState() {
         viewModelScope.launch {
-            audioServiceHandler.audioState.collectLatest { mediaState ->
+            playerUseCases.observeAudioState().collectLatest { mediaState ->
                 when (mediaState) {
                     MelodiqAudioState.Initial -> _uIState.value = UIState.Initial
                     is MelodiqAudioState.Buffering -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
-                        _currentSelectedAudio.value = audioList[mediaState.mediaItemIndex]
+                        _currentSelectedAudio.value = audioList.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
                     }
-
                     is MelodiqAudioState.Ready -> {
                         duration = mediaState.duration
                         _uIState.value = UIState.Ready

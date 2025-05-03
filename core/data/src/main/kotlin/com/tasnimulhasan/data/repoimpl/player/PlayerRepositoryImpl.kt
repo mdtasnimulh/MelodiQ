@@ -1,8 +1,10 @@
 package com.tasnimulhasan.data.repoimpl.player
 
+import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.repository.PlayerRepository
+import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
 class PlayerRepositoryImpl @Inject constructor(
@@ -40,4 +42,7 @@ class PlayerRepositoryImpl @Inject constructor(
     override suspend fun updateProgress(progress: Float) {
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.UpdateProgress(progress))
     }
+
+    override suspend fun observeAudioState(): StateFlow<MelodiqAudioState> = serviceHandler.audioState
+
 }

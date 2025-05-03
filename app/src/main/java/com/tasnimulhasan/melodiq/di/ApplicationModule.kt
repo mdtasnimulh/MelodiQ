@@ -14,6 +14,7 @@ import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.localusecase.player.GetCurrentDurationUseCase
 import com.tasnimulhasan.domain.localusecase.player.NextTrackUseCase
+import com.tasnimulhasan.domain.localusecase.player.ObserveAudioStateUseCase
 import com.tasnimulhasan.domain.localusecase.player.PauseUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
@@ -101,7 +102,8 @@ object ApplicationModule {
         previous: PreviousTrackUseCase,
         getCurrentDuration: GetCurrentDurationUseCase,
         selectAudioChange: SelectAudioChangeUseCase,
-        updateProgress: UpdateProgressUseCase
+        updateProgress: UpdateProgressUseCase,
+        observeAudioState: ObserveAudioStateUseCase
     ): PlayerUseCases {
         return PlayerUseCases(
             play = play,
@@ -111,7 +113,8 @@ object ApplicationModule {
             previous = previous,
             getCurrentDuration = getCurrentDuration,
             selectAudioChange = selectAudioChange,
-            updateProgress = updateProgress
+            updateProgress = updateProgress,
+            observeAudioState = observeAudioState
         )
     }
 
