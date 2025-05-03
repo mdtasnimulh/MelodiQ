@@ -49,8 +49,11 @@ class PlayerViewModel @Inject constructor(
     //var progress by savedStateHandle.saveable { mutableFloatStateOf(0f) }
     //var progressString by savedStateHandle.saveable { mutableStateOf("00:00") }
     //var isPlaying by savedStateHandle.saveable { mutableStateOf(false) }
-    var currentSelectedAudio by savedStateHandle.saveable { mutableStateOf(dummyAudio) }
+    //var currentSelectedAudio by savedStateHandle.saveable { mutableStateOf(dummyAudio) }
     var audioList by savedStateHandle.saveable { mutableStateOf(listOf<MusicEntity>()) }
+
+    private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
+    val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying = _isPlaying.asStateFlow()
@@ -76,7 +79,7 @@ class PlayerViewModel @Inject constructor(
                     is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
-                        currentSelectedAudio = audioList[mediaState.mediaItemIndex]
+                        _currentSelectedAudio.value = audioList[mediaState.mediaItemIndex]
                     }
 
                     is MelodiqAudioState.Ready -> {
@@ -153,12 +156,12 @@ class PlayerViewModel @Inject constructor(
         _progress.value =
             if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
             else 0f
-        _progressString.value = formatDuration(currentProgress)
+        _progressString.value = formatDuration(duration - currentProgress)
     }
 
     private fun formatDuration(duration: Long): String {
-        val minute = TimeUnit.MINUTES.convert(duration, TimeUnit.MILLISECONDS)
-        val seconds = minute - (minute * TimeUnit.SECONDS.convert(1, TimeUnit.MINUTES))
+        val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
         return String.format(Locale.getDefault(), "%02d:%02d", minute, seconds)
     }
 
