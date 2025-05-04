@@ -36,6 +36,10 @@ class MelodiqServiceHandler @Inject constructor(
         exoPlayer.prepare()
     }
 
+    fun getCurrentDuration(): Long {
+        return exoPlayer.currentPosition
+    }
+
     suspend fun onPlayerEvents(
         playerEvent: MelodiqPlayerEvent,
         selectedAudionIndex: Int = -1,

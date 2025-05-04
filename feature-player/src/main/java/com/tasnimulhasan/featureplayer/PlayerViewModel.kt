@@ -18,6 +18,7 @@ import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
+import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,7 @@ import javax.inject.Inject
 @OptIn(SavedStateHandleSaveableApi::class)
 class PlayerViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
+    private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
     savedStateHandle: SavedStateHandle
 ) : BaseViewModel() {
@@ -44,11 +46,23 @@ class PlayerViewModel @Inject constructor(
     )
 
     var duration by savedStateHandle.saveable { mutableLongStateOf(0L) }
-    var progress by savedStateHandle.saveable { mutableFloatStateOf(0f) }
-    var progressString by savedStateHandle.saveable { mutableStateOf("00:00") }
-    var isPlaying by savedStateHandle.saveable { mutableStateOf(false) }
-    var currentSelectedAudio by savedStateHandle.saveable { mutableStateOf(dummyAudio) }
+    //var progress by savedStateHandle.saveable { mutableFloatStateOf(0f) }
+    //var progressString by savedStateHandle.saveable { mutableStateOf("00:00") }
+    //var isPlaying by savedStateHandle.saveable { mutableStateOf(false) }
+    //var currentSelectedAudio by savedStateHandle.saveable { mutableStateOf(dummyAudio) }
     var audioList by savedStateHandle.saveable { mutableStateOf(listOf<MusicEntity>()) }
+
+    private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
+    val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
+
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying = _isPlaying.asStateFlow()
+
+    private val _progress = MutableStateFlow(0f)
+    val progress = _progress.asStateFlow()
+
+    private val _progressString = MutableStateFlow("00:00")
+    val progressString = _progressString.asStateFlow()
     private var initialized = false
 
     private val _uIState: MutableStateFlow<UIState> = MutableStateFlow(UIState.Initial)
@@ -56,18 +70,20 @@ class PlayerViewModel @Inject constructor(
 
     init {
         fetchMusicList()
+        observeAudioState()
+    }
 
+    private fun observeAudioState() {
         viewModelScope.launch {
-            audioServiceHandler.audioState.collectLatest { mediaState ->
+            playerUseCases.observeAudioState().collectLatest { mediaState ->
                 when (mediaState) {
                     MelodiqAudioState.Initial -> _uIState.value = UIState.Initial
                     is MelodiqAudioState.Buffering -> calculateProgressValue(mediaState.progress)
-                    is MelodiqAudioState.Playing -> isPlaying = mediaState.isPlaying
+                    is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
-                        currentSelectedAudio = audioList[mediaState.mediaItemIndex]
+                        _currentSelectedAudio.value = audioList.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
                     }
-
                     is MelodiqAudioState.Ready -> {
                         duration = mediaState.duration
                         _uIState.value = UIState.Ready
@@ -116,48 +132,38 @@ class PlayerViewModel @Inject constructor(
 
     fun onUiEvents(uiEvents: UIEvents) = viewModelScope.launch {
         when (uiEvents) {
-            UIEvents.Backward -> audioServiceHandler.onPlayerEvents(MelodiqPlayerEvent.Backward)
-            UIEvents.Forward -> audioServiceHandler.onPlayerEvents(MelodiqPlayerEvent.Forward)
+            UIEvents.Backward -> playerUseCases.previous()
+            UIEvents.Forward -> playerUseCases.next()
             is UIEvents.PlayPause -> {
-                audioServiceHandler.onPlayerEvents(
-                    MelodiqPlayerEvent.PlayPause
-                )
+                if (_isPlaying.value) playerUseCases.pause()
+                else playerUseCases.play()
             }
-
             is UIEvents.SeekTo -> {
-                audioServiceHandler.onPlayerEvents(
-                    MelodiqPlayerEvent.SeekTo,
-                    seekPosition = ((duration * uiEvents.position) / 100f).toLong()
-                )
+                val position = ((duration * uiEvents.position) / 100f).toLong()
+                playerUseCases.seekTo(position)
             }
-
-            UIEvents.SeekToNext -> audioServiceHandler.onPlayerEvents(MelodiqPlayerEvent.SeekToNext)
-            UIEvents.SeekToPrevious -> audioServiceHandler.onPlayerEvents(MelodiqPlayerEvent.SeekToPrevious)
+            UIEvents.SeekToNext -> playerUseCases.next()
             is UIEvents.SelectedAudioChange -> {
-                audioServiceHandler.onPlayerEvents(
-                    MelodiqPlayerEvent.SelectAudioChange,
-                    selectedAudionIndex = uiEvents.index
-                )
+                playerUseCases.selectAudioChange(uiEvents.index)
+            }
+            is UIEvents.UpdateProgress -> {
+                playerUseCases.updateProgress(uiEvents.newProgress)
             }
 
-            is UIEvents.UpdateProgress -> {
-                audioServiceHandler.onPlayerEvents(
-                    MelodiqPlayerEvent.UpdateProgress(uiEvents.newProgress)
-                )
-            }
+            UIEvents.SeekToPrevious -> playerUseCases.previous
         }
     }
 
     private fun calculateProgressValue(currentProgress: Long) {
-        progress =
+        _progress.value =
             if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
             else 0f
-        progressString = formatDuration(currentProgress)
+        _progressString.value = formatDuration(duration - currentProgress)
     }
 
     private fun formatDuration(duration: Long): String {
-        val minute = TimeUnit.MINUTES.convert(duration, TimeUnit.MILLISECONDS)
-        val seconds = minute - (minute * TimeUnit.SECONDS.convert(1, TimeUnit.MINUTES))
+        val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
         return String.format(Locale.getDefault(), "%02d:%02d", minute, seconds)
     }
 
