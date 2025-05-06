@@ -60,6 +60,7 @@ internal fun HomeScreen(
                     duration = item.duration,
                     onMusicClicked = {
                         viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
+                        viewModel.onUiEvents(UIEvents.PlayPause)
                         if (!isServiceRunning) {
                             val intent = Intent(context, MelodiqPlayerService::class.java)
                             context.startService(intent)

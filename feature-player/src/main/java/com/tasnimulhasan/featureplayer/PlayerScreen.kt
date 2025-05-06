@@ -62,8 +62,15 @@ internal fun PlayerScreen(
 
     // Find the index of the selected music
     val initialPageIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
-    LaunchedEffect(initialPageIndex) {
+    /*LaunchedEffect(initialPageIndex) {
         pagerState.scrollToPage(initialPageIndex)
+    }*/
+    LaunchedEffect(initialPageIndex) {
+        if (initialPageIndex >= 0) {
+            pagerState.scrollToPage(initialPageIndex)
+            viewModel.onUiEvents(UIEvents.SelectedAudioChange(initialPageIndex))
+            viewModel.onUiEvents(UIEvents.PlayPause)
+        }
     }
 
     LaunchedEffect(pagerState.currentPage) {
@@ -73,6 +80,24 @@ internal fun PlayerScreen(
 
     val currentPage = pagerState.currentPage
     val currentMusic = viewModel.audioList.getOrNull(currentPage)
+
+    val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
+    LaunchedEffect(currentSelectedAudio) {
+        val currentIndex = viewModel.audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
+        if (currentIndex >= 0 && currentIndex != pagerState.currentPage) {
+            pagerState.scrollToPage(currentIndex)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val currentIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
+        if (currentIndex >= 0) {
+            viewModel.onUiEvents(UIEvents.SelectedAudioChange(currentIndex))
+            if (!viewModel.isPlaying.value) {
+                viewModel.onUiEvents(UIEvents.PlayPause)
+            }
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(16.dp))

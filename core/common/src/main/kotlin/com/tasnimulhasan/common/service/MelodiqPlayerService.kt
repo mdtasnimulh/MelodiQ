@@ -28,7 +28,7 @@ class MelodiqPlayerService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
         mediaSession
 
-    override fun onDestroy() {
+    /*override fun onDestroy() {
         super.onDestroy()
         mediaSession.apply {
             release()
@@ -38,5 +38,10 @@ class MelodiqPlayerService : MediaSessionService() {
                 player.stop()
             }
         }
+    }*/
+
+    override fun onDestroy() {
+        mediaSession.release()
+        super.onDestroy()
     }
 }

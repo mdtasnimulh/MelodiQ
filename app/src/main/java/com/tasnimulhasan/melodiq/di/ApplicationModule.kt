@@ -13,6 +13,7 @@ import com.google.gson.GsonBuilder
 import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.localusecase.player.GetCurrentDurationUseCase
+import com.tasnimulhasan.domain.localusecase.player.GetCurrentSongInfoUseCase
 import com.tasnimulhasan.domain.localusecase.player.NextTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.ObserveAudioStateUseCase
 import com.tasnimulhasan.domain.localusecase.player.PauseUseCase
@@ -103,7 +104,8 @@ object ApplicationModule {
         getCurrentDuration: GetCurrentDurationUseCase,
         selectAudioChange: SelectAudioChangeUseCase,
         updateProgress: UpdateProgressUseCase,
-        observeAudioState: ObserveAudioStateUseCase
+        observeAudioState: ObserveAudioStateUseCase,
+        getCurrentSongInfoUseCase: GetCurrentSongInfoUseCase
     ): PlayerUseCases {
         return PlayerUseCases(
             play = play,
@@ -114,7 +116,8 @@ object ApplicationModule {
             getCurrentDuration = getCurrentDuration,
             selectAudioChange = selectAudioChange,
             updateProgress = updateProgress,
-            observeAudioState = observeAudioState
+            observeAudioState = observeAudioState,
+            getCurrentSongInfoUseCase = getCurrentSongInfoUseCase
         )
     }
 

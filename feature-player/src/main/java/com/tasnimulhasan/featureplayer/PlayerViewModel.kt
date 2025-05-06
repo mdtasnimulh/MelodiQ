@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -71,6 +72,13 @@ class PlayerViewModel @Inject constructor(
     init {
         fetchMusicList()
         observeAudioState()
+        viewModelScope.launch {
+            val currentSong = playerUseCases.getCurrentSongInfoUseCase()
+            currentSong?.let {
+                /*currentSelectedAudio.value = it*/
+                Timber.e("Check Current Song: \n${it.songTitle}")
+            }
+        }
     }
 
     private fun observeAudioState() {
@@ -82,7 +90,9 @@ class PlayerViewModel @Inject constructor(
                     is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
-                        _currentSelectedAudio.value = audioList.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
+                        /*_currentSelectedAudio.value = audioList.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio*/
+                        val newIndex = mediaState.mediaItemIndex
+                        _currentSelectedAudio.value = audioList.getOrNull(newIndex) ?: dummyAudio
                     }
                     is MelodiqAudioState.Ready -> {
                         duration = mediaState.duration

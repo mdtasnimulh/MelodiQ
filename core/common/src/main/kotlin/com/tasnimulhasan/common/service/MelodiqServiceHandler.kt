@@ -3,13 +3,14 @@ package com.tasnimulhasan.common.service
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -40,7 +41,7 @@ class MelodiqServiceHandler @Inject constructor(
         return exoPlayer.currentPosition
     }
 
-    suspend fun onPlayerEvents(
+    fun onPlayerEvents(
         playerEvent: MelodiqPlayerEvent,
         selectedAudionIndex: Int = -1,
         seekPosition: Long = 0
@@ -53,7 +54,11 @@ class MelodiqServiceHandler @Inject constructor(
             MelodiqPlayerEvent.SeekToNext -> exoPlayer.seekToNextMediaItem()
             MelodiqPlayerEvent.SeekToPrevious -> exoPlayer.seekToPreviousMediaItem()
             MelodiqPlayerEvent.SelectAudioChange -> {
-                when (selectedAudionIndex) {
+                exoPlayer.seekToDefaultPosition(selectedAudionIndex)
+                _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+                exoPlayer.playWhenReady = true
+                startProgressUpdate()
+                /*when (selectedAudionIndex) {
                     exoPlayer.currentMediaItemIndex -> {
                         playOrPause()
                     }
@@ -63,7 +68,7 @@ class MelodiqServiceHandler @Inject constructor(
                         exoPlayer.playWhenReady = true
                         startProgressUpdate()
                     }
-                }
+                }*/
             }
             MelodiqPlayerEvent.Stop -> stopProgressUpdate()
             is MelodiqPlayerEvent.UpdateProgress -> {
@@ -86,7 +91,7 @@ class MelodiqServiceHandler @Inject constructor(
         _audioState.value = MelodiqAudioState.Playing(isPlaying = isPlaying)
         _audioState.value = MelodiqAudioState.CurrentPlaying(exoPlayer.currentMediaItemIndex)
         if (isPlaying) {
-            GlobalScope.launch(Dispatchers.Main) {
+            CoroutineScope(Dispatchers.Main).launch {
                 startProgressUpdate()
             }
         } else {
@@ -94,7 +99,11 @@ class MelodiqServiceHandler @Inject constructor(
         }
     }
 
-    private suspend fun playOrPause() {
+    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        _audioState.value = MelodiqAudioState.CurrentPlaying(exoPlayer.currentMediaItemIndex)
+    }
+
+    private fun playOrPause() {
         if (exoPlayer.isPlaying) {
             exoPlayer.pause()
             stopProgressUpdate()
@@ -107,10 +116,17 @@ class MelodiqServiceHandler @Inject constructor(
         }
     }
 
-    private suspend fun startProgressUpdate() = job.run {
-        while (true) {
+    private fun startProgressUpdate() = job.run {
+        /*while (true) {
             delay(500)
             _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
+        }*/
+        job?.cancel()
+        job = CoroutineScope(Dispatchers.Main).launch {
+            while (isActive) {
+                _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
+                delay(500)
+            }
         }
     }
 

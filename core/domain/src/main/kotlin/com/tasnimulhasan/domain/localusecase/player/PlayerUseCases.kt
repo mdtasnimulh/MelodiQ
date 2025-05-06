@@ -9,5 +9,6 @@ data class PlayerUseCases(
     val getCurrentDuration: GetCurrentDurationUseCase,
     val selectAudioChange: SelectAudioChangeUseCase,
     val updateProgress: UpdateProgressUseCase,
-    val observeAudioState: ObserveAudioStateUseCase
+    val observeAudioState: ObserveAudioStateUseCase,
+    val getCurrentSongInfoUseCase: GetCurrentSongInfoUseCase
 )

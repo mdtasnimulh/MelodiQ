@@ -1,6 +1,7 @@
 package com.tasnimulhasan.domain.repository
 
 import com.tasnimulhasan.common.service.MelodiqAudioState
+import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.flow.StateFlow
 
 interface PlayerRepository {
@@ -13,4 +14,5 @@ interface PlayerRepository {
     suspend fun selectAudio(index: Int)
     suspend fun updateProgress(progress: Float)
     suspend fun observeAudioState(): StateFlow<MelodiqAudioState>
+    suspend fun getCurrentSongInfo(): MusicEntity?
 }

@@ -3,12 +3,15 @@ package com.tasnimulhasan.data.repoimpl.player
 import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
+import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.repository.PlayerRepository
+import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
 class PlayerRepositoryImpl @Inject constructor(
-    private val serviceHandler: MelodiqServiceHandler
+    private val serviceHandler: MelodiqServiceHandler,
+    private val fetchMusicUseCase: FetchMusicUseCase,
 ) : PlayerRepository {
 
     override suspend fun play() {
@@ -44,5 +47,17 @@ class PlayerRepositoryImpl @Inject constructor(
     }
 
     override suspend fun observeAudioState(): StateFlow<MelodiqAudioState> = serviceHandler.audioState
+
+    override suspend fun getCurrentSongInfo(): MusicEntity? {
+        val currentIndex = serviceHandler.audioState.value.let { state ->
+            if (state is MelodiqAudioState.CurrentPlaying) state.mediaItemIndex else -1
+        }
+        return if (currentIndex >= 0) {
+            val audioLIst = fetchMusicUseCase.execute()
+            audioLIst.getOrNull(currentIndex)
+        } else {
+            null
+        }
+    }
 
 }
