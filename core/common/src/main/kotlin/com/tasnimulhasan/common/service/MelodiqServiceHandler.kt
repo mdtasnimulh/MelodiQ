@@ -25,6 +25,13 @@ class MelodiqServiceHandler @Inject constructor(
 
     init {
         exoPlayer.addListener(this)
+        // Emit initial state
+        if (exoPlayer.playbackState == ExoPlayer.STATE_READY) {
+            _audioState.value = MelodiqAudioState.Ready(exoPlayer.duration)
+            _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
+            _audioState.value = MelodiqAudioState.Playing(exoPlayer.isPlaying)
+            _audioState.value = MelodiqAudioState.CurrentPlaying(exoPlayer.currentMediaItemIndex)
+        }
     }
 
     fun addMediaItem(mediaItem: MediaItem) {
@@ -54,10 +61,16 @@ class MelodiqServiceHandler @Inject constructor(
             MelodiqPlayerEvent.SeekToNext -> exoPlayer.seekToNextMediaItem()
             MelodiqPlayerEvent.SeekToPrevious -> exoPlayer.seekToPreviousMediaItem()
             MelodiqPlayerEvent.SelectAudioChange -> {
-                exoPlayer.seekToDefaultPosition(selectedAudionIndex)
-                _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
-                exoPlayer.playWhenReady = true
-                startProgressUpdate()
+                if (exoPlayer.currentMediaItemIndex != selectedAudionIndex) {
+                    exoPlayer.seekToDefaultPosition(selectedAudionIndex)
+                    _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+                    exoPlayer.playWhenReady = true
+                    startProgressUpdate()
+                } else if (!exoPlayer.isPlaying) {
+                    exoPlayer.playWhenReady = true
+                    _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+                    startProgressUpdate()
+                }
                 /*when (selectedAudionIndex) {
                     exoPlayer.currentMediaItemIndex -> {
                         playOrPause()

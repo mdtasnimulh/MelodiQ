@@ -66,6 +66,21 @@ class PlayerViewModel @Inject constructor(
     val progressString = _progressString.asStateFlow()
     private var initialized = false
 
+    private val _showElapsedTime = MutableStateFlow(true) // Default to elapsed time
+    val showElapsedTime = _showElapsedTime.asStateFlow()
+
+    fun toggleTimeDisplay() {
+        _showElapsedTime.value = !_showElapsedTime.value
+        // Recalculate progressString with the new mode
+        calculateProgressValue(audioServiceHandler.audioState.value.let { state ->
+            when (state) {
+                is MelodiqAudioState.Progress -> state.progress
+                is MelodiqAudioState.Buffering -> state.progress
+                else -> 0L
+            }
+        })
+    }
+
     private val _uIState: MutableStateFlow<UIState> = MutableStateFlow(UIState.Initial)
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
@@ -97,6 +112,7 @@ class PlayerViewModel @Inject constructor(
                     is MelodiqAudioState.Ready -> {
                         duration = mediaState.duration
                         _uIState.value = UIState.Ready
+                        calculateProgressValue(audioServiceHandler.getCurrentDuration())
                     }
                 }
             }
@@ -164,11 +180,31 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    private fun calculateProgressValue(currentProgress: Long) {
+    /*private fun calculateProgressValue(currentProgress: Long) {
         _progress.value =
             if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
             else 0f
         _progressString.value = formatDuration(duration - currentProgress)
+    }*/
+
+    private fun calculateProgressValue(currentProgress: Long) {
+        _progress.value =
+            if (currentProgress > 0 && duration > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
+            else 0f
+        _progressString.value = if (_showElapsedTime.value) {
+            formatDuration(currentProgress) // Elapsed time
+        } /*else {
+            formatDuration(duration - currentProgress) // Remaining time
+        }*/else {
+            formatDuration(if (duration > currentProgress) duration - currentProgress else 0L)
+        }
+    }
+
+    private fun calculateElapsedTime(currentProgress: Long) {
+        _progress.value =
+            if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
+            else 0f
+        _progressString.value = formatDuration(currentProgress) // later changed to upper method using condition
     }
 
     private fun formatDuration(duration: Long): String {

@@ -1,5 +1,6 @@
 package com.tasnimulhasan.featureplayer
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -91,11 +92,14 @@ internal fun PlayerScreen(
 
     LaunchedEffect(Unit) {
         val currentIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
-        if (currentIndex >= 0) {
+        val currentPlayingIndex = viewModel.currentSelectedAudio.value.let { currentAudio ->
+            viewModel.audioList.indexOfFirst { it.songId == currentAudio.songId }
+        }
+        if (currentIndex >= 0 && currentIndex != currentPlayingIndex) {
             viewModel.onUiEvents(UIEvents.SelectedAudioChange(currentIndex))
-            if (!viewModel.isPlaying.value) {
-                viewModel.onUiEvents(UIEvents.PlayPause)
-            }
+            viewModel.onUiEvents(UIEvents.PlayPause)
+        } else if (currentIndex >= 0 && !viewModel.isPlaying.value) {
+            viewModel.onUiEvents(UIEvents.PlayPause)
         }
     }
 
@@ -202,7 +206,11 @@ internal fun PlayerScreen(
                 Spacer(modifier = Modifier.width(4.dp))
 
                 Text(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            viewModel.toggleTimeDisplay()
+                        },
                     text = progressString,
                     textAlign = TextAlign.Center,
                     style = TextStyle(

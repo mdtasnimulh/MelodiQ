@@ -73,7 +73,7 @@ internal fun HomeScreen(
         }
 
         if (viewModel.isPlaying) {
-            MiniPlayer(
+            MiniPlayer2(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 cover = viewModel.currentSelectedAudio.cover,
                 songTitle = viewModel.currentSelectedAudio.songTitle,
@@ -81,6 +81,7 @@ internal fun HomeScreen(
                 onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
                 isPlaying = viewModel.isPlaying,
                 onMiniPlayerClick = {
+                    viewModel.onUiEvents(UIEvents.UpdateProgress(viewModel.progress / 100f))
                     navigateToPlayer(viewModel.currentSelectedAudio.songId.toString())
                 },
                 onPlayPauseClick = {

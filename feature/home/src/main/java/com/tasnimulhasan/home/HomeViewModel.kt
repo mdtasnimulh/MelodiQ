@@ -83,6 +83,8 @@ class HomeViewModel @Inject constructor(
                     is MelodiqAudioState.Ready -> {
                         duration = mediaState.duration
                         _uIState.value = UIState.Ready
+                        // Force initial progress update
+                        calculateProgressValue(audioServiceHandler.getCurrentDuration())
                     }
                 }
             }
@@ -177,14 +179,14 @@ class HomeViewModel @Inject constructor(
 
     private fun calculateProgressValue(currentProgress: Long) {
         progress =
-            if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
+            if (currentProgress > 0 && duration > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
             else 0f
         progressString = formatDuration(currentProgress)
     }
 
     private fun formatDuration(duration: Long): String {
-        val minute = TimeUnit.MINUTES.convert(duration, TimeUnit.MILLISECONDS)
-        val seconds = minute - (minute * TimeUnit.SECONDS.convert(1, TimeUnit.MINUTES))
+        val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
         return String.format(Locale.getDefault(), "%02d:%02d", minute, seconds)
     }
 }
