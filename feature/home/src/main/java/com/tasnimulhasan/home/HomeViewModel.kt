@@ -174,6 +174,7 @@ class HomeViewModel @Inject constructor(
                     MelodiqPlayerEvent.UpdateProgress(uiEvents.newProgress)
                 )
             }
+            UIEvents.SeekToPrevious -> playerUseCases.previous()
         }
     }
 
@@ -196,6 +197,7 @@ sealed class UIEvents {
     data class SelectedAudioChange(val index: Int) : UIEvents()
     data class SeekTo(val position: Float) : UIEvents()
     data object SeekToNext : UIEvents()
+    data object SeekToPrevious : UIEvents()
     data object Backward : UIEvents()
     data object Forward : UIEvents()
     data class UpdateProgress(val newProgress: Float) : UIEvents()

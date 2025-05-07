@@ -98,7 +98,7 @@ fun MiniPlayer2(
             IconButton(onClick = onPlayPauseClick) {
                 Icon(
                     painter = if (isPlaying) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle),
-                    contentDescription = "Play/Pause",
+                    contentDescription = if (isPlaying) "Pause" else "Play",
                     modifier = Modifier.size(32.dp)
                 )
             }

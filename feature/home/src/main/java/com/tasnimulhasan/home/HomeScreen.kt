@@ -8,7 +8,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,7 +39,7 @@ internal fun HomeScreen(
     modifier: Modifier,
     navigateToPlayer: (String) -> Unit,
 ) {
-    var isServiceRunning = false
+    var isServiceRunning by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         viewModel.initializeListIfNeeded()
     }
@@ -72,7 +75,7 @@ internal fun HomeScreen(
             }
         }
 
-        if (viewModel.isPlaying) {
+        if (viewModel.currentSelectedAudio.songId != 0L) {
             MiniPlayer2(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 cover = viewModel.currentSelectedAudio.cover,
