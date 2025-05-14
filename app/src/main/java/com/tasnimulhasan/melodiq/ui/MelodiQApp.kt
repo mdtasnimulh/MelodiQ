@@ -95,19 +95,19 @@ internal fun MmApp(
         currentDestination?.route?.contains(destination.name, true) == true
     }
 
-    /*val currentTitleRes = when (currentDestination?.route) { TODO need some work here for top bar title
-        HomeRoute -> Res.string.app_name
-        SongsRoute -> Res.string.title_songs
-        AlbumRoute -> Res.string.title_albums
-        PlaylistsRoute -> Res.string.title_playlists
-        SettingsRoute -> Res.string.title_settings
-        PlayerRoute -> Res.string.label_now_playing
-        FavouriteRoute -> Res.string.title_favourite
-        QueueRoute -> Res.string.title_queue
-        AboutRoute -> Res.string.title_about
-        FeedbackRoute -> Res.string.title_feedback
+    val currentTitleRes = when (currentDestination?.route) {
+        HomeRoute::class.qualifiedName -> Res.string.app_name
+        SongsRoute::class.qualifiedName -> Res.string.title_songs
+        AlbumRoute::class.qualifiedName -> Res.string.title_albums
+        PlaylistsRoute::class.qualifiedName -> Res.string.title_playlists
+        SettingsRoute::class.qualifiedName -> Res.string.title_settings
+        PlayerRoute::class.qualifiedName.plus("/{musicId}") -> Res.string.label_now_playing
+        FavouriteRoute::class.qualifiedName -> Res.string.title_favourite
+        QueueRoute::class.qualifiedName -> Res.string.title_queue
+        AboutRoute::class.qualifiedName -> Res.string.title_about
+        FeedbackRoute::class.qualifiedName -> Res.string.title_feedback
         else -> Res.string.app_name
-    }*/
+    }
 
     val navigationIcon = if (isTopLevelDestination) MelodiqIcons.NavigationMenu
     else MelodiqIcons.NavigationBack
@@ -166,7 +166,7 @@ internal fun MmApp(
                 },
             topBar = {
                 MelodiqTopAppBar(
-                    titleRes = Res.string.app_name, // TODO need some work here
+                    titleRes = currentTitleRes,
                     navigationIcon = navigationIcon,
                     navigationIconContentDescription = navigationIconContentDescription,
                     actionIcon = MelodiqIcons.ActionMore,
