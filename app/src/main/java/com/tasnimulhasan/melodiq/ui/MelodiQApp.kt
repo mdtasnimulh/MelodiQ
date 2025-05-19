@@ -220,6 +220,9 @@ private fun GetContent(appState: MelodiQAppState) {
             appState = appState,
             navigateToPlayer = { musicId ->
                 appState.navigateToPlayer(musicId)  // Pass the musicId here
+            },
+            navigateBack = {
+                appState.navigateBack()
             }
         )
     }

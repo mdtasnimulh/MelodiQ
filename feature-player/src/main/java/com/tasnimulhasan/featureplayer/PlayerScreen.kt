@@ -1,6 +1,10 @@
 package com.tasnimulhasan.featureplayer
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,26 +22,30 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
@@ -45,12 +54,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
 internal fun PlayerScreen(
     musicId: String,
     modifier: Modifier = Modifier,
+    onNavigateUp: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val pagerState = rememberPagerState { viewModel.audioList.size }
@@ -61,6 +72,12 @@ internal fun PlayerScreen(
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val progressString by viewModel.progressString.collectAsStateWithLifecycle()
+
+    // Animation and gesture handling
+    val density = LocalDensity.current
+    val maxDragDistance = with(density) { 500.dp.toPx() } // Max drag distance (adjustable)
+    val offsetY = remember { Animatable(0f) }
+    val thresholdFraction = 0.6f // 60% threshold for navigation
 
     // Find the index of the selected music
     val initialPageIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
@@ -104,7 +121,60 @@ internal fun PlayerScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .offset { IntOffset(0, offsetY.value.toInt()) }
+            .graphicsLayer {
+                val progressVal = (offsetY.value / maxDragDistance).coerceIn(0f, 1f)
+                scaleX = lerp(1f, 0.95f, progressVal) // Subtle scale down
+                scaleY = lerp(1f, 0.95f, progressVal)
+                alpha = lerp(1f, 0.8f, progressVal) // Slight fade
+            }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        scope.launch {
+                            if (offsetY.value >= maxDragDistance * thresholdFraction) {
+                                offsetY.animateTo(
+                                    maxDragDistance,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMedium // Faster animation
+                                    )
+                                )
+                                onNavigateUp()
+                            } else {
+                                offsetY.animateTo(
+                                    0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                )
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        scope.launch {
+                            offsetY.animateTo(
+                                0f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            )
+                        }
+                    }
+                ) { change, dragAmount ->
+                    scope.launch {
+                        val newOffset = (offsetY.value + dragAmount).coerceIn(0f, maxDragDistance)
+                        offsetY.snapTo(newOffset)
+                    }
+                    change.consume()
+                }
+            }
+    ) {
         Spacer(modifier = Modifier.height(16.dp))
 
         HorizontalPager(
@@ -279,5 +349,5 @@ internal fun PlayerScreen(
 @Preview(showBackground = true)
 @Composable
 fun PlayerScreenPreview() {
-    PlayerScreen("12345", modifier = Modifier, )
+    PlayerScreen("12345", modifier = Modifier, onNavigateUp = {})
 }

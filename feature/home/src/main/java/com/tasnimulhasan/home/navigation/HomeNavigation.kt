@@ -1,5 +1,7 @@
 package com.tasnimulhasan.home.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
@@ -17,10 +19,10 @@ fun NavGraphBuilder.homeScreen(
     navigateToPlayer: (musicId: String) -> Unit
 ) {
     composable<HomeRoute>(
-        enterTransition = { slideInHorizontally {it} },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { fadeIn() },
+        exitTransition = { fadeOut() },
+        popEnterTransition = { fadeIn() },
+        popExitTransition = { fadeOut() }
     ) {
         HomeRoute(navigateToPlayer = navigateToPlayer)
     }

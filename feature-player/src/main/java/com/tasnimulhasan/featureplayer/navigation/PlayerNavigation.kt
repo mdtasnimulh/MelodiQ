@@ -1,5 +1,7 @@
 package com.tasnimulhasan.featureplayer.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
@@ -17,14 +19,16 @@ fun NavController.navigateToPlayer(musicId: String, navOptions: NavOptionsBuilde
     }
 }
 
-fun NavGraphBuilder.playerScreen() {
+fun NavGraphBuilder.playerScreen(
+    navigateBack: () -> Unit,
+) {
     composable<PlayerRoute>(
-        enterTransition = { slideInHorizontally {it} },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { fadeIn() },
+        exitTransition = { fadeOut() },
+        popEnterTransition = { fadeIn() },
+        popExitTransition = { fadeOut() }
     ) { backStackEntry ->
         val musicId = backStackEntry.arguments?.getString("musicId") ?: ""
-        PlayerScreen(musicId = musicId)
+        PlayerScreen(musicId = musicId, onNavigateUp = navigateBack)
     }
 }

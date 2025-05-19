@@ -20,7 +20,8 @@ import com.tasnimulhasan.songs.navigation.songsScreen
 fun MelodiQNavHost(
     appState: MelodiQAppState,
     modifier: Modifier = Modifier,
-    navigateToPlayer: (String) -> Unit
+    navigateToPlayer: (String) -> Unit,
+    navigateBack: () -> Unit,
 ) {
     val navController = appState.navController
     NavHost(
@@ -33,7 +34,7 @@ fun MelodiQNavHost(
         albumScreen()
         playlistsScreen()
         settingsScreen()
-        playerScreen()
+        playerScreen(navigateBack = navigateBack)
         queueScreen()
         favouriteScreen()
         aboutScreen()
