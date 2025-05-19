@@ -165,19 +165,21 @@ internal fun MmApp(
                     customDrawerState = CustomDrawerState.Closed
                 },
             topBar = {
-                MelodiqTopAppBar(
-                    titleRes = currentTitleRes,
-                    navigationIcon = navigationIcon,
-                    navigationIconContentDescription = navigationIconContentDescription,
-                    actionIcon = MelodiqIcons.ActionMore,
-                    actionIconsContentDescription = stringResource(id = Res.string.title_settings),
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent),
-                    onActionClick = { onTopAppBarActionClick() },
-                    onNavigationClick = {
-                        if (!isTopLevelDestination) appState.navigateBack()
-                        else customDrawerState = customDrawerState.opposite()
-                    }
-                )
+                if (!currentDestination.isRouteInHierarchy(PlayerRoute::class)) {
+                    MelodiqTopAppBar(
+                        titleRes = currentTitleRes,
+                        navigationIcon = navigationIcon,
+                        navigationIconContentDescription = navigationIconContentDescription,
+                        actionIcon = MelodiqIcons.ActionMore,
+                        actionIconsContentDescription = stringResource(id = Res.string.title_settings),
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent),
+                        onActionClick = { onTopAppBarActionClick() },
+                        onNavigationClick = {
+                            if (!isTopLevelDestination) appState.navigateBack()
+                            else customDrawerState = customDrawerState.opposite()
+                        }
+                    )
+                }
             },
             bottomBar = {
                 if (isTopLevelDestination){

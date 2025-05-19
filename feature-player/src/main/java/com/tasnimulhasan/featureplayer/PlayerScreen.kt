@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -107,12 +108,12 @@ internal fun PlayerScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         HorizontalPager(
-            state = pagerState,
-            contentPadding = PaddingValues(horizontal = 40.dp),
-            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(350.dp)
+                .height(350.dp),
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) { page ->
             val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
 
@@ -120,8 +121,11 @@ internal fun PlayerScreen(
                 viewModel.loadBitmapIfNeeded(context, page)
             }
 
+            val pageMusic = viewModel.audioList.getOrNull(page)
+
             Card(
                 modifier = Modifier
+                    .padding(horizontal = 15.dp)
                     .graphicsLayer {
                         val scale = lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
                         scaleX = scale
@@ -131,14 +135,13 @@ internal fun PlayerScreen(
                     }
             ) {
                 AsyncImage(
-                    model = currentMusic?.cover,
-                    contentDescription = context.getString(Res.string.desc_album_cover_art),
                     modifier = Modifier
-                        .fillMaxSize()
-                        .clip(shape = MaterialTheme.shapes.medium),
-                    contentScale = ContentScale.FillHeight,
-                    placeholder = painterResource(Res.drawable.ic_launcher_foreground),
-                    error = painterResource(Res.drawable.ic_launcher_foreground)
+                        .fillMaxSize(),
+                    model = pageMusic?.cover,
+                    contentDescription = context.getString(Res.string.desc_album_cover_art),
+                    contentScale = ContentScale.FillBounds,
+                    placeholder = painterResource(Res.drawable.ic_launcher_background),
+                    error = painterResource(Res.drawable.ic_launcher_background)
                 )
             }
         }
@@ -276,5 +279,5 @@ internal fun PlayerScreen(
 @Preview(showBackground = true)
 @Composable
 fun PlayerScreenPreview() {
-    PlayerScreen("12345", modifier = Modifier)
+    PlayerScreen("12345", modifier = Modifier, )
 }
