@@ -7,11 +7,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
@@ -56,11 +58,12 @@ internal fun SongsScreen(modifier: Modifier) {
         modifier = Modifier.fillMaxSize()
     ) {
         item {
+            Spacer(modifier.height(25.dp))
             LineSlider(
                 value = sliderValue,
                 onValueChange = { sliderValue = it },
                 modifier = Modifier
-                    .padding(vertical = 15.dp, horizontal = 15.dp)
+                    .padding(vertical = 15.dp, horizontal = 30.dp)
                     .fillMaxWidth(),
                 valueRange = 0f..100f, // Example range
                 steps = 20, // Example steps for graduation marks

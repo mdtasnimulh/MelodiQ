@@ -89,29 +89,7 @@ fun LineSlider(
         valueRange = valueRange,
         steps = steps,
         interactionSource = interaction,
-        thumb = {
-            Box(
-                Modifier
-                    .zIndex(10f)
-                    .size(thumbSize)
-                    .padding(10.dp)
-                    .shadow(
-                        elevation = 10.dp,
-                        shape = androidx.compose.foundation.shape.CircleShape
-                    )
-                    .background(
-                        color = Color(0xFFECB91F), // Yellow thumb color
-                        shape = androidx.compose.foundation.shape.CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = thumbDisplay(animatedValue),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Black
-                )
-            }
-        },
+        thumb = {}, // Remove default thumb rendering
         track = { sliderState ->
             val fraction by remember {
                 derivedStateOf {
@@ -168,9 +146,23 @@ fun LineSlider(
                             )
                         }
                         .size(thumbSize)
-                        .clip(androidx.compose.foundation.shape.CircleShape)
-                        .background(Color.Transparent)
-                )
+                        .padding(10.dp)
+                        .shadow(
+                            elevation = 10.dp,
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                        .background(
+                            color = Color(0xFFECB91F), // Yellow thumb color
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = thumbDisplay(animatedValue),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Black
+                    )
+                }
             }
         }
     )
