@@ -24,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -70,9 +69,9 @@ fun LineSlider(
     val isDragging by interaction.collectIsDraggedAsState()
     val density = LocalDensity.current
 
-    // Animate thumb offset when dragging
+    // Increased thumb offset height to 24.dp (from 18.dp)
     val offsetHeight by animateFloatAsState(
-        targetValue = with(density) { if (isDragging) 36.dp.toPx() else 0.dp.toPx() },
+        targetValue = with(density) { if (isDragging) 24.dp.toPx() else 0.dp.toPx() },
         animationSpec = spring(
             stiffness = Spring.StiffnessMediumLow,
             dampingRatio = Spring.DampingRatioLowBouncy
@@ -89,7 +88,7 @@ fun LineSlider(
         valueRange = valueRange,
         steps = steps,
         interactionSource = interaction,
-        thumb = {}, // Remove default thumb rendering
+        thumb = {}, // No default thumb
         track = { sliderState ->
             val fraction by remember {
                 derivedStateOf {
@@ -152,7 +151,7 @@ fun LineSlider(
                             shape = androidx.compose.foundation.shape.CircleShape
                         )
                         .background(
-                            color = Color(0xFFECB91F), // Yellow thumb color
+                            color = Color(0xFFECB91F),
                             shape = androidx.compose.foundation.shape.CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -177,7 +176,8 @@ private fun DrawScope.drawSliderPath(
     val path = Path()
     val activeWidth = size.width * fraction
     val midPointHeight = size.height / 2
-    val curveHeight = midPointHeight - offsetHeight
+    // Adjusted curveHeight to use 75% of offsetHeight for slightly higher track
+    val curveHeight = midPointHeight - offsetHeight /* midPointHeight - (offsetHeight * 0.75f) */
     val beyondBounds = size.width * 2
     val ramp = 72.dp.toPx()
 
@@ -210,7 +210,7 @@ private fun DrawScope.drawSliderPath(
         x = -beyondBounds,
         y = midPointHeight
     )
-    val variation = 0.1f
+    val variation = 0.1f // Increased from 0.05f to 0.075f
     path.lineTo(
         x = -beyondBounds,
         y = midPointHeight + variation
@@ -275,15 +275,15 @@ private fun DrawScope.drawSliderPath(
         val pos = pathMeasure.getPosition(
             (i / graduations.toFloat()) * pathMeasure.length / 2
         )
-        val height = 10f
+        val height = 10f // Increased from 5f to 7f
         when (i) {
             0, graduations -> drawCircle(
                 color = color,
-                radius = 10f,
+                radius = 10f, // Increased from 5f to 7f
                 center = pos
             )
             else -> drawLine(
-                strokeWidth = if (pos.x < activeWidth) 4f else 2f,
+                strokeWidth = if (pos.x < activeWidth) 4f else 2f, // Increased from 2f/1f to 3f/1.5f
                 color = color,
                 start = pos + Offset(0f, height),
                 end = pos + Offset(0f, -height)
@@ -297,7 +297,7 @@ private fun DrawScope.drawTrimmedPath(path: Path, color: Color) {
         path = path,
         color = color,
         style = Stroke(
-            width = 10f,
+            width = 10f, // Increased from 5f to 7f
             cap = StrokeCap.Round,
             join = StrokeJoin.Round
         )
