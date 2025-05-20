@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Card
@@ -49,12 +52,15 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
+import kotlin.random.Random
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
@@ -251,13 +257,50 @@ internal fun PlayerScreen(
 
             Spacer(modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            ConstraintLayout(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
             ) {
+                val (progressSlider, durationText, progressText) = createRefs()
+
+                Box(
+                    modifier = Modifier
+                        .constrainAs(progressSlider) {
+                            top.linkTo(parent.top)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                            width = Dimension.fillToConstraints
+                            height = Dimension.wrapContent
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    val amplitudes = remember { List(60) { Random.nextFloat() } }
+                    val normalizedProgress = progress / 100f
+
+                    CustomWaveProgressBar(
+                        amplitudes = amplitudes,
+                        currentProgress = normalizedProgress,
+                        onSeek = { normalized ->
+                            val seekPosition = normalized * 100f
+                            viewModel.onUiEvents(UIEvents.SeekTo(seekPosition))
+                        }
+                    )
+                }
+
+                /*Slider(
+                    modifier = Modifier.weight(4f),
+                    value = progress,
+                    onValueChange = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
+                    valueRange = 0f..100f
+                )*/
+
                 Text(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .constrainAs(durationText) {
+                            top.linkTo(progressSlider.bottom, margin = 4.dp)
+                            start.linkTo(parent.start, margin = 16.dp)
+                        },
                     text = viewModel.convertLongToReadableDateTime(currentTrack.duration.toLong(), "mm:ss"),
                     textAlign = TextAlign.Center,
                     style = TextStyle(
@@ -267,20 +310,12 @@ internal fun PlayerScreen(
                     )
                 )
 
-                Spacer(modifier = Modifier.width(4.dp))
-
-                Slider(
-                    modifier = Modifier.weight(4f),
-                    value = progress,
-                    onValueChange = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
-                    valueRange = 0f..100f
-                )
-
-                Spacer(modifier = Modifier.width(4.dp))
-
                 Text(
                     modifier = Modifier
-                        .weight(1f)
+                        .constrainAs(progressText) {
+                            top.linkTo(progressSlider.bottom, margin = 4.dp)
+                            end.linkTo(parent.end, margin = 16.dp)
+                        }
                         .clickable {
                             viewModel.toggleTimeDisplay()
                         },

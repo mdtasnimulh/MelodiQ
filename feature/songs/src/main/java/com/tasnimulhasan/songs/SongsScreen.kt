@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
@@ -25,6 +27,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 @Composable
 internal fun SongsRoute(
@@ -69,6 +73,26 @@ internal fun SongsScreen(modifier: Modifier) {
                 steps = 20, // Example steps for graduation marks
                 thumbDisplay = { it.roundToInt().toString() }
             )
+        }
+
+        item {
+            Spacer(modifier.height(25.dp))
+
+            val amplitudes = remember { List(60) { Random.nextFloat() } }
+            var progress by remember { mutableFloatStateOf(0f) }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CustomWaveProgressBar(
+                    amplitudes = amplitudes,
+                    currentProgress = progress,
+                    onSeek = { progress = it }
+                )
+            }
         }
     }
 }
