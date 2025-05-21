@@ -1,5 +1,14 @@
 package com.tasnimulhasan.featureplayer.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,10 +26,13 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -40,6 +52,13 @@ fun PlayPauseControlButton(
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
 ) {
+    // Animate the corner radius based on isPlaying state
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isPlaying) 40.dp else 10.dp,
+        animationSpec = tween(durationMillis = 300),
+        label = "CornerRadiusAnimation"
+    )
+
     ConstraintLayout(
         modifier = Modifier
             .fillMaxWidth()
@@ -51,7 +70,7 @@ fun PlayPauseControlButton(
             modifier = Modifier
                 .background(
                     color = playButtonColor,
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(cornerRadius)
                 )
                 .constrainAs(playPauseButton) {
                     top.linkTo(parent.top, margin = 8.dp)
@@ -63,12 +82,22 @@ fun PlayPauseControlButton(
                 },
             onClick = onPlayPauseClick
         ) {
-            Icon(
-                modifier = Modifier.width(50.dp).height(50.dp),
-                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                tint = buttonColor,
-                contentDescription = "Play Pause Icon"
-            )
+            AnimatedContent(
+                targetState = isPlaying,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.8f, animationSpec = tween(300)))
+                        .togetherWith(fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.8f, animationSpec = tween(300)))
+                        .using(SizeTransform(clip = false))
+                },
+                label = "PlayPauseIconAnimation"
+            ) { targetIsPlaying ->
+                Icon(
+                    modifier = Modifier.width(50.dp).height(50.dp),
+                    imageVector = if (targetIsPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    tint = buttonColor,
+                    contentDescription = "Play Pause Icon"
+                )
+            }
         }
 
         IconButton(
@@ -122,11 +151,12 @@ fun PlayPauseControlButton(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun PreviewPlayPauseControlButton() {
+    var isPlaying by remember { mutableStateOf(false) }
     PlayPauseControlButton(
-        onPlayPauseClick = { /* Handle play/pause click */ },
+        onPlayPauseClick = { isPlaying = !isPlaying },
         onPreviousClick = { /* Handle previous click */ },
         onNextClick = { /* Handle next click */ },
-        isPlaying = false,
+        isPlaying = isPlaying,
         playButtonColor = PeaceOrange,
         buttonColor = LightOrange
     )

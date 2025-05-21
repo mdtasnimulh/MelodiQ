@@ -3,6 +3,7 @@ package com.tasnimulhasan.featureplayer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -245,7 +246,8 @@ internal fun PlayerScreen(
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .basicMarquee(),
                 text = currentTrack.songTitle,
                 maxLines = 1,
                 style = TextStyle(
