@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -47,8 +48,10 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
-import com.tasnimulhasan.featureplayer.components.CustomFLipText
+import com.tasnimulhasan.designsystem.theme.LightOrange
+import com.tasnimulhasan.designsystem.theme.PeaceOrange
 import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
 import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
 import kotlinx.coroutines.launch
@@ -117,6 +120,25 @@ internal fun PlayerScreen(
         } else if (currentIndex >= 0 && !viewModel.isPlaying.value) {
             viewModel.onUiEvents(UIEvents.PlayPause)
         }
+    }
+
+    val darkPaletteColor = remember(currentMusic?.cover) {
+        currentMusic?.cover?.let {
+            val palette = Palette.from(it).generate()
+            palette.vibrantSwatch?.rgb
+                ?: palette.mutedSwatch?.rgb
+                ?: palette.dominantSwatch?.rgb
+                ?: LightOrange.toArgb()
+        } ?: LightOrange.toArgb()
+    }
+    val lightPaletteColor = remember(currentMusic?.cover) {
+        currentMusic?.cover?.let {
+            val palette = Palette.from(it).generate()
+            palette.lightVibrantSwatch?.rgb
+                ?: palette.lightMutedSwatch?.rgb
+                ?: palette.dominantSwatch?.rgb
+                ?: PeaceOrange.toArgb()
+        } ?: PeaceOrange.toArgb()
     }
 
     Column(
@@ -294,6 +316,8 @@ internal fun PlayerScreen(
                     CustomWaveProgressBar(
                         amplitudes = amplitudes,
                         currentProgress = normalizedProgress,
+                        barColor = Color(darkPaletteColor).copy(alpha = 0.25f),
+                        playedColor = Color(darkPaletteColor),
                         onSeek = { normalized ->
                             val seekPosition = normalized * 100f
                             viewModel.onUiEvents(UIEvents.SeekTo(seekPosition))
@@ -312,8 +336,8 @@ internal fun PlayerScreen(
                     textAlign = TextAlign.Center,
                     style = TextStyle(
                         color = Color.Black,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 )
 
@@ -324,7 +348,6 @@ internal fun PlayerScreen(
                             bottom.linkTo(progressSlider.bottom)
                             end.linkTo(parent.end, margin = 12.dp)
                         }
-                        .padding(2.dp)
                         .clickable {
                             viewModel.toggleTimeDisplay()
                         },
@@ -332,8 +355,8 @@ internal fun PlayerScreen(
                     textAlign = TextAlign.Center,
                     style = TextStyle(
                         color = Color.Black,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 )
             }
@@ -350,6 +373,8 @@ internal fun PlayerScreen(
         ) {
             PlayPauseControlButton(
                 isPlaying = isPlaying,
+                playButtonColor = Color(darkPaletteColor),
+                buttonColor = Color(lightPaletteColor),
 
                 onPreviousClick = {
                     scope.launch {

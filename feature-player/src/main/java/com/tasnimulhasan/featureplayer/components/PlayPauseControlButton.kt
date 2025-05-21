@@ -34,6 +34,8 @@ import com.tasnimulhasan.designsystem.theme.violet80
 @Composable
 fun PlayPauseControlButton(
     isPlaying: Boolean,
+    playButtonColor: Color,
+    buttonColor: Color,
     onPlayPauseClick: () -> Unit,
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
@@ -48,23 +50,23 @@ fun PlayPauseControlButton(
         IconButton(
             modifier = Modifier
                 .background(
-                    color = LightOrange,
-                    shape = RoundedCornerShape(15.dp)
+                    color = playButtonColor,
+                    shape = RoundedCornerShape(10.dp)
                 )
                 .constrainAs(playPauseButton) {
                     top.linkTo(parent.top, margin = 8.dp)
                     bottom.linkTo(parent.bottom, margin = 8.dp)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                    width = Dimension.value(120.dp)
-                    height = Dimension.value(70.dp)
+                    width = Dimension.value(150.dp)
+                    height = Dimension.value(80.dp)
                 },
             onClick = onPlayPauseClick
         ) {
             Icon(
                 modifier = Modifier.width(50.dp).height(50.dp),
                 imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                tint = PeaceOrange,
+                tint = buttonColor,
                 contentDescription = "Play Pause Icon"
             )
         }
@@ -72,22 +74,22 @@ fun PlayPauseControlButton(
         IconButton(
             modifier = Modifier
                 .background(
-                    color = PeaceOrange,
-                    shape = RoundedCornerShape(50.dp)
+                    color = playButtonColor.copy(alpha = 0.25f),
+                    shape = RoundedCornerShape(25.dp)
                 )
                 .constrainAs(previousButton) {
                     top.linkTo(playPauseButton.top)
                     bottom.linkTo(playPauseButton.bottom)
                     end.linkTo(playPauseButton.start, margin = 8.dp)
-                    width = Dimension.value(70.dp)
+                    width = Dimension.value(80.dp)
                     height = Dimension.value(70.dp)
                 },
             onClick = onPreviousClick
         ) {
             Icon(
-                modifier = Modifier.width(50.dp).height(50.dp),
+                modifier = Modifier.width(40.dp).height(40.dp),
                 imageVector = Icons.Default.SkipPrevious,
-                tint = LightOrange.copy(alpha = 0.75f),
+                tint = playButtonColor.copy(alpha = 0.75f),
                 contentDescription = "Previous Icon"
             )
         }
@@ -95,22 +97,22 @@ fun PlayPauseControlButton(
         IconButton(
             modifier = Modifier
                 .background(
-                    color = PeaceOrange,
-                    shape = RoundedCornerShape(50.dp)
+                    color = playButtonColor.copy(alpha = 0.25f),
+                    shape = RoundedCornerShape(25.dp)
                 )
                 .constrainAs(nextButton) {
                     top.linkTo(playPauseButton.top)
                     bottom.linkTo(playPauseButton.bottom)
                     start.linkTo(playPauseButton.end, margin = 8.dp)
-                    width = Dimension.value(70.dp)
+                    width = Dimension.value(80.dp)
                     height = Dimension.value(70.dp)
                 },
             onClick = onNextClick
         ) {
             Icon(
-                modifier = Modifier.width(50.dp).height(50.dp),
+                modifier = Modifier.width(40.dp).height(40.dp),
                 imageVector = Icons.Default.SkipNext,
-                tint = LightOrange.copy(alpha = 0.75f),
+                tint = playButtonColor.copy(alpha = 0.75f),
                 contentDescription = "Next Icon"
             )
         }
@@ -124,6 +126,8 @@ fun PreviewPlayPauseControlButton() {
         onPlayPauseClick = { /* Handle play/pause click */ },
         onPreviousClick = { /* Handle previous click */ },
         onNextClick = { /* Handle next click */ },
-        isPlaying = false
+        isPlaying = false,
+        playButtonColor = PeaceOrange,
+        buttonColor = LightOrange
     )
 }

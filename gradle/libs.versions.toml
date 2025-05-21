@@ -42,6 +42,7 @@ timberVersion = "5.0.1"
 gsonVersion = "2.11.0"
 preferenceVersion = "1.2.1"
 constraintlayoutCompose = "1.1.1"
+paletteVersion = "1.0.0"
 
 [libraries]
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
@@ -87,6 +88,7 @@ androidx-compose-material3-windowSizeClass = { group = "androidx.compose.materia
 androidx-compose-material-iconsExtended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-window-core = { group = "androidx.window", name = "window-core", version.ref = "androidxWindowManager" }
 androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
+androidx-palette-compose = { group = "androidx.palette", name = "palette-ktx", version.ref = "paletteVersion" }
 
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "androidxNavigation" }
 androidx-compose-material3-navigationSuite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite", version.ref = "androidxComposeMaterial3AdaptiveNavigationSuite" }
@@ -159,7 +161,8 @@ androidx-material-dependencies = [
     "androidx-compose-material3-windowSizeClass",
     "androidx-compose-material-iconsExtended",
     "androidx-window-core",
-    "androidx-constraintlayout-compose"
+    "androidx-constraintlayout-compose",
+    "androidx-palette-compose"
 ]
 
 androidx-lifecycle-dependencies = [
