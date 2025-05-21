@@ -3,6 +3,7 @@ package com.tasnimulhasan.featureplayer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -17,10 +18,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -400,6 +406,32 @@ internal fun PlayerScreen(
                     viewModel.onUiEvents(UIEvents.SeekToNext)
                 }
             )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(color = Color.Transparent, shape = RoundedCornerShape(15.dp))
+                    .clickable(enabled = true, onClick = {})
+                    .padding(5.dp)
+            ) {
+                Icon(
+                    modifier = Modifier.width(40.dp).height(40.dp),
+                    imageVector = Icons.Default.SkipNext,
+                    tint = LightOrange.copy(alpha = 0.75f),
+                    contentDescription = "Next Icon"
+                )
+            }
         }
     }
 }
