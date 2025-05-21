@@ -1,4 +1,4 @@
-package com.tasnimulhasan.featureplayer
+package com.tasnimulhasan.featureplayer.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -33,7 +32,7 @@ fun CustomWaveProgressBar(
     amplitudes: List<Float>,           // List of values from 0f to 1f
     currentProgress: Float,            // 0f to 1f
     onSeek: (Float) -> Unit,           // Called when user seeks
-    barColor: Color = Color(0xFFF89A90),
+    barColor: Color = Color(0xFFFFC5BF),
     playedColor: Color = Color(0xFFF3422D),
     barWidth: Dp = 2.5.dp,
     spaceBetween: Dp = 2.dp,

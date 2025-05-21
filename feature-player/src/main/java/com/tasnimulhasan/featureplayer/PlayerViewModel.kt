@@ -62,8 +62,15 @@ class PlayerViewModel @Inject constructor(
     private val _progress = MutableStateFlow(0f)
     val progress = _progress.asStateFlow()
 
-    private val _progressString = MutableStateFlow("00:00")
+    private val _progressString = MutableStateFlow("00\n00")
     val progressString = _progressString.asStateFlow()
+
+    private val _progressStringMinutes = MutableStateFlow("00")
+    val progressStringMinutes = _progressStringMinutes.asStateFlow()
+
+    private val _progressStringSeconds = MutableStateFlow("00")
+    val progressStringSeconds = _progressStringSeconds.asStateFlow()
+
     private var initialized = false
 
     private val _showElapsedTime = MutableStateFlow(true) // Default to elapsed time
@@ -180,37 +187,40 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    /*private fun calculateProgressValue(currentProgress: Long) {
-        _progress.value =
-            if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
-            else 0f
-        _progressString.value = formatDuration(duration - currentProgress)
-    }*/
-
     private fun calculateProgressValue(currentProgress: Long) {
-        _progress.value =
-            if (currentProgress > 0 && duration > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
-            else 0f
-        _progressString.value = if (_showElapsedTime.value) {
-            formatDuration(currentProgress) // Elapsed time
-        } /*else {
-            formatDuration(duration - currentProgress) // Remaining time
-        }*/else {
-            formatDuration(if (duration > currentProgress) duration - currentProgress else 0L)
-        }
+        _progress.value = if (currentProgress > 0 && duration > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f) else 0f
+
+        _progressString.value = if (_showElapsedTime.value) formatDuration(currentProgress) //Minutes Seconds Value
+        else formatDuration(if (duration > currentProgress) duration - currentProgress else 0L)
+
+        _progressStringMinutes.value = if (_showElapsedTime.value) formatDurationMinutes(currentProgress) //Minutes Value
+        else formatDurationMinutes(if (duration > currentProgress) duration - currentProgress else 0L)
+
+        _progressStringSeconds.value = if (_showElapsedTime.value) formatDurationSeconds(currentProgress)//Seconds Value
+        else formatDurationSeconds(if (duration > currentProgress) duration - currentProgress else 0L)
     }
 
-    private fun calculateElapsedTime(currentProgress: Long) {
+    /*private fun calculateElapsedTime(currentProgress: Long) {
         _progress.value =
             if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
             else 0f
         _progressString.value = formatDuration(currentProgress) // later changed to upper method using condition
-    }
+    }*/
 
     private fun formatDuration(duration: Long): String {
         val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
-        return String.format(Locale.getDefault(), "%02d:%02d", minute, seconds)
+        return String.format(Locale.getDefault(), "%02d\n%02d", minute, seconds)
+    }
+
+    private fun formatDurationMinutes(duration: Long): String {
+        val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
+        return String.format(Locale.getDefault(), "%02d", minute)
+    }
+
+    private fun formatDurationSeconds(duration: Long): String {
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
+        return String.format(Locale.getDefault(), "%02d", seconds)
     }
 
     fun convertLongToReadableDateTime(time: Long, format: String): String {

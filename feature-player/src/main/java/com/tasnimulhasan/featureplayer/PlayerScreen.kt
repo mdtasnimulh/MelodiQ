@@ -16,25 +16,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,9 +48,11 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.tasnimulhasan.featureplayer.components.CustomFLipText
+import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
+import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
-import kotlin.math.roundToInt
 import kotlin.random.Random
 import com.tasnimulhasan.designsystem.R as Res
 
@@ -77,7 +70,9 @@ internal fun PlayerScreen(
 
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
-    val progressString by viewModel.progressString.collectAsStateWithLifecycle()
+    //val progressString by viewModel.progressString.collectAsStateWithLifecycle()
+    val progressStringMinutes by viewModel.progressStringMinutes.collectAsStateWithLifecycle()
+    val progressStringSeconds by viewModel.progressStringSeconds.collectAsStateWithLifecycle()
 
     // Animation and gesture handling
     val density = LocalDensity.current
@@ -87,9 +82,6 @@ internal fun PlayerScreen(
 
     // Find the index of the selected music
     val initialPageIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
-    /*LaunchedEffect(initialPageIndex) {
-        pagerState.scrollToPage(initialPageIndex)
-    }*/
     LaunchedEffect(initialPageIndex) {
         if (initialPageIndex >= 0) {
             pagerState.scrollToPage(initialPageIndex)
@@ -203,11 +195,14 @@ internal fun PlayerScreen(
                 modifier = Modifier
                     .padding(horizontal = 15.dp)
                     .graphicsLayer {
-                        val scale = lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
+                        val scale =
+                            lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
                         scaleX = scale
                         scaleY = scale
-                        alpha = lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
-                        translationX = lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
+                        alpha =
+                            lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
+                        translationX =
+                            lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
                     }
             ) {
                 AsyncImage(
@@ -233,8 +228,8 @@ internal fun PlayerScreen(
                 maxLines = 1,
                 style = TextStyle(
                     color = Color.Black,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
                 ),
             )
@@ -250,12 +245,30 @@ internal fun PlayerScreen(
                 style = TextStyle(
                     color = Color.Gray,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     textAlign = TextAlign.Center,
                 ),
             )
 
-            Spacer(modifier.height(16.dp))
+            Spacer(modifier.height(4.dp))
+
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                text = viewModel.convertLongToReadableDateTime(
+                    currentTrack.duration.toLong(),
+                    "mm:ss"
+                ),
+                textAlign = TextAlign.Center,
+                style = TextStyle(
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+
+            Spacer(modifier.height(12.dp))
 
             ConstraintLayout(
                 modifier = Modifier
@@ -288,24 +301,18 @@ internal fun PlayerScreen(
                     )
                 }
 
-                /*Slider(
-                    modifier = Modifier.weight(4f),
-                    value = progress,
-                    onValueChange = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
-                    valueRange = 0f..100f
-                )*/
-
                 Text(
                     modifier = Modifier
                         .constrainAs(durationText) {
-                            top.linkTo(progressSlider.bottom, margin = 4.dp)
-                            start.linkTo(parent.start, margin = 16.dp)
+                            top.linkTo(progressSlider.top)
+                            bottom.linkTo(progressSlider.bottom)
+                            start.linkTo(parent.start, margin = 12.dp)
                         },
-                    text = viewModel.convertLongToReadableDateTime(currentTrack.duration.toLong(), "mm:ss"),
+                    text = progressStringMinutes,
                     textAlign = TextAlign.Center,
                     style = TextStyle(
-                        color = Color.Gray,
-                        fontSize = 14.sp,
+                        color = Color.Black,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -313,70 +320,59 @@ internal fun PlayerScreen(
                 Text(
                     modifier = Modifier
                         .constrainAs(progressText) {
-                            top.linkTo(progressSlider.bottom, margin = 4.dp)
-                            end.linkTo(parent.end, margin = 16.dp)
+                            top.linkTo(progressSlider.top)
+                            bottom.linkTo(progressSlider.bottom)
+                            end.linkTo(parent.end, margin = 12.dp)
                         }
+                        .padding(2.dp)
                         .clickable {
                             viewModel.toggleTimeDisplay()
                         },
-                    text = progressString,
+                    text = progressStringSeconds,
                     textAlign = TextAlign.Center,
                     style = TextStyle(
-                        color = Color.Gray,
-                        fontSize = 14.sp,
+                        color = Color.Black,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
             }
         }
 
-        Spacer(modifier.height(16.dp))
+        Spacer(modifier.height(8.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            IconButton(onClick = {
-                scope.launch {
-                    if (currentPage > 0)
-                        pagerState.animateScrollToPage(currentPage - 1)
-                    else
-                        pagerState.animateScrollToPage(audioList.size - 1)
-                }
-                viewModel.onUiEvents(UIEvents.SeekToPrevious)
-            } ) {
-                Icon(
-                    modifier = Modifier.size(32.dp),
-                    painter = painterResource(Res.drawable.ic_backward),
-                    contentDescription = null
-                )
-            }
+            PlayPauseControlButton(
+                isPlaying = isPlaying,
 
-            IconButton(onClick = { viewModel.onUiEvents(UIEvents.PlayPause) }) {
-                Icon(
-                    modifier = Modifier.size(40.dp),
-                    painter = if (isPlaying) painterResource(Res.drawable.ic_pause_circle) else painterResource(Res.drawable.ic_play_circle),
-                    contentDescription = null
-                )
-            }
+                onPreviousClick = {
+                    scope.launch {
+                        if (currentPage > 0)
+                            pagerState.animateScrollToPage(currentPage - 1)
+                        else
+                            pagerState.animateScrollToPage(audioList.size - 1)
+                    }
+                    viewModel.onUiEvents(UIEvents.SeekToPrevious)
+                },
 
-            IconButton(onClick = {
-                scope.launch {
-                    if (currentPage == viewModel.audioList.size-1)
-                        pagerState.animateScrollToPage(0)
-                    else
-                        pagerState.animateScrollToPage(currentPage + 1)
+                onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
+
+                onNextClick = {
+                    scope.launch {
+                        if (currentPage == viewModel.audioList.size-1)
+                            pagerState.animateScrollToPage(0)
+                        else
+                            pagerState.animateScrollToPage(currentPage + 1)
+                    }
+                    viewModel.onUiEvents(UIEvents.SeekToNext)
                 }
-                viewModel.onUiEvents(UIEvents.SeekToNext)
-            }) {
-                Icon(
-                    modifier = Modifier.size(32.dp),
-                    painter = painterResource(Res.drawable.ic_next),
-                    contentDescription = null,
-                )
-            }
+            )
         }
     }
 }
