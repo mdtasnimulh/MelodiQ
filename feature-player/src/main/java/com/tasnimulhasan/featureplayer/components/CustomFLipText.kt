@@ -45,7 +45,7 @@ fun CustomFLipText(digit: String) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(48.dp, 64.dp)
+            .size(32.dp, 48.dp)
             .graphicsLayer {
                 rotationX = xRotationValue.value
                 cameraDistance = 8 * density
@@ -55,7 +55,7 @@ fun CustomFLipText(digit: String) {
     ) {
         Text(
             text = displayedDigit.toString(),
-            fontSize = 32.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
