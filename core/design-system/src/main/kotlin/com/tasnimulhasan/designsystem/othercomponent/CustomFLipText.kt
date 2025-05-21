@@ -1,4 +1,4 @@
-package com.tasnimulhasan.featureplayer.components
+package com.tasnimulhasan.designsystem.othercomponent
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
