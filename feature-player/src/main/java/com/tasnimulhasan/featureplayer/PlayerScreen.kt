@@ -24,6 +24,9 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Forward5
+import androidx.compose.material.icons.filled.Replay5
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -423,11 +426,27 @@ internal fun PlayerScreen(
                     .weight(1f)
                     .background(color = Color.Transparent, shape = RoundedCornerShape(15.dp))
                     .clickable(enabled = true, onClick = {})
-                    .padding(5.dp)
+                    .padding(horizontal = 10.dp)
             ) {
                 Icon(
                     modifier = Modifier.width(40.dp).height(40.dp),
-                    imageVector = Icons.Default.SkipNext,
+                    imageVector = Icons.Default.Replay5,
+                    tint = LightOrange.copy(alpha = 0.75f),
+                    contentDescription = "Next Icon"
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(color = Color.Transparent, shape = RoundedCornerShape(15.dp))
+                    .clickable(enabled = true, onClick = {})
+                    .padding(horizontal = 10.dp)
+            ) {
+                Icon(
+                    modifier = Modifier.width(40.dp).height(40.dp),
+                    imageVector = Icons.Default.Forward5,
                     tint = LightOrange.copy(alpha = 0.75f),
                     contentDescription = "Next Icon"
                 )
