@@ -165,8 +165,11 @@ class PlayerViewModel @Inject constructor(
 
     fun onUiEvents(uiEvents: UIEvents) = viewModelScope.launch {
         when (uiEvents) {
-            UIEvents.Backward -> playerUseCases.previous()
-            UIEvents.Forward -> playerUseCases.next()
+            UIEvents.Backward -> playerUseCases.backwardTrackUseCase()
+            UIEvents.Forward -> playerUseCases.forwardTrackUseCase()
+            UIEvents.SeekToNext -> playerUseCases.next()
+            UIEvents.SeekToPrevious -> playerUseCases.previous()
+
             is UIEvents.PlayPause -> {
                 if (_isPlaying.value) playerUseCases.pause()
                 else playerUseCases.play()
@@ -175,15 +178,12 @@ class PlayerViewModel @Inject constructor(
                 val position = ((duration * uiEvents.position) / 100f).toLong()
                 playerUseCases.seekTo(position)
             }
-            UIEvents.SeekToNext -> playerUseCases.next()
             is UIEvents.SelectedAudioChange -> {
                 playerUseCases.selectAudioChange(uiEvents.index)
             }
             is UIEvents.UpdateProgress -> {
                 playerUseCases.updateProgress(uiEvents.newProgress)
             }
-
-            UIEvents.SeekToPrevious -> playerUseCases.previous
         }
     }
 

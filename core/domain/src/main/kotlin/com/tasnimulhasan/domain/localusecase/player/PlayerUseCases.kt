@@ -5,6 +5,8 @@ data class PlayerUseCases(
     val pause: PauseUseCase,
     val next: NextTrackUseCase,
     val previous: PreviousTrackUseCase,
+    val forwardTrackUseCase: ForwardTrackUseCase,
+    val backwardTrackUseCase: BackwardTrackUseCase,
     val seekTo: SeekToUseCase,
     val getCurrentDuration: GetCurrentDurationUseCase,
     val selectAudioChange: SelectAudioChangeUseCase,

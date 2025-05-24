@@ -27,11 +27,19 @@ class PlayerRepositoryImpl @Inject constructor(
     }
 
     override suspend fun next() {
-        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SeekToNext)
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SkipNext)
     }
 
     override suspend fun previous() {
-        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.Backward)
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SkipPrevious)
+    }
+
+    override suspend fun forward() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.ForwardTrack5Sec)
+    }
+
+    override suspend fun backward() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.BackwardTrack5Sec)
     }
 
     override suspend fun getCurrentDuration(): Long {

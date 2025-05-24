@@ -353,8 +353,12 @@ internal fun PlayerScreen(
                         viewModel.onUiEvents(UIEvents.SeekToNext)
                     },
 
-                    onSeekNextClick = {},
-                    onSeekPreviousClick = {}
+                    onSeekNextClick = {
+                        viewModel.onUiEvents(UIEvents.Forward)
+                    },
+                    onSeekPreviousClick = {
+                        viewModel.onUiEvents(UIEvents.Backward)
+                    }
                 )
             }
 

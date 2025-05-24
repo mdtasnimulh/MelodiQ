@@ -54,12 +54,12 @@ class MelodiqServiceHandler @Inject constructor(
         seekPosition: Long = 0
     ) {
         when (playerEvent) {
-            MelodiqPlayerEvent.Backward -> exoPlayer.seekTo(exoPlayer.currentPosition - 5_000)
-            MelodiqPlayerEvent.Forward -> exoPlayer.seekTo(exoPlayer.currentPosition + 5_000)
+            MelodiqPlayerEvent.BackwardTrack5Sec -> exoPlayer.seekTo(exoPlayer.currentPosition - 5_000)
+            MelodiqPlayerEvent.ForwardTrack5Sec -> exoPlayer.seekTo(exoPlayer.currentPosition + 5_000)
             MelodiqPlayerEvent.PlayPause -> playOrPause()
             MelodiqPlayerEvent.SeekTo -> exoPlayer.seekTo(seekPosition)
-            MelodiqPlayerEvent.SeekToNext -> exoPlayer.seekToNextMediaItem()
-            MelodiqPlayerEvent.SeekToPrevious -> exoPlayer.seekToPreviousMediaItem()
+            MelodiqPlayerEvent.SkipNext -> exoPlayer.seekToNextMediaItem()
+            MelodiqPlayerEvent.SkipPrevious -> exoPlayer.seekToPreviousMediaItem()
             MelodiqPlayerEvent.SelectAudioChange -> {
                 if (exoPlayer.currentMediaItemIndex != selectedAudionIndex) {
                     exoPlayer.seekToDefaultPosition(selectedAudionIndex)
@@ -153,10 +153,10 @@ class MelodiqServiceHandler @Inject constructor(
 sealed class MelodiqPlayerEvent {
     data object PlayPause : MelodiqPlayerEvent()
     data object SelectAudioChange : MelodiqPlayerEvent()
-    data object Backward : MelodiqPlayerEvent()
-    data object SeekToNext : MelodiqPlayerEvent()
-    data object SeekToPrevious : MelodiqPlayerEvent()
-    data object Forward : MelodiqPlayerEvent()
+    data object BackwardTrack5Sec : MelodiqPlayerEvent()
+    data object SkipNext : MelodiqPlayerEvent()
+    data object SkipPrevious : MelodiqPlayerEvent()
+    data object ForwardTrack5Sec : MelodiqPlayerEvent()
     data object SeekTo : MelodiqPlayerEvent()
     data object Stop : MelodiqPlayerEvent()
     data class UpdateProgress(val newProgress: Float) : MelodiqPlayerEvent()

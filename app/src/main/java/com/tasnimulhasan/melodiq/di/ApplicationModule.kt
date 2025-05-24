@@ -12,6 +12,8 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
+import com.tasnimulhasan.domain.localusecase.player.BackwardTrackUseCase
+import com.tasnimulhasan.domain.localusecase.player.ForwardTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.GetCurrentDurationUseCase
 import com.tasnimulhasan.domain.localusecase.player.GetCurrentSongInfoUseCase
 import com.tasnimulhasan.domain.localusecase.player.NextTrackUseCase
@@ -23,7 +25,6 @@ import com.tasnimulhasan.domain.localusecase.player.PreviousTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.SeekToUseCase
 import com.tasnimulhasan.domain.localusecase.player.SelectAudioChangeUseCase
 import com.tasnimulhasan.domain.localusecase.player.UpdateProgressUseCase
-import com.tasnimulhasan.domain.repository.PlayerRepository
 import com.tasnimulhasan.sharedpreference.SharedPrefHelper
 import dagger.Module
 import dagger.Provides
@@ -101,6 +102,8 @@ object ApplicationModule {
         seekTo: SeekToUseCase,
         next: NextTrackUseCase,
         previous: PreviousTrackUseCase,
+        forward: ForwardTrackUseCase,
+        backward: BackwardTrackUseCase,
         getCurrentDuration: GetCurrentDurationUseCase,
         selectAudioChange: SelectAudioChangeUseCase,
         updateProgress: UpdateProgressUseCase,
@@ -117,7 +120,9 @@ object ApplicationModule {
             selectAudioChange = selectAudioChange,
             updateProgress = updateProgress,
             observeAudioState = observeAudioState,
-            getCurrentSongInfoUseCase = getCurrentSongInfoUseCase
+            getCurrentSongInfoUseCase = getCurrentSongInfoUseCase,
+            forwardTrackUseCase = forward,
+            backwardTrackUseCase = backward
         )
     }
 
