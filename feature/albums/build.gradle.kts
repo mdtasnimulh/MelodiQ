@@ -8,5 +8,5 @@ android {
 }
 
 dependencies {
-
+    implementation(libs.androidx.media3.exoplayer.hls)
 }
