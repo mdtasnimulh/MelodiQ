@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -55,6 +56,8 @@ import com.tasnimulhasan.designsystem.theme.PeaceOrange
 import com.tasnimulhasan.featureplayer.components.CustomButtonGroups
 import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
 import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
+import com.tasnimulhasan.featureplayer.components.SleepTimerBottomSheet
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.random.Random
@@ -86,6 +89,9 @@ internal fun PlayerScreen(
     val maxDragDistance = with(density) { 500.dp.toPx() } // Max drag distance (adjustable)
     val offsetY = remember { Animatable(0f) }
     val thresholdFraction = 0.6f // 60% threshold for navigation
+
+    val showBottomSheet = remember { mutableStateOf(false) }
+    val sleepTimerRunning = remember { mutableStateOf(false) }
 
     // Find the index of the selected music
     val initialPageIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
@@ -143,6 +149,22 @@ internal fun PlayerScreen(
                 ?: palette.dominantSwatch?.rgb
                 ?: PeaceOrange.toArgb()
         } ?: PeaceOrange.toArgb()
+    }
+
+    fun startSleepTimer(hours: Int, minutes: Int, seconds: Int) {
+        if (sleepTimerRunning.value) return // Prevent multiple timers
+
+        val durationMillis = (hours * 3600 + minutes * 60 + seconds) * 1000L
+        if (durationMillis > 0) {
+            sleepTimerRunning.value = true
+            scope.launch {
+                delay(durationMillis)
+                // Pause playback before killing
+                viewModel.onUiEvents(UIEvents.PlayPause)
+                // Kill the app
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+        }
     }
 
     Column(
@@ -385,9 +407,18 @@ internal fun PlayerScreen(
                     }
                 },
                 onEQButtonClicked = {},
-                onSleepButtonClicked = {},
+                onSleepButtonClicked = { showBottomSheet.value = true },
                 onShareButtonClicked = {}
             )
+
+            if (showBottomSheet.value) {
+                SleepTimerBottomSheet(
+                    onDismiss = { showBottomSheet.value = false },
+                    onTimeSet = { hours, minutes, seconds ->
+                        startSleepTimer(hours, minutes, seconds)
+                    }
+                )
+            }
         }
     }
 }
