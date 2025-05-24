@@ -24,10 +24,10 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Forward5
 import androidx.compose.material.icons.filled.Replay5
-import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -62,6 +63,7 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.theme.LightOrange
 import com.tasnimulhasan.designsystem.theme.PeaceOrange
+import com.tasnimulhasan.featureplayer.components.CustomButtonGroups
 import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
 import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
 import kotlinx.coroutines.launch
@@ -83,9 +85,9 @@ internal fun PlayerScreen(
 
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
-    //val progressString by viewModel.progressString.collectAsStateWithLifecycle()
-    val progressStringMinutes by viewModel.progressStringMinutes.collectAsStateWithLifecycle()
-    val progressStringSeconds by viewModel.progressStringSeconds.collectAsStateWithLifecycle()
+    val progressString by viewModel.progressString.collectAsStateWithLifecycle()
+    //val progressStringMinutes by viewModel.progressStringMinutes.collectAsStateWithLifecycle()
+    //val progressStringSeconds by viewModel.progressStringSeconds.collectAsStateWithLifecycle()
 
     // Animation and gesture handling
     val density = LocalDensity.current
@@ -249,7 +251,7 @@ internal fun PlayerScreen(
             }
         }
 
-        Spacer(modifier.height(24.dp))
+        Spacer(modifier.height(16.dp))
 
         currentMusic?.let { currentTrack ->
             Text(
@@ -283,32 +285,14 @@ internal fun PlayerScreen(
                 ),
             )
 
-            Spacer(modifier.height(4.dp))
-
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                text = viewModel.convertLongToReadableDateTime(
-                    currentTrack.duration.toLong(),
-                    "mm:ss"
-                ),
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-
-            Spacer(modifier.height(12.dp))
+            Spacer(modifier.height(16.dp))
 
             ConstraintLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight()
             ) {
-                val (progressSlider, durationText, progressText) = createRefs()
+                val (progressSlider, durationRow) = createRefs()
 
                 Box(
                     modifier = Modifier
@@ -336,121 +320,141 @@ internal fun PlayerScreen(
                     )
                 }
 
-                Text(
+                Row(
                     modifier = Modifier
-                        .constrainAs(durationText) {
-                            top.linkTo(progressSlider.top)
-                            bottom.linkTo(progressSlider.bottom)
-                            start.linkTo(parent.start, margin = 12.dp)
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .padding(horizontal = 16.dp)
+                        .constrainAs(durationRow) {
+                            top.linkTo(progressSlider.bottom, margin = 8.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
                         },
-                    text = progressStringMinutes,
-                    textAlign = TextAlign.Center,
-                    style = TextStyle(
-                        color = Color.Black,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                )
-
-                Text(
-                    modifier = Modifier
-                        .constrainAs(progressText) {
-                            top.linkTo(progressSlider.top)
-                            bottom.linkTo(progressSlider.bottom)
-                            end.linkTo(parent.end, margin = 12.dp)
-                        }
-                        .clickable {
-                            viewModel.toggleTimeDisplay()
-                        },
-                    text = progressStringSeconds,
-                    textAlign = TextAlign.Center,
-                    style = TextStyle(
-                        color = Color.Black,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                )
-            }
-        }
-
-        Spacer(modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            PlayPauseControlButton(
-                isPlaying = isPlaying,
-                playButtonColor = Color(darkPaletteColor),
-                buttonColor = Color(lightPaletteColor),
-
-                onPreviousClick = {
-                    scope.launch {
-                        if (currentPage > 0)
-                            pagerState.animateScrollToPage(currentPage - 1)
-                        else
-                            pagerState.animateScrollToPage(audioList.size - 1)
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(35.dp)
+                            .weight(1.5f)
+                            .clip(RoundedCornerShape(25.dp))
+                            .background(
+                                color = Color.Transparent,
+                                shape = RoundedCornerShape(25.dp)
+                            )
+                            .clickable(
+                                onClick = {}
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .height(24.dp),
+                            imageVector = Icons.Default.Replay5,
+                            tint = Color(darkPaletteColor),
+                            contentDescription = "Skip Backward Icon"
+                        )
                     }
-                    viewModel.onUiEvents(UIEvents.SeekToPrevious)
-                },
 
-                onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
+                    Text(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(2f)
+                            .padding(horizontal = 8.dp)
+                            .clickable {
+                                viewModel.toggleTimeDisplay()
+                            },
+                        text = "$progressString / " +viewModel.convertLongToReadableDateTime(
+                            currentTrack.duration.toLong(),
+                            "mm:ss"
+                        ),
+                        textAlign = TextAlign.Center,
+                        style = TextStyle(
+                            color = Color.Gray,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
 
-                onNextClick = {
-                    scope.launch {
-                        if (currentPage == viewModel.audioList.size-1)
-                            pagerState.animateScrollToPage(0)
-                        else
-                            pagerState.animateScrollToPage(currentPage + 1)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(35.dp)
+                            .weight(1.5f)
+                            .clip(RoundedCornerShape(25.dp))
+                            .background(
+                                color = Color.Transparent,
+                                shape = RoundedCornerShape(25.dp)
+                            )
+                            .clickable(
+                                onClick = {}
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .height(24.dp),
+                            imageVector = Icons.Default.Forward5,
+                            tint = Color(darkPaletteColor),
+                            contentDescription = "Skip Forward Icon"
+                        )
                     }
-                    viewModel.onUiEvents(UIEvents.SeekToNext)
                 }
+            }
+
+            Spacer(modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                PlayPauseControlButton(
+                    isPlaying = isPlaying,
+                    playButtonColor = Color(darkPaletteColor),
+                    buttonColor = Color(lightPaletteColor),
+
+                    onPreviousClick = {
+                        scope.launch {
+                            if (currentPage > 0)
+                                pagerState.animateScrollToPage(currentPage - 1)
+                            else
+                                pagerState.animateScrollToPage(audioList.size - 1)
+                        }
+                        viewModel.onUiEvents(UIEvents.SeekToPrevious)
+                    },
+
+                    onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
+
+                    onNextClick = {
+                        scope.launch {
+                            if (currentPage == viewModel.audioList.size-1)
+                                pagerState.animateScrollToPage(0)
+                            else
+                                pagerState.animateScrollToPage(currentPage + 1)
+                        }
+                        viewModel.onUiEvents(UIEvents.SeekToNext)
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            CustomButtonGroups(
+                buttonColor = Color(darkPaletteColor).copy(alpha = 0.1f),
+                textColor = Color(darkPaletteColor).copy(alpha = 0.50f),
+                onRepeatButtonClicked = {},
+                onEQButtonClicked = {},
+                onSleepButtonClicked = {},
+                onShareButtonClicked = {}
             )
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .background(color = Color.Transparent, shape = RoundedCornerShape(15.dp))
-                    .clickable(enabled = true, onClick = {})
-                    .padding(horizontal = 10.dp)
-            ) {
-                Icon(
-                    modifier = Modifier.width(40.dp).height(40.dp),
-                    imageVector = Icons.Default.Replay5,
-                    tint = LightOrange.copy(alpha = 0.75f),
-                    contentDescription = "Next Icon"
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .background(color = Color.Transparent, shape = RoundedCornerShape(15.dp))
-                    .clickable(enabled = true, onClick = {})
-                    .padding(horizontal = 10.dp)
-            ) {
-                Icon(
-                    modifier = Modifier.width(40.dp).height(40.dp),
-                    imageVector = Icons.Default.Forward5,
-                    tint = LightOrange.copy(alpha = 0.75f),
-                    contentDescription = "Next Icon"
-                )
-            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

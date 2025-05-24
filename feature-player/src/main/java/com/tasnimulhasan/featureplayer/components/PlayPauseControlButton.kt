@@ -103,7 +103,7 @@ fun PlayPauseControlButton(
         IconButton(
             modifier = Modifier
                 .background(
-                    color = playButtonColor.copy(alpha = 0.25f),
+                    color = playButtonColor.copy(alpha = 0.20f),
                     shape = RoundedCornerShape(25.dp)
                 )
                 .constrainAs(previousButton) {
@@ -126,7 +126,7 @@ fun PlayPauseControlButton(
         IconButton(
             modifier = Modifier
                 .background(
-                    color = playButtonColor.copy(alpha = 0.25f),
+                    color = playButtonColor.copy(alpha = 0.20f),
                     shape = RoundedCornerShape(25.dp)
                 )
                 .constrainAs(nextButton) {

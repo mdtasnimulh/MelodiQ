@@ -62,7 +62,7 @@ class PlayerViewModel @Inject constructor(
     private val _progress = MutableStateFlow(0f)
     val progress = _progress.asStateFlow()
 
-    private val _progressString = MutableStateFlow("00\n00")
+    private val _progressString = MutableStateFlow("00:00")
     val progressString = _progressString.asStateFlow()
 
     private val _progressStringMinutes = MutableStateFlow("00")
@@ -210,7 +210,7 @@ class PlayerViewModel @Inject constructor(
     private fun formatDuration(duration: Long): String {
         val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
-        return String.format(Locale.getDefault(), "%02d\n%02d", minute, seconds)
+        return String.format(Locale.getDefault(), "%02d:%02d", minute, seconds)
     }
 
     private fun formatDurationMinutes(duration: Long): String {
