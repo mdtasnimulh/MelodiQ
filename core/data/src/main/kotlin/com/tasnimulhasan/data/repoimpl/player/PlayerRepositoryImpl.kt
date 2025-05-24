@@ -68,4 +68,15 @@ class PlayerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun repeatTrackOne() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.RepeatTrackOne)
+    }
+
+    override suspend fun repeatTrackAll() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.RepeatTrackALl)
+    }
+
+    override suspend fun repeatTrackOff() {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.RepeatTrackOff)
+    }
 }

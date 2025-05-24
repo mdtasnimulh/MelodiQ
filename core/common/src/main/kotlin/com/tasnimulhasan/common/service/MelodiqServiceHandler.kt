@@ -71,23 +71,21 @@ class MelodiqServiceHandler @Inject constructor(
                     _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
                     startProgressUpdate()
                 }
-                /*when (selectedAudionIndex) {
-                    exoPlayer.currentMediaItemIndex -> {
-                        playOrPause()
-                    }
-                    else -> {
-                        exoPlayer.seekToDefaultPosition(selectedAudionIndex)
-                        _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
-                        exoPlayer.playWhenReady = true
-                        startProgressUpdate()
-                    }
-                }*/
             }
             MelodiqPlayerEvent.Stop -> stopProgressUpdate()
             is MelodiqPlayerEvent.UpdateProgress -> {
                 exoPlayer.seekTo(
                     (exoPlayer.duration * playerEvent.newProgress).toLong()
                 )
+            }
+            MelodiqPlayerEvent.RepeatTrackOne -> {
+                exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
+            }
+            MelodiqPlayerEvent.RepeatTrackALl -> {
+                exoPlayer.repeatMode = Player.REPEAT_MODE_ALL
+            }
+            MelodiqPlayerEvent.RepeatTrackOff -> {
+                exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
             }
         }
     }
@@ -160,6 +158,9 @@ sealed class MelodiqPlayerEvent {
     data object SeekTo : MelodiqPlayerEvent()
     data object Stop : MelodiqPlayerEvent()
     data class UpdateProgress(val newProgress: Float) : MelodiqPlayerEvent()
+    data object RepeatTrackOne : MelodiqPlayerEvent()
+    data object RepeatTrackALl : MelodiqPlayerEvent()
+    data object RepeatTrackOff : MelodiqPlayerEvent()
 }
 
 sealed class MelodiqAudioState {

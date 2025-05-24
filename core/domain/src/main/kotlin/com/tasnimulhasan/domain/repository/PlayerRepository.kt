@@ -17,4 +17,7 @@ interface PlayerRepository {
     suspend fun updateProgress(progress: Float)
     suspend fun observeAudioState(): StateFlow<MelodiqAudioState>
     suspend fun getCurrentSongInfo(): MusicEntity?
+    suspend fun repeatTrackOne()
+    suspend fun repeatTrackAll()
+    suspend fun repeatTrackOff()
 }

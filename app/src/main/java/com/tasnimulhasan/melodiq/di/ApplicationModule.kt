@@ -22,6 +22,9 @@ import com.tasnimulhasan.domain.localusecase.player.PauseUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.player.PreviousTrackUseCase
+import com.tasnimulhasan.domain.localusecase.player.RepeatTrackAllUseCase
+import com.tasnimulhasan.domain.localusecase.player.RepeatTrackOffUseCase
+import com.tasnimulhasan.domain.localusecase.player.RepeatTrackOneUseCase
 import com.tasnimulhasan.domain.localusecase.player.SeekToUseCase
 import com.tasnimulhasan.domain.localusecase.player.SelectAudioChangeUseCase
 import com.tasnimulhasan.domain.localusecase.player.UpdateProgressUseCase
@@ -108,7 +111,10 @@ object ApplicationModule {
         selectAudioChange: SelectAudioChangeUseCase,
         updateProgress: UpdateProgressUseCase,
         observeAudioState: ObserveAudioStateUseCase,
-        getCurrentSongInfoUseCase: GetCurrentSongInfoUseCase
+        getCurrentSongInfoUseCase: GetCurrentSongInfoUseCase,
+        repeatTrackOneUseCase: RepeatTrackOneUseCase,
+        repeatTrackAllUseCase: RepeatTrackAllUseCase,
+        repeatTrackOffUseCase: RepeatTrackOffUseCase
     ): PlayerUseCases {
         return PlayerUseCases(
             play = play,
@@ -122,7 +128,10 @@ object ApplicationModule {
             observeAudioState = observeAudioState,
             getCurrentSongInfoUseCase = getCurrentSongInfoUseCase,
             forwardTrackUseCase = forward,
-            backwardTrackUseCase = backward
+            backwardTrackUseCase = backward,
+            repeatTrackOneUseCase = repeatTrackOneUseCase,
+            repeatTrackAllUseCase = repeatTrackAllUseCase,
+            repeatTrackOffUseCase = repeatTrackOffUseCase
         )
     }
 

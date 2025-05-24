@@ -508,6 +508,8 @@ internal fun PlayerScreen2(
 
                     CustomButtonGroups(
                         buttonColor = Color(darkPaletteColor).copy(alpha = 0.05f),
+                        repeatModeOne = false,
+                        repeatModeAll = false,
                         onRepeatButtonClicked = {},
                         onEQButtonClicked = {},
                         onSleepButtonClicked = {},

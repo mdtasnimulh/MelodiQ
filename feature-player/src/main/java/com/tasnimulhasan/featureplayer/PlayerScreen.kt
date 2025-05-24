@@ -1,5 +1,6 @@
 package com.tasnimulhasan.featureplayer
 
+import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -45,8 +46,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
@@ -78,6 +77,9 @@ internal fun PlayerScreen(
     val progressString by viewModel.progressString.collectAsStateWithLifecycle()
     //val progressStringMinutes by viewModel.progressStringMinutes.collectAsStateWithLifecycle()
     //val progressStringSeconds by viewModel.progressStringSeconds.collectAsStateWithLifecycle()
+    val repeatModeOne by viewModel.repeatModeOne.collectAsStateWithLifecycle()
+    val repeatModeAll by viewModel.repeatModeAll.collectAsStateWithLifecycle()
+    val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
 
     // Animation and gesture handling
     val density = LocalDensity.current
@@ -366,7 +368,22 @@ internal fun PlayerScreen(
 
             CustomButtonGroups(
                 buttonColor = Color(darkPaletteColor).copy(alpha = 0.05f),
-                onRepeatButtonClicked = {},
+                repeatModeOne = repeatModeOne,
+                repeatModeAll = repeatModeAll,
+                onRepeatButtonClicked = {
+                    if (repeatModeOff && !repeatModeOne && !repeatModeAll) {
+                        viewModel.onUiEvents(UIEvents.RepeatOne)
+                        Toast.makeText(context, Res.string.msg_repeat_one, Toast.LENGTH_SHORT).show()
+                    }
+                    else if (!repeatModeOff && repeatModeOne && !repeatModeAll) {
+                        viewModel.onUiEvents((UIEvents.RepeatAll))
+                        Toast.makeText(context, Res.string.msg_repeat_all, Toast.LENGTH_SHORT).show()
+                    }
+                    else {
+                        viewModel.onUiEvents(UIEvents.RepeatOff)
+                        Toast.makeText(context, Res.string.msg_repeat_off, Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onEQButtonClicked = {},
                 onSleepButtonClicked = {},
                 onShareButtonClicked = {}

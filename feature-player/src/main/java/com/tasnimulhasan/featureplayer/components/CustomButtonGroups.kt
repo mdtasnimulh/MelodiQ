@@ -12,12 +12,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.FilterNone
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOn
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.RepeatOneOn
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +38,8 @@ import com.tasnimulhasan.designsystem.theme.WhiteOrange
 @Composable
 fun CustomButtonGroups(
     buttonColor: Color,
+    repeatModeOne: Boolean,
+    repeatModeAll: Boolean,
     onRepeatButtonClicked: () -> Unit,
     onEQButtonClicked: () -> Unit,
     onSleepButtonClicked: () -> Unit,
@@ -62,7 +72,9 @@ fun CustomButtonGroups(
                 modifier = Modifier
                     .width(24.dp)
                     .height(24.dp),
-                imageVector = Icons.Default.Repeat,
+                imageVector = if (repeatModeAll) Icons.Default.AllInclusive
+                else if (repeatModeOne) Icons.Default.RepeatOne
+                else Icons.Default.Repeat,
                 tint = buttonColor.copy(alpha = 0.75f),
                 contentDescription = "Repeat Button"
             )
@@ -153,6 +165,8 @@ fun CustomButtonGroups(
 fun PreviewCustomButtonGroups() {
     CustomButtonGroups(
         buttonColor = LightOrange.copy(alpha = 0.05f),
+        repeatModeOne = true,
+        repeatModeAll = false,
         onRepeatButtonClicked = {},
         onEQButtonClicked = {},
         onSleepButtonClicked = {},

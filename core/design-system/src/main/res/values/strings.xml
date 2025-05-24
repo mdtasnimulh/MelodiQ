@@ -17,4 +17,8 @@
     <string name="label_now_playing">Now Playing</string>
 
     <string name="desc_album_cover_art">Album Cover Art</string>
+
+    <string name="msg_repeat_one">Current track will be repeated</string>
+    <string name="msg_repeat_all">All track will be repeated</string>
+    <string name="msg_repeat_off">Repeat Off</string>
 </resources>

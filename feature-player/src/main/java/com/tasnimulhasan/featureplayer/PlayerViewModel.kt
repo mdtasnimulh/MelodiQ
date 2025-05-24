@@ -76,6 +76,15 @@ class PlayerViewModel @Inject constructor(
     private val _showElapsedTime = MutableStateFlow(true) // Default to elapsed time
     val showElapsedTime = _showElapsedTime.asStateFlow()
 
+    private val _repeatModeOne = MutableStateFlow(false)
+    val repeatModeOne = _repeatModeOne.asStateFlow()
+
+    private val _repeatModeAll = MutableStateFlow(false)
+    val repeatModeAll = _repeatModeAll.asStateFlow()
+
+    private val _repeatModeOff = MutableStateFlow(true)
+    val repeatModeOff = _repeatModeOff.asStateFlow()
+
     fun toggleTimeDisplay() {
         _showElapsedTime.value = !_showElapsedTime.value
         // Recalculate progressString with the new mode
@@ -170,6 +179,23 @@ class PlayerViewModel @Inject constructor(
             UIEvents.SeekToNext -> playerUseCases.next()
             UIEvents.SeekToPrevious -> playerUseCases.previous()
 
+            UIEvents.RepeatOne -> {
+                _repeatModeOff.value = false
+                _repeatModeOne.value = true
+                playerUseCases.repeatTrackOneUseCase()
+            }
+            UIEvents.RepeatAll -> {
+                _repeatModeOff.value = false
+                _repeatModeAll.value = true
+                playerUseCases.repeatTrackAllUseCase()
+            }
+            UIEvents.RepeatOff -> {
+                _repeatModeOne.value = false
+                _repeatModeAll.value = false
+                _repeatModeOff.value = true
+                playerUseCases.repeatTrackOffUseCase()
+            }
+
             is UIEvents.PlayPause -> {
                 if (_isPlaying.value) playerUseCases.pause()
                 else playerUseCases.play()
@@ -238,6 +264,9 @@ sealed class UIEvents {
     data object Backward : UIEvents()
     data object Forward : UIEvents()
     data class UpdateProgress(val newProgress: Float) : UIEvents()
+    data object RepeatOne : UIEvents()
+    data object RepeatAll : UIEvents()
+    data object RepeatOff : UIEvents()
 }
 
 sealed class UIState {
