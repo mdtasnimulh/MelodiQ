@@ -30,7 +30,6 @@ import com.tasnimulhasan.designsystem.theme.WhiteOrange
 @Composable
 fun CustomButtonGroups(
     buttonColor: Color,
-    textColor: Color,
     onRepeatButtonClicked: () -> Unit,
     onEQButtonClicked: () -> Unit,
     onSleepButtonClicked: () -> Unit,
@@ -64,7 +63,7 @@ fun CustomButtonGroups(
                     .width(24.dp)
                     .height(24.dp),
                 imageVector = Icons.Default.Repeat,
-                tint = textColor,
+                tint = buttonColor.copy(alpha = 0.75f),
                 contentDescription = "Repeat Button"
             )
         }
@@ -90,7 +89,7 @@ fun CustomButtonGroups(
                     .width(24.dp)
                     .height(24.dp),
                 imageVector = Icons.Default.GraphicEq,
-                tint = textColor,
+                tint = buttonColor.copy(alpha = 0.75f),
                 contentDescription = "Equalizer Button"
             )
         }
@@ -116,7 +115,7 @@ fun CustomButtonGroups(
                     .width(24.dp)
                     .height(24.dp),
                 imageVector = Icons.Default.Timer,
-                tint = textColor,
+                tint = buttonColor.copy(alpha = 0.75f),
                 contentDescription = "Sleep Button"
             )
         }
@@ -142,7 +141,7 @@ fun CustomButtonGroups(
                     .width(24.dp)
                     .height(24.dp),
                 imageVector = Icons.Default.Share,
-                tint = textColor,
+                tint = buttonColor.copy(alpha = 0.75f),
                 contentDescription = "Share Button"
             )
         }
@@ -153,8 +152,7 @@ fun CustomButtonGroups(
 @Composable
 fun PreviewCustomButtonGroups() {
     CustomButtonGroups(
-        buttonColor = LightOrange,
-        textColor = WhiteOrange,
+        buttonColor = LightOrange.copy(alpha = 0.05f),
         onRepeatButtonClicked = {},
         onEQButtonClicked = {},
         onSleepButtonClicked = {},

@@ -3,7 +3,6 @@ package com.tasnimulhasan.featureplayer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -18,16 +17,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forward5
-import androidx.compose.material.icons.filled.Replay5
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -283,124 +275,47 @@ internal fun PlayerScreen(
                 ),
             )
 
-            Spacer(modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            ConstraintLayout(
+            Text(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight()
+                    .clickable {
+                        viewModel.toggleTimeDisplay()
+                    },
+                text = "$progressString / " +viewModel.convertLongToReadableDateTime(
+                    currentTrack.duration.toLong(),
+                    "mm:ss"
+                ),
+                textAlign = TextAlign.Center,
+                style = TextStyle(
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            )
+
+            Spacer(modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                contentAlignment = Alignment.Center
             ) {
-                val (progressSlider, durationRow) = createRefs()
+                val amplitudes = remember { List(60) { Random.nextFloat() } }
+                val normalizedProgress = progress / 100f
 
-                Box(
-                    modifier = Modifier
-                        .constrainAs(progressSlider) {
-                            top.linkTo(parent.top)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                            width = Dimension.fillToConstraints
-                            height = Dimension.wrapContent
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    val amplitudes = remember { List(60) { Random.nextFloat() } }
-                    val normalizedProgress = progress / 100f
-
-                    CustomWaveProgressBar(
-                        amplitudes = amplitudes,
-                        currentProgress = normalizedProgress,
-                        barColor = Color(darkPaletteColor).copy(alpha = 0.25f),
-                        playedColor = Color(darkPaletteColor),
-                        onSeek = { normalized ->
-                            val seekPosition = normalized * 100f
-                            viewModel.onUiEvents(UIEvents.SeekTo(seekPosition))
-                        }
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight()
-                        .padding(horizontal = 16.dp)
-                        .constrainAs(durationRow) {
-                            top.linkTo(progressSlider.bottom, margin = 8.dp)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                        },
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(35.dp)
-                            .weight(1.5f)
-                            .clip(RoundedCornerShape(25.dp))
-                            .background(
-                                color = Color.Transparent,
-                                shape = RoundedCornerShape(25.dp)
-                            )
-                            .clickable(
-                                onClick = {}
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .height(24.dp),
-                            imageVector = Icons.Default.Replay5,
-                            tint = Color(darkPaletteColor),
-                            contentDescription = "Skip Backward Icon"
-                        )
+                CustomWaveProgressBar(
+                    amplitudes = amplitudes,
+                    currentProgress = normalizedProgress,
+                    barColor = Color(darkPaletteColor).copy(alpha = 0.25f),
+                    playedColor = Color(darkPaletteColor),
+                    onSeek = { normalized ->
+                        val seekPosition = normalized * 100f
+                        viewModel.onUiEvents(UIEvents.SeekTo(seekPosition))
                     }
-
-                    Text(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(2f)
-                            .padding(horizontal = 8.dp)
-                            .clickable {
-                                viewModel.toggleTimeDisplay()
-                            },
-                        text = "$progressString / " +viewModel.convertLongToReadableDateTime(
-                            currentTrack.duration.toLong(),
-                            "mm:ss"
-                        ),
-                        textAlign = TextAlign.Center,
-                        style = TextStyle(
-                            color = Color.Gray,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(35.dp)
-                            .weight(1.5f)
-                            .clip(RoundedCornerShape(25.dp))
-                            .background(
-                                color = Color.Transparent,
-                                shape = RoundedCornerShape(25.dp)
-                            )
-                            .clickable(
-                                onClick = {}
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .height(24.dp),
-                            imageVector = Icons.Default.Forward5,
-                            tint = Color(darkPaletteColor),
-                            contentDescription = "Skip Forward Icon"
-                        )
-                    }
-                }
+                )
             }
 
             Spacer(modifier.height(16.dp))
@@ -415,7 +330,6 @@ internal fun PlayerScreen(
                 PlayPauseControlButton(
                     isPlaying = isPlaying,
                     playButtonColor = Color(darkPaletteColor),
-                    buttonColor = Color(lightPaletteColor),
 
                     onPreviousClick = {
                         scope.launch {
@@ -437,22 +351,22 @@ internal fun PlayerScreen(
                                 pagerState.animateScrollToPage(currentPage + 1)
                         }
                         viewModel.onUiEvents(UIEvents.SeekToNext)
-                    }
+                    },
+
+                    onSeekNextClick = {},
+                    onSeekPreviousClick = {}
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
             CustomButtonGroups(
-                buttonColor = Color(darkPaletteColor).copy(alpha = 0.1f),
-                textColor = Color(darkPaletteColor).copy(alpha = 0.50f),
+                buttonColor = Color(darkPaletteColor).copy(alpha = 0.05f),
                 onRepeatButtonClicked = {},
                 onEQButtonClicked = {},
                 onSleepButtonClicked = {},
                 onShareButtonClicked = {}
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

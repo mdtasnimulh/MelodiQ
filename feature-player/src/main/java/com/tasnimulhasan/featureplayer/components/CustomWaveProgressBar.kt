@@ -52,7 +52,7 @@ fun CustomWaveProgressBar(
         modifier = Modifier
             .fillMaxWidth()  // ✅ 85% of screen width
             .height(50.dp)
-            .padding(horizontal = 16.dp, vertical = 5.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     val newX = change.position.x

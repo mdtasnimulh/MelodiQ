@@ -476,7 +476,6 @@ internal fun PlayerScreen2(
                         PlayPauseControlButton(
                             isPlaying = isPlaying,
                             playButtonColor = Color(darkPaletteColor),
-                            buttonColor = Color(lightPaletteColor),
 
                             onPreviousClick = {
                                 scope.launch {
@@ -498,15 +497,17 @@ internal fun PlayerScreen2(
                                         pagerState.animateScrollToPage(currentPage + 1)
                                 }
                                 viewModel.onUiEvents(UIEvents.SeekToNext)
-                            }
+                            },
+
+                            onSeekNextClick = {},
+                            onSeekPreviousClick = {}
                         )
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
                     CustomButtonGroups(
-                        buttonColor = Color(darkPaletteColor).copy(alpha = 0.1f),
-                        textColor = Color(darkPaletteColor).copy(alpha = 0.50f),
+                        buttonColor = Color(darkPaletteColor).copy(alpha = 0.05f),
                         onRepeatButtonClicked = {},
                         onEQButtonClicked = {},
                         onSleepButtonClicked = {},
