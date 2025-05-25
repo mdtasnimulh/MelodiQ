@@ -1,9 +1,17 @@
 package com.tasnimulhasan.albums
 
 import android.media.audiofx.Equalizer
+import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.base.BaseViewModel
+import com.tasnimulhasan.domain.localusecase.datastore.GetEqTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetEqTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetEqualizerEnabledUseCase
+import com.tasnimulhasan.entity.AppConfiguration
+import com.tasnimulhasan.entity.eqalizer.AudioEffects
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 const val PRESET_CUSTOM = 0
@@ -27,19 +35,22 @@ val PODCAST = arrayListOf(-0.12, 0.26, 0.36, 0.16, -0.2)
 
 @HiltViewModel
 class AlbumViewModel @Inject constructor(
-    //private val equalizerPreferences: EqualizerPreferences
+    private val setEqTypeUseCase: SetEqTypeUseCase,
+    private val getEqTypeUseCase: GetEqTypeUseCase,
+    private val setEqualizerEnabledUseCase: SetEqualizerEnabledUseCase
 ) : BaseViewModel() {
     val audioEffects = MutableStateFlow<AudioEffects?>(null)
-    private var equalizer: Equalizer? = null
     val enableEqualizer = MutableStateFlow(false)
+    private var equalizer: Equalizer? = null
     private var audioSessionId = 0
 
     init {
-        //enableEqualizer.value = equalizerPreferences.isEqualizerEnabled
-        //audioEffects.tryEmit(equalizerPreferences.audioEffects)
-
-        if (audioEffects.value == null) {
-            audioEffects.tryEmit(AudioEffects(PRESET_FLAT, FLAT))
+        // Initialize with DataStore values
+        viewModelScope.launch {
+            getEqTypeUseCase.invoke().collectLatest { appConfig ->
+                audioEffects.tryEmit(appConfig.audioEffects)
+                enableEqualizer.tryEmit(appConfig.enableEqualizer)
+            }
         }
     }
 
@@ -47,7 +58,6 @@ class AlbumViewModel @Inject constructor(
         audioSessionId = sessionId
         equalizer?.enabled = enableEqualizer.value
         equalizer = Equalizer(Int.MAX_VALUE, audioSessionId)
-        //equalizerPreferences.lowestBandLevel = equalizer?.bandLevelRange?.get(0)?.toInt() ?: 0
         audioEffects.value?.gainValues?.forEachIndexed { index, value ->
             val bandLevel = (value * 1000).toInt().toShort()
             equalizer?.setBandLevel(index.toShort(), bandLevel)
@@ -63,8 +73,11 @@ class AlbumViewModel @Inject constructor(
             ArrayList(getPresetGainValue(presetPosition))
         }
 
-        audioEffects.tryEmit(AudioEffects(presetPosition, gain))
-        //equalizerPreferences.audioEffects = audioEffects.value
+        val newAudioEffects = AudioEffects(presetPosition, gain)
+        audioEffects.tryEmit(newAudioEffects)
+        viewModelScope.launch {
+            setEqTypeUseCase.invoke(newAudioEffects)
+        }
 
         equalizer?.apply {
             gain.forEachIndexed { index, value ->
@@ -75,27 +88,28 @@ class AlbumViewModel @Inject constructor(
     }
 
     fun onBandLevelChanged(changedBand: Int, newGainValue: Int) {
-        //val lowest = equalizerPreferences.lowestBandLevel
-        val bandLevel = newGainValue.plus(0)
+        val bandLevel = newGainValue
         equalizer?.setBandLevel(changedBand.toShort(), bandLevel.toShort())
         val list = ArrayList(audioEffects.value!!.gainValues)
         list[changedBand] = (newGainValue.toDouble() / 1000)
-        audioEffects.tryEmit(
-            AudioEffects(
-                PRESET_CUSTOM,
-                list
-            )
-        )
-        //equalizerPreferences.audioEffects = audioEffects.value
+        val newAudioEffects = AudioEffects(PRESET_CUSTOM, list)
+        audioEffects.tryEmit(newAudioEffects)
+        viewModelScope.launch {
+            setEqTypeUseCase.invoke(newAudioEffects)
+        }
     }
 
     fun toggleEqualizer() {
-        enableEqualizer.tryEmit(!enableEqualizer.value)
-        equalizer?.enabled = enableEqualizer.value
-        //equalizerPreferences.isEqualizerEnabled = enableEqualizer.value
-        if (!enableEqualizer.value) {
-            audioEffects.tryEmit(AudioEffects(PRESET_FLAT, FLAT))
-            //equalizerPreferences.audioEffects = audioEffects.value
+        val newState = !enableEqualizer.value
+        enableEqualizer.tryEmit(newState)
+        equalizer?.enabled = newState
+        viewModelScope.launch {
+            setEqualizerEnabledUseCase.invoke(newState)
+            if (!newState) {
+                val newAudioEffects = AudioEffects(PRESET_FLAT, FLAT)
+                audioEffects.tryEmit(newAudioEffects)
+                setEqTypeUseCase.invoke(newAudioEffects)
+            }
         }
     }
 

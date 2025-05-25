@@ -42,7 +42,7 @@ include(":core:model:api-response")
 include(":core:model:entity")
 include(":core:ui")
 include(":core:notifications")
-include(":core:shared-preference")
+include(":core:datastore")
 /*** Core Modules ***/
 
 /*** Feature Modules ***/

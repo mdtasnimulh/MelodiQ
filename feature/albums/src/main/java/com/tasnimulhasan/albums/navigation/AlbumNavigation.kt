@@ -6,7 +6,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
-import com.tasnimulhasan.albums.AlbumsRoute
+import com.tasnimulhasan.albums.AlbumsScreen
 import kotlinx.serialization.Serializable
 
 @Serializable object AlbumRoute
@@ -20,6 +20,6 @@ fun NavGraphBuilder.albumScreen() {
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
     ) {
-        AlbumsRoute()
+        AlbumsScreen()
     }
 }

@@ -77,7 +77,7 @@ dependencies {
         implementation(model.apiResponse)
         implementation(model.entity)
         implementation(notifications)
-        implementation(sharedPreference)
+        implementation(datastore)
         implementation(ui)
     }
     /*** Core Modules ***/
@@ -119,6 +119,8 @@ dependencies {
     implementation(libs.coil.kt)
     implementation(libs.gson)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.dataStore.core)
+    implementation(libs.androidx.datastore.preferences)
 
     ksp(libs.hilt.compiler)
     implementation(libs.timber)

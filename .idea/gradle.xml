@@ -29,6 +29,7 @@
             <option value="$PROJECT_DIR$/core/common" />
             <option value="$PROJECT_DIR$/core/data" />
             <option value="$PROJECT_DIR$/core/database" />
+            <option value="$PROJECT_DIR$/core/datastore" />
             <option value="$PROJECT_DIR$/core/design-system" />
             <option value="$PROJECT_DIR$/core/di" />
             <option value="$PROJECT_DIR$/core/domain" />
@@ -36,7 +37,6 @@
             <option value="$PROJECT_DIR$/core/model/api-response" />
             <option value="$PROJECT_DIR$/core/model/entity" />
             <option value="$PROJECT_DIR$/core/notifications" />
-            <option value="$PROJECT_DIR$/core/shared-preference" />
             <option value="$PROJECT_DIR$/core/ui" />
             <option value="$PROJECT_DIR$/feature" />
             <option value="$PROJECT_DIR$/feature-favourite" />
@@ -52,7 +52,6 @@
             <option value="$PROJECT_DIR$/feature/songs" />
           </set>
         </option>
-        <option name="resolveExternalAnnotations" value="false" />
       </GradleProjectSettings>
     </option>
   </component>

@@ -13,6 +13,8 @@
     <string name="title_queue">Queue</string>
     <string name="title_about">About</string>
     <string name="title_feedback">Feedback</string>
+    <string name="presets_title_text">Presets</string>
+    <string name="equalizer_title_text">Equalizer</string>
 
     <string name="label_now_playing">Now Playing</string>
 

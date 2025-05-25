@@ -2,6 +2,7 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel target="11">
+      <module name="MelodiQ.core.shared-preference" target="21" />
       <module name="MelodiQ.feature.settings" target="21" />
     </bytecodeTargetLevel>
   </component>

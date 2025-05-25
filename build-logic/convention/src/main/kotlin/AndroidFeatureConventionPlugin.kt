@@ -26,7 +26,7 @@ class AndroidFeatureConventionPlugin : Plugin<Project> {
                 add("implementation", project(":core:di"))
                 add("implementation", project(":core:domain"))
                 add("implementation", project(":core:model:entity"))
-                add("implementation", project(":core:shared-preference"))
+                add("implementation", project(":core:datastore"))
 
                 add("implementation", project(":core:common"))
                 add("implementation", project(":core:design-system"))

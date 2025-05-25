@@ -1,6 +1,5 @@
 package com.tasnimulhasan.albums
 
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,22 +15,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -39,8 +37,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -51,8 +47,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,38 +54,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.ui.PlayerView
-
-var effectType = arrayListOf(
-    "Custom", "Flat", "Acoustic", "Dance",
-    "Hip Hop", "Jazz", "Pop", "Rock", "Podcast"
-)
-
-const val M3U8_URL = "http://sample.vodobox.net/skate_phantom_flex_4k/skate_phantom_flex_4k.m3u8"
+import com.tasnimulhasan.common.constant.AppConstants.effectType
+import timber.log.Timber
+import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
-internal fun AlbumsRoute(
-    modifier: Modifier = Modifier,
+internal fun AlbumsScreen(
     viewModel: AlbumViewModel = hiltViewModel()
 ) {
-    AlbumsScreen(
-        modifier
-    )
-}
-
-@Composable
-internal fun AlbumsScreen(modifier: Modifier) {
-    val viewModel = hiltViewModel<AlbumViewModel>()
     val enableEqualizer by viewModel.enableEqualizer.collectAsState()
 
     LazyColumn(
@@ -99,11 +71,7 @@ internal fun AlbumsScreen(modifier: Modifier) {
         contentPadding = PaddingValues(top = 16.dp)
     ) {
         item {
-            VideoPlayerView(viewModel)
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         item {
@@ -113,10 +81,10 @@ internal fun AlbumsScreen(modifier: Modifier) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Equalizer",//stringResource(R.string.equalizer_title_text),
+                    text = stringResource(Res.string.equalizer_title_text),
                     fontSize = MaterialTheme.typography.titleLarge.fontSize,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = Color.Gray
                 )
 
                 Switch(
@@ -125,7 +93,7 @@ internal fun AlbumsScreen(modifier: Modifier) {
                     }, colors = SwitchDefaults.colors(
                         checkedTrackColor = Color.Black,
                         checkedIconColor = Color.Black,
-                        uncheckedTrackColor = Color.White,
+                        uncheckedTrackColor = Color.Gray,
                         uncheckedBorderColor = Color.Black,
                     )
                 )
@@ -154,70 +122,8 @@ internal fun AlbumsScreen(modifier: Modifier) {
         }
 
         item {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-}
-
-@androidx.annotation.OptIn(UnstableApi::class)
-@Composable
-fun VideoPlayerView(viewModel: AlbumViewModel) {
-    val context = LocalContext.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-
-    val exoPlayer = remember { ExoPlayerManager.getExoPlayer(context) }
-
-    LaunchedEffect(key1 = Unit) {
-        val dataSourceFactory = DefaultHttpDataSource.Factory()
-
-        val uri = Uri.Builder().encodedPath(M3U8_URL).build()
-        val mediaItem = MediaItem.Builder().setUri(uri).build()
-
-        val internetVideoSource =
-            HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-
-        exoPlayer.setMediaSource(internetVideoSource)
-        exoPlayer.prepare()
-
-        // Will be used in later implementation for Equalizer
-        //viewModel.onStart(exoPlayer.audioSessionId)
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.4f)
-                    .padding(top = 16.dp)
-                    .background(Color.Black),
-            factory = {
-                PlayerView(context).apply {
-                    player = exoPlayer
-                    exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
-                    exoPlayer.playWhenReady = false
-                    useController = true
-                }
-            }
-        )
-    }
-
-    DisposableEffect(key1 = lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                exoPlayer.playWhenReady = false
-            } else if (event == Lifecycle.Event.ON_PAUSE) {
-                exoPlayer.playWhenReady = false
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    DisposableEffect(key1 = Unit) {
-        onDispose { ExoPlayerManager.releaseExoPlayer() }
     }
 }
 
@@ -230,35 +136,35 @@ fun PresetsView(viewModel: AlbumViewModel) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier
                     .weight(1f)
                     .height(4.dp)
                     .clip(RoundedCornerShape(4.dp)),
-                color = Color.White,
-                thickness = 1.dp
+                thickness = 1.dp,
+                color = Color.Gray
             )
 
             Text(
-                text = "Presets",//stringResource(R.string.presets_title_text),
+                text = stringResource(Res.string.presets_title_text),
                 fontSize = MaterialTheme.typography.titleMedium.fontSize,
                 fontWeight = FontWeight.Medium,
-                color = Color.White,
+                color = Color.Gray,
                 modifier = Modifier
                     .wrapContentWidth()
-                    .weight(0.5f)
+                    .weight(0.75f)
                     .padding(4.dp)
                     .zIndex(1f),
                 textAlign = TextAlign.Center
             )
 
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier
                     .weight(1f)
                     .height(4.dp)
                     .clip(RoundedCornerShape(4.dp)),
-                color = Color.White,
-                thickness = 1.dp
+                thickness = 1.dp,
+                color = Color.Gray
             )
         }
 
@@ -270,8 +176,8 @@ fun PresetsView(viewModel: AlbumViewModel) {
                     .fillMaxWidth()
             ) {
                 val horizontalPadding =
-                    if (maxWidth < 320.dp) 8.dp else if (maxWidth > 400.dp) 40.dp else 20.dp
-                val horizontalSpacing = if (maxWidth > 400.dp) 24.dp else 16.dp
+                    if (this.maxWidth < 320.dp) 8.dp else if (this.maxWidth > 400.dp) 40.dp else 20.dp
+                val horizontalSpacing = if (this.maxWidth > 400.dp) 24.dp else 16.dp
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -285,9 +191,7 @@ fun PresetsView(viewModel: AlbumViewModel) {
                     for (item in itemList) {
                         val index by remember {
                             mutableIntStateOf(
-                                effectType.indexOf(
-                                    item
-                                )
+                                effectType.indexOf(item)
                             )
                         }
                         Box(
@@ -295,14 +199,14 @@ fun PresetsView(viewModel: AlbumViewModel) {
                                 .wrapContentSize()
                                 .border(
                                     1.dp,
-                                    if (index == audioEffects?.selectedEffectType) Color.White else Color.Black,
+                                    if (index == audioEffects?.selectedEffectType) Color.Gray else Color.Black,
                                     RoundedCornerShape(40.dp)
                                 )
                                 .clip(RoundedCornerShape(40.dp))
                                 .clickable {
                                     viewModel.onSelectPreset(index)
                                 }
-                                .background(if (index == audioEffects?.selectedEffectType) Color.Black else Color.White),
+                                .background(if (index == audioEffects?.selectedEffectType) Color.Black else Color.Gray),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -314,7 +218,7 @@ fun PresetsView(viewModel: AlbumViewModel) {
                                         vertical = 12.dp
                                     ),
                                 fontSize = 14.sp,
-                                color = if (index == audioEffects?.selectedEffectType) Color.White else Color.Black,
+                                color = if (index == audioEffects?.selectedEffectType) Color.Gray else Color.Black,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -337,59 +241,61 @@ fun EqualizerView(viewModel: AlbumViewModel) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight()
+            .wrapContentHeight()
             .graphicsLayer {
                 rotationZ = 270f
-            },
+            }
+            .padding(bottom = 12.dp),
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Timber.e("CheckAudioEffects: $audioEffects")
         for (index in xAxisLabels.indices) {
             Row(
                 modifier = Modifier
-                    .padding(top = 20.dp)
-                    .width(220.dp)
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box {
-                    val paddedLabel = xAxisLabels[index].padStart(maxLength, ' ')
-                    Text(
-                        text = paddedLabel, modifier = Modifier
-                            .wrapContentWidth()
-                            .align(Alignment.CenterStart)
-                            .rotate(90f), color = Color.White,
-                        fontSize = 8.sp,
-                        textAlign = TextAlign.Start
-                    )
+                val paddedLabel = xAxisLabels[index].padStart(maxLength, ' ')
+                Text(
+                    text = paddedLabel, modifier = Modifier
+                        .wrapContentWidth()
+                        .rotate(90f),
+                    fontSize = 8.sp,
+                    textAlign = TextAlign.Start
+                )
 
-                    Slider(
-                        modifier = Modifier
-                            .offset(x = 20.dp),
-                        value = audioEffects!!.gainValues[index].times(1000f).toFloat()
-                            .coerceIn(-3000f, 3000f),
-                        onValueChange = {
-                            viewModel.onBandLevelChanged(index, it.toInt())
-                        },
-                        valueRange = -3000f..3000f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color.Black,
-                            activeTrackColor = Color.Black,
-                            inactiveTrackColor = Color.White
-                        ),
-                        thumb = {
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .border(
-                                        1.dp,
-                                        Color.White,
-                                        CircleShape
-                                    )
-                                    .clip(CircleShape)
-                                    .background(Color.Black, CircleShape)
-                            )
-                        }
-                    )
-                }
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Slider(
+                    modifier = Modifier,
+                    value = audioEffects!!.gainValues[index].times(1000f).toFloat()
+                        .coerceIn(-3000f, 3000f),
+                    onValueChange = {
+                        viewModel.onBandLevelChanged(index, it.toInt())
+                    },
+                    valueRange = -3000f..3000f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.Black,
+                        activeTrackColor = Color.Black,
+                        inactiveTrackColor = Color.Gray
+                    ),
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .border(
+                                    1.dp,
+                                    Color.Gray,
+                                    CircleShape
+                                )
+                                .clip(CircleShape)
+                                .background(Color.Black, CircleShape)
+                        )
+                    }
+                )
             }
         }
     }
@@ -398,5 +304,5 @@ fun EqualizerView(viewModel: AlbumViewModel) {
 @Preview(showBackground = true)
 @Composable
 fun AlbumsScreenPreview() {
-    AlbumsScreen(modifier = Modifier)
+    AlbumsScreen()
 }

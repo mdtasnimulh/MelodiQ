@@ -17,6 +17,10 @@ dependencies {
     implementation(projects.core.model.entity)
     implementation(projects.core.model.apiResponse)
     implementation(projects.core.notifications)
+    implementation(libs.androidx.dataStore.core)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.gson)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.kotlin.coroutines)
     testImplementation(libs.kotlinx.serialization.json)

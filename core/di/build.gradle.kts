@@ -9,6 +9,6 @@ android {
 }
 
 dependencies {
-    api(projects.core.sharedPreference)
+    api(projects.core.datastore)
     implementation(libs.timber)
 }

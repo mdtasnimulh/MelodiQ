@@ -2,6 +2,10 @@ package com.tasnimulhasan.melodiq.di
 
 import android.content.Context
 import androidx.annotation.OptIn
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -12,6 +16,10 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
+import com.tasnimulhasan.common.utils.CoroutinesDispatchers
+import com.tasnimulhasan.domain.localusecase.datastore.GetEqTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetEqTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetEqualizerEnabledUseCase
 import com.tasnimulhasan.domain.localusecase.player.BackwardTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.ForwardTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.GetCurrentDurationUseCase
@@ -28,12 +36,14 @@ import com.tasnimulhasan.domain.localusecase.player.RepeatTrackOneUseCase
 import com.tasnimulhasan.domain.localusecase.player.SeekToUseCase
 import com.tasnimulhasan.domain.localusecase.player.SelectAudioChangeUseCase
 import com.tasnimulhasan.domain.localusecase.player.UpdateProgressUseCase
-import com.tasnimulhasan.sharedpreference.SharedPrefHelper
+import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 @Module
@@ -42,8 +52,15 @@ object ApplicationModule {
 
     @Provides
     @Singleton
-    fun sharePrefHelper(@ApplicationContext context: Context): SharedPrefHelper =
-        SharedPrefHelper(context)
+    fun provideDataStorePreferences(
+        @ApplicationContext context: Context,
+        coroutinesDispatchers: CoroutinesDispatchers
+    ): DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        scope = CoroutineScope(context = coroutinesDispatchers.io + SupervisorJob()),
+        produceFile = {
+            context.preferencesDataStoreFile(name = "user_preferences")
+        }
+    )
 
     @Provides
     @Singleton
@@ -135,4 +152,21 @@ object ApplicationModule {
         )
     }
 
+    @Provides
+    @Singleton
+    fun provideSetEqTypeUseCase(
+        repository: PreferencesDataStoreRepository
+    ): SetEqTypeUseCase = SetEqTypeUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetEqTypeUseCase(
+        repository: PreferencesDataStoreRepository
+    ): GetEqTypeUseCase = GetEqTypeUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideSetEqualizerEnabledUseCase(
+        repository: PreferencesDataStoreRepository
+    ): SetEqualizerEnabledUseCase = SetEqualizerEnabledUseCase(repository)
 }

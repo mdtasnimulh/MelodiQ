@@ -9,7 +9,7 @@ android {
 }
 
 dependencies {
-    implementation(projects.core.sharedPreference)
+    implementation(projects.core.datastore)
     implementation(projects.core.designSystem)
     implementation(projects.core.model.entity)
     implementation(libs.timber)
