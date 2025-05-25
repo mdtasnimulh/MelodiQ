@@ -36,15 +36,14 @@ fun CustomKnob(
     modifier: Modifier = Modifier,
     onValueChange: (Float) -> Unit
 ) {
-
     var angle by remember { mutableFloatStateOf(0f) }
-    val sweepPercent = ((angle + 180f) / 360f).coerceIn(0f, 0f)
-    val radius = 100f
+    val sweepPercent = ((angle + 180f) / 360f).coerceIn(0f, 1f)
     val strokeWidth = 20f
 
     Box(
         modifier = modifier
-            .size(200.dp)
+            .size(120.dp)
+            .padding(top = 8.dp, start = 8.dp, end = 8.dp)// ⬅️ reduced knob size
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     val center = Offset((size.width / 2).toFloat(), (size.height / 2).toFloat())
@@ -57,11 +56,12 @@ fun CustomKnob(
                 }
             }
     ) {
-        Canvas(modifier = modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2, size.height / 2)
-            val radiusArc = size.minDimension / 4f
+            val radiusArc = size.minDimension / 2f
+            val radius = size.minDimension / 2.6f
 
-            // Arc Progress Inactive
+            // Inactive arc
             drawArc(
                 color = Color.DarkGray,
                 startAngle = 135f,
@@ -72,7 +72,7 @@ fun CustomKnob(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
 
-            // Arc Progress Active
+            // Active arc
             drawArc(
                 color = Color.Green,
                 startAngle = 135f,
@@ -83,12 +83,15 @@ fun CustomKnob(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
 
+            // Inner circle
             drawCircle(
                 color = Color.Gray,
                 radius = radius,
                 center = center,
                 style = Stroke(width = strokeWidth)
             )
+
+            // Rotating pointer line
             rotate(degrees = angle, pivot = center) {
                 drawLine(
                     color = Color.Red,

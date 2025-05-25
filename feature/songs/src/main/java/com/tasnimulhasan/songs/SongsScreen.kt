@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -99,25 +100,32 @@ internal fun SongsScreen(modifier: Modifier) {
         }
 
         item {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .wrapContentHeight()
+                    .padding(top = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CustomKnob(
-                    modifier = Modifier,
-                    onValueChange = { angle ->
-                        currentAngle = angle
-                    }
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CustomKnob(
+                        onValueChange = { angle ->
+                            currentAngle = angle
+                        }
+                    )
 
-                CustomKnobProgressBar(volumeLevel = volume)
+                    CustomKnobProgressBar(volumeLevel = volume)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(text = "Angle: ${currentAngle.roundToInt()}°")
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(text = "Angle: ${currentAngle.roundToInt()}°")
         }
     }
 }
