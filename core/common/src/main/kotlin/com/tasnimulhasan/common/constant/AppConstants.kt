@@ -25,17 +25,50 @@ object AppConstants {
     const val PRESET_ROCK = 7
     const val PRESET_PODCAST = 8
 
-    val FLAT = arrayListOf(0.0, 0.0, 0.0, 0.0, 0.0)
-    val ACOUSTIC = arrayListOf(0.44, 0.12, 0.12, 0.34, 0.2)
-    val DANCE = arrayListOf(0.52, 0.08, 0.28, 0.48, 0.06)
-    val HIP_HOPE = arrayListOf(0.44, 0.06, -0.14, 0.1, 0.38)
-    val JAZZ = arrayListOf(0.32, 0.0, 0.22, 0.1, 0.2)
-    val POP = arrayListOf(-0.14, 0.28, 0.38, 0.22, -0.2)
-    val ROCK = arrayListOf(0.38, 0.2, -0.04, 0.02, 0.34)
-    val PODCAST = arrayListOf(-0.12, 0.26, 0.36, 0.16, -0.2)
+    // 5-band presets
+    val FLAT = listOf(0.0, 0.0, 0.0, 0.0, 0.0)
+    val ACOUSTIC = listOf(0.44, 0.12, 0.12, 0.34, 0.2)
+    val DANCE = listOf(0.52, 0.08, 0.28, 0.48, 0.06)
+    val HIP_HOPE = listOf(0.44, 0.06, -0.14, 0.1, 0.38)
+    val JAZZ = listOf(0.32, 0.0, 0.22, 0.1, 0.2)
+    val POP = listOf(-0.14, 0.28, 0.38, 0.22, -0.2)
+    val ROCK = listOf(0.38, 0.2, -0.04, 0.02, 0.34)
+    val PODCAST = listOf(-0.12, 0.26, 0.36, 0.16, -0.2)
 
-    val effectType = arrayListOf(
+    // 5-band presets
+    /*val FLAT = List(5) { 0.0 }
+    val ACOUSTIC = listOf(0.3, 0.2, 0.0, -0.1, 0.2)
+    val DANCE = listOf(0.5, 0.3, 0.0, 0.3, 0.5)
+    val HIP_HOPE = listOf(0.4, 0.2, 0.0, 0.2, 0.4)
+    val JAZZ = listOf(0.2, 0.1, 0.0, 0.1, 0.3)
+    val POP = listOf(-0.1, 0.2, 0.3, 0.2, -0.1)
+    val ROCK = listOf(0.3, 0.1, -0.1, 0.1, 0.3)
+    val PODCAST = listOf(0.0, 0.2, 0.3, 0.2, 0.0)*/
+
+    // 10-band presets
+    val FLAT_10 = List(10) { 0.0 }
+    val ACOUSTIC_10 = listOf(0.4, 0.3, 0.2, 0.1, 0.0, -0.1, -0.1, 0.0, 0.1, 0.2)
+    val DANCE_10 = listOf(0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2, 0.3, 0.4, 0.5)
+    val HIP_HOPE_10 = listOf(0.5, 0.4, 0.3, 0.2, 0.1, 0.0, 0.1, 0.2, 0.3, 0.4)
+    val JAZZ_10 = listOf(0.3, 0.2, 0.1, 0.0, 0.0, 0.1, 0.2, 0.2, 0.3, 0.4)
+    val POP_10 = listOf(-0.2, -0.1, 0.0, 0.2, 0.3, 0.3, 0.2, 0.1, 0.0, -0.1)
+    val ROCK_10 = listOf(0.4, 0.3, 0.2, 0.0, -0.1, -0.1, 0.0, 0.2, 0.3, 0.4)
+    val PODCAST_10 = listOf(0.0, 0.0, 0.1, 0.2, 0.3, 0.3, 0.2, 0.1, 0.0, 0.0)
+
+    val effectType = listOf(
         "Custom", "Flat", "Acoustic", "Dance",
         "Hip Hop", "Jazz", "Pop", "Rock", "Podcast"
     )
+
+    /*val effectType = listOf(
+        "Flat",
+        "Acoustic",
+        "Dance",
+        "Hip Hop",
+        "Jazz/Blues",
+        "Pop",
+        "Rock",
+        "Podcast",
+        "Custom"
+    )*/
 }

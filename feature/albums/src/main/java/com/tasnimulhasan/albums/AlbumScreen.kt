@@ -1,5 +1,7 @@
 package com.tasnimulhasan.albums
 
+import android.R.attr.maxLength
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,10 +17,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,8 +26,11 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +40,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -47,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,55 +70,138 @@ internal fun AlbumsScreen(
     viewModel: AlbumViewModel = hiltViewModel()
 ) {
     val enableEqualizer by viewModel.enableEqualizer.collectAsState()
+    val enableTenBand by viewModel.enableTenBand.collectAsState()
+    val isTenBandSupported by viewModel.isTenBandSupported.collectAsState()
+    val equalizerError by viewModel.equalizerError.collectAsState()
+    val context = LocalContext.current
+
+    // Show Toast when an error occurs
+    LaunchedEffect(equalizerError) {
+        equalizerError?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.padding(horizontal = 16.dp),
         contentPadding = PaddingValues(top = 16.dp)
     ) {
+        viewModel.onStart()
+
         item {
             Spacer(modifier = Modifier.height(16.dp))
         }
 
         item {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = stringResource(Res.string.equalizer_title_text),
-                    fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.Gray
-                )
-
-                Switch(
-                    checked = enableEqualizer, onCheckedChange = {
-                        viewModel.toggleEqualizer()
-                    }, colors = SwitchDefaults.colors(
-                        checkedTrackColor = Color.Black,
-                        checkedIconColor = Color.Black,
-                        uncheckedTrackColor = Color.Gray,
-                        uncheckedBorderColor = Color.Black,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.equalizer_title_text),
+                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray
                     )
-                )
+
+                    Switch(
+                        checked = enableEqualizer,
+                        onCheckedChange = { viewModel.toggleEqualizer() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = Color.Black,
+                            checkedIconColor = Color.Black,
+                            uncheckedTrackColor = Color.Gray,
+                            uncheckedBorderColor = Color.Black
+                        )
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "10-Band Equalizer",
+                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray
+                    )
+
+                    Switch(
+                        checked = enableTenBand,
+                        onCheckedChange = { viewModel.toggleTenBand() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = Color.Black,
+                            checkedIconColor = Color.Black,
+                            uncheckedTrackColor = Color.Gray,
+                            uncheckedBorderColor = Color.Black
+                        )
+                    )
+                }
+
+                // Show error message and retry button if there's an equalizer error
+                AnimatedVisibility(
+                    visible = equalizerError != null,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = equalizerError ?: "",
+                            color = Color.Red,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.retryEqualizer() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black,
+                                contentColor = Color.Gray
+                            )
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(20.dp))
         }
 
         item {
             AnimatedVisibility(
-                visible = enableEqualizer,
+                visible = enableEqualizer && !enableTenBand,
                 enter = fadeIn() + slideInVertically { fullHeight -> -fullHeight / 2 },
                 exit = fadeOut() + slideOutVertically { fullHeight -> -fullHeight / 3 }
             ) {
-                EqualizerView(viewModel = viewModel)
+                EqualizerView(viewModel = viewModel, isTenBand = false)
             }
         }
 
         item {
             AnimatedVisibility(
-                visible = enableEqualizer,
+                visible = enableTenBand,
+                enter = fadeIn() + slideInVertically { fullHeight -> -fullHeight / 2 },
+                exit = fadeOut() + slideOutVertically { fullHeight -> -fullHeight / 3 }
+            ) {
+                EqualizerView(viewModel = viewModel, isTenBand = true)
+            }
+        }
+
+        item {
+            AnimatedVisibility(
+                visible = enableEqualizer || enableTenBand,
                 enter = fadeIn() + slideInVertically { fullHeight -> -fullHeight / 2 },
                 exit = fadeOut() + slideOutVertically { fullHeight -> -fullHeight / 2 }
             ) {
@@ -172,11 +260,13 @@ fun PresetsView(viewModel: AlbumViewModel) {
 
         for (itemList in groupedList) {
             BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
             ) {
-                val horizontalPadding =
-                    if (this.maxWidth < 320.dp) 8.dp else if (this.maxWidth > 400.dp) 40.dp else 20.dp
+                val horizontalPadding = when {
+                    this.maxWidth < 320.dp -> 8.dp
+                    this.maxWidth > 400.dp -> 40.dp
+                    else -> 20.dp
+                }
                 val horizontalSpacing = if (this.maxWidth > 400.dp) 24.dp else 16.dp
                 Row(
                     modifier = Modifier
@@ -189,11 +279,7 @@ fun PresetsView(viewModel: AlbumViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     for (item in itemList) {
-                        val index by remember {
-                            mutableIntStateOf(
-                                effectType.indexOf(item)
-                            )
-                        }
+                        val index by remember { mutableIntStateOf(effectType.indexOf(item)) }
                         Box(
                             modifier = Modifier
                                 .wrapContentSize()
@@ -203,20 +289,14 @@ fun PresetsView(viewModel: AlbumViewModel) {
                                     RoundedCornerShape(40.dp)
                                 )
                                 .clip(RoundedCornerShape(40.dp))
-                                .clickable {
-                                    viewModel.onSelectPreset(index)
-                                }
+                                .clickable { viewModel.onSelectPreset(index) }
                                 .background(if (index == audioEffects?.selectedEffectType) Color.Black else Color.Gray),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = item,
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier
-                                    .padding(
-                                        horizontal = horizontalPadding,
-                                        vertical = 12.dp
-                                    ),
+                                modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 12.dp),
                                 fontSize = 14.sp,
                                 color = if (index == audioEffects?.selectedEffectType) Color.Gray else Color.Black,
                                 maxLines = 1,
@@ -232,50 +312,51 @@ fun PresetsView(viewModel: AlbumViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EqualizerView(viewModel: AlbumViewModel) {
-
-    val xAxisLabels = listOf("60Hz", "230Hz", "910Hz", "3kHz", "14kHz")
-    val maxLength = xAxisLabels.maxByOrNull { it.length }?.length ?: 0
+fun EqualizerView(viewModel: AlbumViewModel, isTenBand: Boolean) {
+    val frequencyLabels by viewModel.frequencyLabels.collectAsState()
+    val xAxisLabels = if (frequencyLabels.isNotEmpty()) {
+        frequencyLabels
+    } else {
+        if (isTenBand) {
+            listOf("31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz")
+        } else {
+            listOf("60Hz", "230Hz", "910Hz", "3kHz", "14kHz")
+        }
+    }
     val audioEffects by viewModel.audioEffects.collectAsState()
 
-    Column(
+    LazyRow(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .graphicsLayer {
-                rotationZ = 270f
-            }
             .padding(bottom = 12.dp),
-        verticalArrangement = Arrangement.SpaceEvenly,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        Timber.e("CheckAudioEffects: $audioEffects")
-        for (index in xAxisLabels.indices) {
-            Row(
+        items(xAxisLabels.size) { index ->
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                    .width(80.dp)
+                    .padding(horizontal = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val paddedLabel = xAxisLabels[index].padStart(maxLength, ' ')
                 Text(
-                    text = paddedLabel, modifier = Modifier
-                        .wrapContentWidth()
-                        .rotate(90f),
-                    fontSize = 8.sp,
-                    textAlign = TextAlign.Start
+                    text = xAxisLabels[index],
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center,
+                    color = Color.Gray
                 )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${(audioEffects?.gainValues?.getOrNull(index)?.times(1000)?.toInt() ?: 0) / 100}dB",
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 Slider(
-                    modifier = Modifier,
-                    value = audioEffects!!.gainValues[index].times(1000f).toFloat()
-                        .coerceIn(-3000f, 3000f),
-                    onValueChange = {
-                        viewModel.onBandLevelChanged(index, it.toInt())
-                    },
+                    modifier = Modifier.height(120.dp),
+                    value = audioEffects?.gainValues?.getOrNull(index)?.times(1000f)?.toFloat() ?: 0f,
+                    onValueChange = { viewModel.onBandLevelChanged(index, it.toInt()) },
                     valueRange = -3000f..3000f,
                     colors = SliderDefaults.colors(
                         thumbColor = Color.Black,
@@ -286,11 +367,7 @@ fun EqualizerView(viewModel: AlbumViewModel) {
                         Box(
                             modifier = Modifier
                                 .size(20.dp)
-                                .border(
-                                    1.dp,
-                                    Color.Gray,
-                                    CircleShape
-                                )
+                                .border(1.dp, Color.Gray, CircleShape)
                                 .clip(CircleShape)
                                 .background(Color.Black, CircleShape)
                         )
