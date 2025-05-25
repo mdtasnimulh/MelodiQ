@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,6 +58,8 @@ internal fun SongsRoute(
 internal fun SongsScreen(modifier: Modifier) {
 
     var sliderValue by remember { mutableFloatStateOf(0f) }
+    var currentAngle by remember { mutableFloatStateOf(0f) }
+    val volume = ((currentAngle + 180f) / 360f).coerceIn(0f, 1f)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -93,6 +96,28 @@ internal fun SongsScreen(modifier: Modifier) {
                     onSeek = { progress = it }
                 )
             }
+        }
+
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CustomKnob(
+                    modifier = Modifier,
+                    onValueChange = { angle ->
+                        currentAngle = angle
+                    }
+                )
+
+                CustomKnobProgressBar(volumeLevel = volume)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(text = "Angle: ${currentAngle.roundToInt()}°")
         }
     }
 }
