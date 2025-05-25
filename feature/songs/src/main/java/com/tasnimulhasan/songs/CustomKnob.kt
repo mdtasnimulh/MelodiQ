@@ -1,5 +1,8 @@
 package com.tasnimulhasan.songs
 
+import android.content.Context
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -25,6 +28,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
@@ -38,12 +42,14 @@ fun CustomKnob(
 ) {
     var angle by remember { mutableFloatStateOf(-90f) }
     val strokeWidth = 20f
-
     var lastTouchAngle by remember { mutableFloatStateOf(-90f) }
 
-    // Keep the angle in valid knob range
     val clampedAngle = angle.coerceIn(-90f, 270f)
     val sweepPercent = ((clampedAngle + 90f) / 360f).coerceIn(0f, 1f)
+
+    val context = LocalContext.current
+    var lastStep by remember { mutableFloatStateOf(-1f) }
+    val vibrator = remember { context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator }
 
     Box(
         modifier = modifier
@@ -69,6 +75,15 @@ fun CustomKnob(
                         // Only allow movement within -90 to 270
                         val newAngle = (angle + delta).coerceIn(-90f, 270f)
                         angle = newAngle
+
+                        // Haptic Feedback Every 5%
+                        val progress = ((newAngle + 90f) / 360f).coerceIn(0f, 1f)
+                        val step = ((progress * 100f) / 5f).toInt()
+                        if (step.toFloat() != lastStep) {
+                            vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                            lastStep = step.toFloat()
+                        }
+
                         onValueChange(angle)
                         lastTouchAngle = adjustedAngle
                     }
