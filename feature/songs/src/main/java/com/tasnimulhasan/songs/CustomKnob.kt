@@ -39,7 +39,9 @@ fun CustomKnob(
     var angle by remember { mutableFloatStateOf(-90f) }
     val strokeWidth = 20f
 
-    // Angle clamped between -90 and 270 (360° range)
+    var lastTouchAngle by remember { mutableFloatStateOf(-90f) }
+
+    // Keep the angle in valid knob range
     val clampedAngle = angle.coerceIn(-90f, 270f)
     val sweepPercent = ((clampedAngle + 90f) / 360f).coerceIn(0f, 1f)
 
@@ -53,17 +55,23 @@ fun CustomKnob(
                     val touchPoint = change.position
                     val deltaX = touchPoint.x - center.x
                     val deltaY = touchPoint.y - center.y
+
+                    // Raw angle in range (-180, 180]
                     val rawAngle = atan2(deltaY, deltaX) * (180f / PI).toFloat()
 
-                    // Convert raw angle to normalized clockwise angle from -90 to 270
+                    // Normalize to range (-90 to 270) for your use case
                     var adjustedAngle = rawAngle
-                    if (adjustedAngle < -90f) {
-                        adjustedAngle += 360f
-                    }
+                    if (adjustedAngle < -90f) adjustedAngle += 360f
 
-                    // Clamp to valid knob range
-                    angle = adjustedAngle.coerceIn(-90f, 270f)
-                    onValueChange(angle)
+                    // Handle small rotation jitter
+                    val delta = adjustedAngle - lastTouchAngle
+                    if (kotlin.math.abs(delta) < 40f) {
+                        // Only allow movement within -90 to 270
+                        val newAngle = (angle + delta).coerceIn(-90f, 270f)
+                        angle = newAngle
+                        onValueChange(angle)
+                        lastTouchAngle = adjustedAngle
+                    }
                 }
             }
     ) {
@@ -72,7 +80,7 @@ fun CustomKnob(
             val radiusArc = size.minDimension / 2f
             val radius = size.minDimension / 2.6f
 
-            // Inactive arc
+            // Inactive arc (full background)
             drawArc(
                 color = Color.DarkGray,
                 startAngle = 135f,
@@ -83,7 +91,7 @@ fun CustomKnob(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
 
-            // Active arc
+            // Active arc (progress)
             drawArc(
                 color = Color.Green,
                 startAngle = 135f,
@@ -113,7 +121,6 @@ fun CustomKnob(
             }
         }
     }
-
 }
 
 @Composable
