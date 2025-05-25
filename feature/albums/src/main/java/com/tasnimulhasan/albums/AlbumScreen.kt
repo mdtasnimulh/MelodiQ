@@ -347,7 +347,7 @@ fun EqualizerView(viewModel: AlbumViewModel, isTenBand: Boolean) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${(audioEffects?.gainValues?.getOrNull(index)?.times(1000)?.toInt() ?: 0) / 100}dB",
+                    text = "${(audioEffects?.gainValues?.getOrNull(index)?.times(1000) ?: 0.0) / 100}dB",
                     fontSize = 10.sp,
                     textAlign = TextAlign.Center,
                     color = Color.Gray
