@@ -36,22 +36,33 @@ fun CustomKnob(
     modifier: Modifier = Modifier,
     onValueChange: (Float) -> Unit
 ) {
-    var angle by remember { mutableFloatStateOf(0f) }
-    val sweepPercent = ((angle + 180f) / 360f).coerceIn(0f, 1f)
+    var angle by remember { mutableFloatStateOf(-90f) }
     val strokeWidth = 20f
+
+    // Angle clamped between -90 and 270 (360° range)
+    val clampedAngle = angle.coerceIn(-90f, 270f)
+    val sweepPercent = ((clampedAngle + 90f) / 360f).coerceIn(0f, 1f)
 
     Box(
         modifier = modifier
             .size(120.dp)
-            .padding(top = 8.dp, start = 8.dp, end = 8.dp)// ⬅️ reduced knob size
+            .padding(8.dp)
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     val center = Offset((size.width / 2).toFloat(), (size.height / 2).toFloat())
                     val touchPoint = change.position
                     val deltaX = touchPoint.x - center.x
                     val deltaY = touchPoint.y - center.y
-                    val newAngle = atan2(deltaY, deltaX) * (180f / PI).toFloat()
-                    angle = newAngle
+                    val rawAngle = atan2(deltaY, deltaX) * (180f / PI).toFloat()
+
+                    // Convert raw angle to normalized clockwise angle from -90 to 270
+                    var adjustedAngle = rawAngle
+                    if (adjustedAngle < -90f) {
+                        adjustedAngle += 360f
+                    }
+
+                    // Clamp to valid knob range
+                    angle = adjustedAngle.coerceIn(-90f, 270f)
                     onValueChange(angle)
                 }
             }
@@ -83,7 +94,7 @@ fun CustomKnob(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
 
-            // Inner circle
+            // Inner circle ring
             drawCircle(
                 color = Color.Gray,
                 radius = radius,
@@ -91,8 +102,8 @@ fun CustomKnob(
                 style = Stroke(width = strokeWidth)
             )
 
-            // Rotating pointer line
-            rotate(degrees = angle, pivot = center) {
+            // Rotating pointer
+            rotate(degrees = clampedAngle, pivot = center) {
                 drawLine(
                     color = Color.Red,
                     start = center,

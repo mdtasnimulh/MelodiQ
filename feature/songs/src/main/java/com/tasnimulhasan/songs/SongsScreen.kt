@@ -59,8 +59,6 @@ internal fun SongsRoute(
 internal fun SongsScreen(modifier: Modifier) {
 
     var sliderValue by remember { mutableFloatStateOf(0f) }
-    var currentAngle by remember { mutableFloatStateOf(0f) }
-    val volume = ((currentAngle + 180f) / 360f).coerceIn(0f, 1f)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -100,6 +98,9 @@ internal fun SongsScreen(modifier: Modifier) {
         }
 
         item {
+            var currentAngle by remember { mutableFloatStateOf(-90f) }
+            val progress = ((currentAngle + 90f) / 360f * 100f).coerceIn(0f, 100f)
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -119,12 +120,12 @@ internal fun SongsScreen(modifier: Modifier) {
                         }
                     )
 
-                    CustomKnobProgressBar(volumeLevel = volume)
+                    CustomKnobProgressBar(volumeLevel = progress / 100f)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = "Angle: ${currentAngle.roundToInt()}°")
+                Text(text = "Progress: ${progress.roundToInt()}")
             }
         }
     }
