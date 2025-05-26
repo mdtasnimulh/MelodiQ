@@ -81,8 +81,6 @@ internal fun EqualizerScreen(
     LazyColumn(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
-        viewModel.onStart()
-
         item {
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -128,16 +126,6 @@ internal fun EqualizerScreen(
 
         item {
             AnimatedVisibility(
-                visible = enableTenBand && isTenBandSupported,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                EqualizerView10Band(viewModel = viewModel)
-            }
-        }
-
-        item {
-            AnimatedVisibility(
                 visible = enableEqualizer || enableTenBand,
                 enter = fadeIn(),
                 exit = fadeOut()
@@ -151,64 +139,70 @@ internal fun EqualizerScreen(
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            AnimatedVisibility(
+                visible = enableEqualizer,
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                Text(
-                    text = stringResource(Res.string.label_enable_advance_option),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    style = TextStyle(
-                        color = MaterialTheme.colorScheme.onBackground,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.label_enable_advance_option),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        style = TextStyle(
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
                     )
-                )
 
-                Switch(
-                    checked = enableTenBand,
-                    onCheckedChange = { viewModel.toggleTenBand() },
-                    colors = SwitchDefaults.colors(
-                        checkedTrackColor = BlueMedium,
-                        checkedIconColor = BlueMedium,
-                        uncheckedTrackColor = Blue20.copy(alpha = 0.25f),
-                        uncheckedBorderColor = Blue90
+                    Switch(
+                        checked = enableTenBand,
+                        onCheckedChange = { viewModel.toggleTenBand() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = BlueMedium,
+                            checkedIconColor = BlueMedium,
+                            uncheckedTrackColor = Blue20.copy(alpha = 0.25f),
+                            uncheckedBorderColor = Blue90
+                        )
                     )
-                )
+                }
             }
         }
 
         item {
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        item {
             AnimatedVisibility(
-                visible = equalizerError != null,
+                visible = enableTenBand,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = equalizerError ?: "",
-                        color = CreamRed,
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { viewModel.retryEqualizer() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Black,
-                            contentColor = Color.White
-                        )
+                if (isTenBandSupported) {
+                    EqualizerView10Band(viewModel = viewModel)
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Retry")
+                        Text(
+                            text = equalizerError ?: "10-band equalizer not supported",
+                            color = CreamRed,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.retryEqualizer() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Retry")
+                        }
                     }
                 }
             }

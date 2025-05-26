@@ -33,8 +33,8 @@ class EqualizerViewModel @Inject constructor(
     val enableEqualizer = MutableStateFlow(false)
     val enableTenBand = MutableStateFlow(false)
     val frequencyLabels = MutableStateFlow<List<String>>(emptyList())
-    val isTenBandSupported = MutableStateFlow(false) // Tracks if device can support 10 bands
-    val equalizerError = MutableStateFlow<String?>(null) // Tracks initialization errors
+    val isTenBandSupported = MutableStateFlow(true)
+    val equalizerError = MutableStateFlow<String?>(null)
     private var equalizer: Equalizer? = null
     private var audioSessionId = 0
 
@@ -60,18 +60,19 @@ class EqualizerViewModel @Inject constructor(
             equalizerError.tryEmit("Failed to initialize equalizer. Try disabling system equalizer.")
             enableEqualizer.tryEmit(false)
             enableTenBand.tryEmit(false)
+            isTenBandSupported.tryEmit(false)
             return
         }
 
         val numberOfBands = equalizer?.numberOfBands?.toInt() ?: 5
-        val activeBands = if (enableTenBand.value) 10 else 5
+        val activeBands = if (enableTenBand.value && numberOfBands >= 10) 10 else 5
 
-        // Warn if 10-band is requested but unsupported, but don't disable switch
+        // Check if 10-band is supported
         if (enableTenBand.value && numberOfBands < 10) {
             Timber.w("Device supports only $numberOfBands bands")
-            equalizerError.tryEmit("Device supports only $numberOfBands bands. Using available bands.")
+            equalizerError.tryEmit("Device supports only $numberOfBands bands. Using 5-band equalizer.")
             isTenBandSupported.tryEmit(false)
-        } else {
+        } else if (enableTenBand.value) {
             isTenBandSupported.tryEmit(true)
         }
 
@@ -95,40 +96,37 @@ class EqualizerViewModel @Inject constructor(
             Timber.e(e, "Failed to get band level range")
             shortArrayOf(-1500, 1500)
         }
-        audioEffects.value?.gainValues?.take(minOf(numberOfBands, activeBands))?.forEachIndexed { index, value ->
+
+        val currentGainValues = audioEffects.value?.gainValues ?: List(activeBands) { 0.0 }
+        currentGainValues.take(minOf(numberOfBands, activeBands)).forEachIndexed { index, value ->
             try {
                 val bandLevel = (value * 1000).toInt().coerceIn(
                     bandLevelRange[0].toInt(),
                     bandLevelRange[1].toInt()
                 ).toShort()
                 equalizer?.setBandLevel(index.toShort(), bandLevel)
-            } catch (e: IllegalArgumentException) {
+            } catch (e: Exception) {
                 Timber.e(e, "Failed to set band level for band $index")
-                equalizer?.setBandLevel(index.toShort(), 0)
-            } catch (e: UnsupportedOperationException) {
-                Timber.e(e, "Unsupported operation for band $index")
                 equalizerError.tryEmit("Equalizer operation not supported. Try disabling system equalizer.")
                 equalizer?.release()
                 equalizer = null
-                enableTenBand.tryEmit(false)
                 enableEqualizer.tryEmit(false)
+                enableTenBand.tryEmit(false)
+                isTenBandSupported.tryEmit(false)
                 return
             }
         }
-
-        Timber.d("CheckAudioEffects -> \nId: $audioSessionId\nNo. Bands: $numberOfBands\nLower Band: ${bandLevelRange[0]}\nUpper Band: ${bandLevelRange[1]}\nFrequencies: $frequencies")
     }
 
     fun onSelectPreset(presetPosition: Int) {
         if (audioEffects.value == null || equalizer == null) return
 
         val numberOfBands = equalizer?.numberOfBands?.toInt() ?: 5
-        val activeBands = if (enableTenBand.value) 10 else 5
-        val effectiveBands = minOf(numberOfBands, activeBands)
+        val activeBands = if (enableTenBand.value && isTenBandSupported.value) 10 else 5
         val gain = if (presetPosition == AppConstants.PRESET_CUSTOM) {
-            ArrayList(audioEffects.value!!.gainValues.take(effectiveBands))
+            ArrayList(audioEffects.value!!.gainValues.take(minOf(numberOfBands, activeBands)))
         } else {
-            ArrayList(getPresetGainValue(presetPosition, activeBands).take(effectiveBands))
+            ArrayList(getPresetGainValue(presetPosition, activeBands).take(minOf(numberOfBands, activeBands)))
         }
 
         val newAudioEffects = AudioEffects(presetPosition, gain)
@@ -159,7 +157,7 @@ class EqualizerViewModel @Inject constructor(
     fun onBandLevelChanged(changedBand: Int, newGainValue: Int) {
         if (equalizer == null) return
         val numberOfBands = equalizer?.numberOfBands?.toInt() ?: 5
-        val activeBands = if (enableTenBand.value) 10 else 5
+        val activeBands = if (enableTenBand.value && isTenBandSupported.value) 10 else 5
         if (changedBand >= minOf(numberOfBands, activeBands)) return
 
         val bandLevelRange = try {
@@ -189,10 +187,6 @@ class EqualizerViewModel @Inject constructor(
     fun toggleEqualizer() {
         val newState = !enableEqualizer.value
         enableEqualizer.tryEmit(newState)
-        if (newState) {
-            enableTenBand.tryEmit(false)
-            equalizerError.tryEmit(null) // Clear error when switching modes
-        }
         equalizer?.enabled = newState || enableTenBand.value
         viewModelScope.launch {
             setEqualizerEnabledUseCase.invoke(newState || enableTenBand.value)
@@ -201,9 +195,7 @@ class EqualizerViewModel @Inject constructor(
                 audioEffects.tryEmit(newAudioEffects)
                 setEqTypeUseCase.invoke(newAudioEffects)
             } else if (newState) {
-                val newAudioEffects = AudioEffects(AppConstants.PRESET_FLAT, AppConstants.FLAT)
-                audioEffects.tryEmit(newAudioEffects)
-                setEqTypeUseCase.invoke(newAudioEffects)
+                equalizerError.tryEmit(null) // Clear error when enabling
                 onStart()
             }
         }
@@ -212,21 +204,15 @@ class EqualizerViewModel @Inject constructor(
     fun toggleTenBand() {
         val newState = !enableTenBand.value
         enableTenBand.tryEmit(newState)
-        if (newState) {
-            enableEqualizer.tryEmit(false)
-            equalizerError.tryEmit(null) // Clear error when switching modes
-        }
         equalizer?.enabled = newState || enableEqualizer.value
         viewModelScope.launch {
-            setEqualizerEnabledUseCase.invoke(newState || enableTenBand.value)
+            setEqualizerEnabledUseCase.invoke(newState || enableEqualizer.value)
             if (!newState && !enableEqualizer.value) {
                 val newAudioEffects = AudioEffects(AppConstants.PRESET_FLAT, AppConstants.FLAT)
                 audioEffects.tryEmit(newAudioEffects)
                 setEqTypeUseCase.invoke(newAudioEffects)
             } else if (newState) {
-                val newAudioEffects = AudioEffects(AppConstants.PRESET_FLAT, AppConstants.FLAT_10)
-                audioEffects.tryEmit(newAudioEffects)
-                setEqTypeUseCase.invoke(newAudioEffects)
+                equalizerError.tryEmit(null) // Clear error when enabling
                 onStart()
             }
         }
@@ -235,11 +221,7 @@ class EqualizerViewModel @Inject constructor(
     fun retryEqualizer() {
         equalizerError.tryEmit(null)
         isTenBandSupported.tryEmit(true) // Allow retry
-        if (enableTenBand.value) {
-            onStart()
-        } else if (enableEqualizer.value) {
-            onStart()
-        }
+        onStart()
     }
 
     private fun unbindSystemEqualizer() {
