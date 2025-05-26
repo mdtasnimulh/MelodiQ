@@ -65,7 +65,7 @@ fun CustomKnob(
             .padding(8.dp)
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
-                    val center = Offset((size.width / 2).toFloat(), (size.height / 2).toFloat())
+                    val center = Offset(size.width / 2f, size.height / 2f)
                     val touchPoint = change.position
                     val deltaX = touchPoint.x - center.x
                     val deltaY = touchPoint.y - center.y
@@ -91,8 +91,8 @@ fun CustomKnob(
 
                         currentAngle = newAngle
                         onValueChange(newAngle)
-                        lastTouchAngle = rawAngle
                     }
+                    lastTouchAngle = rawAngle
                 }
             }
     ) {
