@@ -412,12 +412,11 @@ internal fun PlayerScreen(
                 onEQButtonClicked = { navigateToEqualizerScreen.invoke() },
                 onSleepButtonClicked = { showBottomSheet.value = true },
                 onShareButtonClicked = {
-                    val shareIntent = Intent()
-                    shareIntent.action = Intent.ACTION_SEND
-                    shareIntent.type = "audio/*"
-                    shareIntent.putExtra(
-                        Intent.EXTRA_STREAM, currentTrack.contentUri
-                    )
+                    val shareIntent = Intent().also {
+                        it.action = Intent.ACTION_SEND
+                        it.type = "audio/*"
+                        it.putExtra(Intent.EXTRA_STREAM, currentTrack.contentUri)
+                    }
                     context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
                 }
             )
