@@ -314,67 +314,73 @@ fun PresetsView(viewModel: AlbumViewModel) {
 @Composable
 fun EqualizerView(viewModel: AlbumViewModel, isTenBand: Boolean) {
     val frequencyLabels by viewModel.frequencyLabels.collectAsState()
-    val xAxisLabels = if (frequencyLabels.isNotEmpty()) {
-        frequencyLabels
-    } else {
-        if (isTenBand) {
-            listOf("31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz")
-        } else {
-            listOf("60Hz", "230Hz", "910Hz", "3kHz", "14kHz")
-        }
-    }
     val audioEffects by viewModel.audioEffects.collectAsState()
 
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .padding(bottom = 12.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        items(xAxisLabels.size) { index ->
-            Column(
-                modifier = Modifier
-                    .width(80.dp)
-                    .padding(horizontal = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = xAxisLabels[index],
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${(audioEffects?.gainValues?.getOrNull(index)?.times(1000) ?: 0.0) / 100}dB",
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Slider(
-                    modifier = Modifier.height(120.dp),
-                    value = audioEffects?.gainValues?.getOrNull(index)?.times(1000f)?.toFloat() ?: 0f,
-                    onValueChange = { viewModel.onBandLevelChanged(index, it.toInt()) },
-                    valueRange = -3000f..3000f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color.Black,
-                        activeTrackColor = Color.Black,
-                        inactiveTrackColor = Color.Gray
-                    ),
-                    thumb = {
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .border(1.dp, Color.Gray, CircleShape)
-                                .clip(CircleShape)
-                                .background(Color.Black, CircleShape)
-                        )
-                    }
-                )
+    if (isTenBand) {
+        val xAxisLabels = if (frequencyLabels.isNotEmpty()) {
+            frequencyLabels
+        } else {
+            listOf("31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz")
+        }
+
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            items(xAxisLabels.size) { index ->
+                Column(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .padding(horizontal = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = xAxisLabels[index],
+                        fontSize = 10.sp,
+                        textAlign = TextAlign.Center,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${(audioEffects?.gainValues?.getOrNull(index)?.times(1000) ?: 0.0) / 100}dB",
+                        fontSize = 10.sp,
+                        textAlign = TextAlign.Center,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Slider(
+                        modifier = Modifier.height(120.dp),
+                        value = audioEffects?.gainValues?.getOrNull(index)?.times(1000f)?.toFloat() ?: 0f,
+                        onValueChange = { viewModel.onBandLevelChanged(index, it.toInt()) },
+                        valueRange = -3000f..3000f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.Black,
+                            activeTrackColor = Color.Black,
+                            inactiveTrackColor = Color.Gray
+                        ),
+                        thumb = {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .border(1.dp, Color.Gray, CircleShape)
+                                    .clip(CircleShape)
+                                    .background(Color.Black, CircleShape)
+                            )
+                        }
+                    )
+                }
             }
         }
+    } else {
+        FiveEqualizerItem(
+            modifier = Modifier,
+            audioEffects = audioEffects,
+            frequencyLabels = if (frequencyLabels.isNotEmpty()) frequencyLabels else listOf("60Hz", "230Hz", "910Hz", "3kHz", "14kHz"),
+            onBandValueChange = { index, value -> viewModel.onBandLevelChanged(index, value) }
+        )
     }
 }
 
