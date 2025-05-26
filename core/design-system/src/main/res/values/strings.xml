@@ -18,6 +18,8 @@
     <string name="equalizer_title_text">Equalizer</string>
 
     <string name="label_now_playing">Now Playing</string>
+    <string name="label_enable_eq">Enable Equalizer</string>
+    <string name="label_enable_advance_option">Enable Advanced Option</string>
 
     <string name="desc_album_cover_art">Album Cover Art</string>
 
