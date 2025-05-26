@@ -93,7 +93,7 @@ internal fun EqualizerScreen(
             ) {
                 Text(
                     text = stringResource(Res.string.label_enable_eq),
-                    fontSize = 22.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     style = TextStyle(
                         color = MaterialTheme.colorScheme.onBackground,
@@ -110,27 +110,6 @@ internal fun EqualizerScreen(
                         uncheckedBorderColor = Blue90
                     )
                 )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        item {
-            AnimatedVisibility(
-                visible = enableEqualizer,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                EqualizerView(viewModel = viewModel)
-            }
-        }
-
-        item {
-            AnimatedVisibility(
-                visible = enableEqualizer || enableTenBand,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                PresetsView(viewModel)
             }
         }
 
@@ -173,38 +152,69 @@ internal fun EqualizerScreen(
         }
 
         item {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        item {
             AnimatedVisibility(
-                visible = enableTenBand,
+                visible = enableTenBand && !isTenBandSupported,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                if (isTenBandSupported) {
-                    EqualizerView10Band(viewModel = viewModel)
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = equalizerError ?: "10-band equalizer not supported",
-                            color = CreamRed,
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = equalizerError ?: "10-band equalizer not supported",
+                        color = CreamRed,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { viewModel.retryEqualizer() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Black,
+                            contentColor = Color.White
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { viewModel.retryEqualizer() },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Black,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text("Retry")
-                        }
+                    ) {
+                        Text("Retry")
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
+            }
+        }
+
+        item {
+            AnimatedVisibility(
+                visible = enableEqualizer && !(enableTenBand && isTenBandSupported),
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                EqualizerView(viewModel = viewModel)
+            }
+        }
+
+        item {
+            AnimatedVisibility(
+                visible = enableTenBand && isTenBandSupported,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                EqualizerView10Band(viewModel = viewModel)
+            }
+        }
+
+        item {
+            AnimatedVisibility(
+                visible = enableEqualizer || enableTenBand,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                PresetsView(viewModel)
             }
         }
 
