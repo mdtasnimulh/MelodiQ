@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
 import com.tasnimulhasan.albums.navigation.AlbumRoute
 import com.tasnimulhasan.albums.navigation.navigateToAlbums
+import com.tasnimulhasan.eqalizer.navigation.navigateToEqualizer
 import com.tasnimulhasan.featureabout.navigation.navigateToAbout
 import com.tasnimulhasan.featurefavourite.navigation.navigateToFavourite
 import com.tasnimulhasan.featurefeedback.navigation.navigateToFeedback
@@ -89,6 +90,8 @@ class MelodiQAppState(
     fun navigateToFeedBack() = navController.navigateToFeedback()
 
     fun navigateToSettings() = navController.navigateToSettings()
+
+    fun navigateToEqualizerScreen() = navController.navigateToEqualizer()
 
     fun navigateBack() {
         navController.navigateUp()

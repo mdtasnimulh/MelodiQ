@@ -49,6 +49,7 @@ import com.tasnimulhasan.designsystem.component.MelodiQNavigationBar
 import com.tasnimulhasan.designsystem.component.MelodiQNavigationBarItem
 import com.tasnimulhasan.designsystem.component.MelodiqTopAppBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
+import com.tasnimulhasan.eqalizer.navigation.EqualizerRoute
 import com.tasnimulhasan.featureabout.navigation.AboutRoute
 import com.tasnimulhasan.featurefavourite.navigation.FavouriteRoute
 import com.tasnimulhasan.featurefeedback.navigation.FeedbackRoute
@@ -100,6 +101,7 @@ internal fun MmApp(
         SongsRoute::class.qualifiedName -> Res.string.title_songs
         AlbumRoute::class.qualifiedName -> Res.string.title_albums
         PlaylistsRoute::class.qualifiedName -> Res.string.title_playlists
+        EqualizerRoute::class.qualifiedName -> Res.string.equalizer_title_text
         SettingsRoute::class.qualifiedName -> Res.string.title_settings
         PlayerRoute::class.qualifiedName.plus("/{musicId}") -> Res.string.label_now_playing
         FavouriteRoute::class.qualifiedName -> Res.string.title_favourite
@@ -220,6 +222,9 @@ private fun GetContent(appState: MelodiQAppState) {
             appState = appState,
             navigateToPlayer = { musicId ->
                 appState.navigateToPlayer(musicId)  // Pass the musicId here
+            },
+            navigateToEqualizerScreen = {
+                appState.navigateToEqualizerScreen()
             },
             navigateBack = {
                 appState.navigateBack()

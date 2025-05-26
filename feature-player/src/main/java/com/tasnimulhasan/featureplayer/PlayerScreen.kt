@@ -68,6 +68,7 @@ internal fun PlayerScreen(
     musicId: String,
     modifier: Modifier = Modifier,
     onNavigateUp: () -> Unit,
+    navigateToEqualizerScreen: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val pagerState = rememberPagerState { viewModel.audioList.size }
@@ -406,7 +407,7 @@ internal fun PlayerScreen(
                         Toast.makeText(context, Res.string.msg_repeat_off, Toast.LENGTH_SHORT).show()
                     }
                 },
-                onEQButtonClicked = {},
+                onEQButtonClicked = { navigateToEqualizerScreen.invoke() },
                 onSleepButtonClicked = { showBottomSheet.value = true },
                 onShareButtonClicked = {}
             )
@@ -421,10 +422,4 @@ internal fun PlayerScreen(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PlayerScreenPreview() {
-    PlayerScreen("12345", modifier = Modifier, onNavigateUp = {})
 }

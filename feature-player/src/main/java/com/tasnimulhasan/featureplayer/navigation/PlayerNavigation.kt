@@ -21,6 +21,7 @@ fun NavController.navigateToPlayer(musicId: String, navOptions: NavOptionsBuilde
 
 fun NavGraphBuilder.playerScreen(
     navigateBack: () -> Unit,
+    navigateToEqualizerScreen: () -> Unit,
 ) {
     composable<PlayerRoute>(
         enterTransition = { fadeIn() },
@@ -29,6 +30,10 @@ fun NavGraphBuilder.playerScreen(
         popExitTransition = { fadeOut() }
     ) { backStackEntry ->
         val musicId = backStackEntry.arguments?.getString("musicId") ?: ""
-        PlayerScreen(musicId = musicId, onNavigateUp = navigateBack)
+        PlayerScreen(
+            musicId = musicId,
+            onNavigateUp = navigateBack,
+            navigateToEqualizerScreen = navigateToEqualizerScreen
+        )
     }
 }

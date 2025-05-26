@@ -1,4 +1,4 @@
-package com.tasnimulhasan.albums
+package com.tasnimulhasan.eqalizer.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

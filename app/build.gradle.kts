@@ -88,6 +88,7 @@ dependencies {
         implementation(feature.albums)
         implementation(feature.songs)
         implementation(feature.playlists)
+        implementation(feature.eqalizer)
         implementation(featurePlayer)
         implementation(featureQueue)
         implementation(featureFavourite)

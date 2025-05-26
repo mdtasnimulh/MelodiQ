@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import com.tasnimulhasan.albums.navigation.albumScreen
+import com.tasnimulhasan.eqalizer.navigation.equalizerScreen
 import com.tasnimulhasan.featureabout.navigation.aboutScreen
 import com.tasnimulhasan.featurefavourite.navigation.favouriteScreen
 import com.tasnimulhasan.featurefeedback.navigation.feedbackScreen
@@ -21,6 +22,7 @@ fun MelodiQNavHost(
     appState: MelodiQAppState,
     modifier: Modifier = Modifier,
     navigateToPlayer: (String) -> Unit,
+    navigateToEqualizerScreen: () -> Unit,
     navigateBack: () -> Unit,
 ) {
     val navController = appState.navController
@@ -34,10 +36,14 @@ fun MelodiQNavHost(
         albumScreen()
         playlistsScreen()
         settingsScreen()
-        playerScreen(navigateBack = navigateBack)
+        playerScreen(
+            navigateBack = navigateBack,
+            navigateToEqualizerScreen = navigateToEqualizerScreen
+        )
         queueScreen()
         favouriteScreen()
         aboutScreen()
         feedbackScreen()
+        equalizerScreen()
     }
 }

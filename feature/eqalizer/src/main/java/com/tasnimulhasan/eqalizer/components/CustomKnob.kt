@@ -1,4 +1,4 @@
-package com.tasnimulhasan.albums
+package com.tasnimulhasan.eqalizer.components
 
 import android.content.Context
 import android.os.VibrationEffect
