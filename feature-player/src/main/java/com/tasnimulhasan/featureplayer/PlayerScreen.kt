@@ -1,5 +1,7 @@
 package com.tasnimulhasan.featureplayer
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -409,7 +411,15 @@ internal fun PlayerScreen(
                 },
                 onEQButtonClicked = { navigateToEqualizerScreen.invoke() },
                 onSleepButtonClicked = { showBottomSheet.value = true },
-                onShareButtonClicked = {}
+                onShareButtonClicked = {
+                    val shareIntent = Intent()
+                    shareIntent.action = Intent.ACTION_SEND
+                    shareIntent.type = "audio/*"
+                    shareIntent.putExtra(
+                        Intent.EXTRA_STREAM, currentTrack.contentUri
+                    )
+                    context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
+                }
             )
 
             if (showBottomSheet.value) {
