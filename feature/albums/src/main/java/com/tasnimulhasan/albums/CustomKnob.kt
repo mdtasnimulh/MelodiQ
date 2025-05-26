@@ -101,7 +101,7 @@ fun CustomKnob(
             val radiusArc = size.minDimension / 2f
             val radius = size.minDimension / 2.6f
 
-            drawArc(
+            /*drawArc(
                 color = Color.DarkGray,
                 startAngle = 135f,
                 sweepAngle = 270f,
@@ -135,6 +135,44 @@ fun CustomKnob(
                     topLeft = Offset(center.x - radiusArc, center.y - radiusArc),
                     size = Size(radiusArc * 2, radiusArc * 2),
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+            }*/
+
+            val totalTicks = 31
+            val centerTickIndex = totalTicks / 2
+            val tickPadding = 5f // Padding from main circle
+            val gain = ((currentAngle + 90f) / 360f * 3000f - 1500f) / 1000f // -1.5 to +1.5
+            val maxGain = 1.5f
+            val activeTicks = ((abs(gain) / maxGain) * centerTickIndex).roundToInt()
+
+            for (i in 0 until totalTicks) {
+                val angleDegrees = 135f + (i * 270f / totalTicks)
+                val angleRad = Math.toRadians(angleDegrees.toDouble())
+
+                // Set different lengths for every 5th tick
+                val isMajorTick = i % 5 == 0
+                val tickLength = if (isMajorTick) 16f else 10f
+
+                val outerRadius = radiusArc + tickPadding
+                val innerRadius = outerRadius - tickLength
+
+                val startX = center.x + innerRadius * kotlin.math.cos(angleRad).toFloat()
+                val startY = center.y + innerRadius * kotlin.math.sin(angleRad).toFloat()
+                val endX = center.x + outerRadius * kotlin.math.cos(angleRad).toFloat()
+                val endY = center.y + outerRadius * kotlin.math.sin(angleRad).toFloat()
+
+                val isActive = when {
+                    gain < 0 -> i in (centerTickIndex - activeTicks) until centerTickIndex
+                    gain > 0 -> i in (centerTickIndex + 1)..(centerTickIndex + activeTicks)
+                    else -> i == centerTickIndex
+                }
+
+                drawLine(
+                    color = if (isActive) Color.Green else Color.DarkGray,
+                    start = Offset(startX, startY),
+                    end = Offset(endX, endY),
+                    strokeWidth = if (isMajorTick) 3f else 2f,
+                    cap = StrokeCap.Round
                 )
             }
 
