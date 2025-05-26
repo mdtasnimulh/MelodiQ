@@ -111,15 +111,32 @@ fun CustomKnob(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
 
-            drawArc(
-                color = Color.Green,
-                startAngle = 135f,
-                sweepAngle = 270f * sweepPercent,
-                useCenter = false,
-                topLeft = Offset(center.x - radiusArc, center.y - radiusArc),
-                size = Size(radiusArc * 2, radiusArc * 2),
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-            )
+            val gain = ((currentAngle + 90f) / 360f * 3000f - 1500f) / 1000f // in dB
+            val maxGain = 1.5f
+            if (gain < 0f) {
+                val leftSweep = 135f + (135f * (1f - abs(gain) / maxGain))
+                drawArc(
+                    color = Color.Green,
+                    startAngle = leftSweep,
+                    sweepAngle = 135f - (leftSweep - 135f),
+                    useCenter = false,
+                    topLeft = Offset(center.x - radiusArc, center.y - radiusArc),
+                    size = Size(radiusArc * 2, radiusArc * 2),
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+            } else if (gain > 0f) {
+                val rightSweep = 135f + 135f
+                val sweep = 135f * (gain / maxGain)
+                drawArc(
+                    color = Color.Green,
+                    startAngle = rightSweep,
+                    sweepAngle = sweep,
+                    useCenter = false,
+                    topLeft = Offset(center.x - radiusArc, center.y - radiusArc),
+                    size = Size(radiusArc * 2, radiusArc * 2),
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+            }
 
             drawCircle(
                 color = Color.Gray,
@@ -143,8 +160,11 @@ fun CustomKnob(
 
 @Composable
 fun CustomKnobProgressBar(volumeLevel: Float) {
-    val barCount = 30
-    val filledBars = (barCount * volumeLevel).roundToInt()
+    val barCount = 31
+    val centerIndex = barCount / 2
+    val gainRange = 1.5f // +/-1.5dB range
+    val gain = volumeLevel * 3f - 1.5f // Convert progress (0–1) to gain (-1.5f to 1.5f)
+    val activeBars = ((abs(gain) / gainRange) * centerIndex).roundToInt()
 
     Row(
         modifier = Modifier
@@ -153,15 +173,24 @@ fun CustomKnobProgressBar(volumeLevel: Float) {
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        repeat(barCount) { i ->
+        for (i in 0 until barCount) {
+            val isLeft = i < centerIndex
+            val isRight = i >= centerIndex + 1
+            val isCenter = i == centerIndex
+
+            val isActive = when {
+                isCenter -> gain == 0f
+                gain < 0 -> isLeft && i >= centerIndex - activeBars
+                gain > 0 -> isRight && i <= centerIndex + activeBars
+                else -> false
+            }
+
             Box(
                 modifier = Modifier
                     .width(4.dp)
                     .fillMaxHeight()
                     .weight(1f)
-                    .background(
-                        color = if (i < filledBars) Color.Green else Color.DarkGray
-                    )
+                    .background(if (isActive) Color.Green else Color.DarkGray)
             )
         }
     }
