@@ -513,7 +513,8 @@ internal fun PlayerScreen2(
                         onRepeatButtonClicked = {},
                         onEQButtonClicked = {},
                         onSleepButtonClicked = {},
-                        onShareButtonClicked = {}
+                        onShareButtonClicked = {},
+                        onVolumeBoostClicked = {}
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))

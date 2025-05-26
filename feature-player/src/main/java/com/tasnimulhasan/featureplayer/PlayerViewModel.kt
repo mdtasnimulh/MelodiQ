@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
+import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.net.toUri
@@ -13,8 +13,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.lifecycle.viewmodel.compose.saveable
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import com.tasnimulhasan.common.service.MelodiqAudioState
-import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
@@ -39,8 +40,14 @@ class PlayerViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
+    private val exoPlayer: ExoPlayer,
     savedStateHandle: SavedStateHandle
 ) : BaseViewModel() {
+
+    private var loudnessEnhancer: LoudnessEnhancer? = null
+
+    private val _volume = MutableStateFlow(100) // Default to 100%
+    val volume: StateFlow<Int> = _volume
 
     private val dummyAudio = MusicEntity(
         contentUri = "".toUri(), songId = 0L, cover = null, songTitle = "", artist = "", duration = "", albumId = 0L, album = ""
@@ -252,6 +259,31 @@ class PlayerViewModel @Inject constructor(
     fun convertLongToReadableDateTime(time: Long, format: String): String {
         val df = SimpleDateFormat(format, Locale.US)
         return df.format(time)
+    }
+
+    @androidx.annotation.OptIn(UnstableApi::class)
+    fun setVolumeWithBoost(volumePercent: Int) {
+        val clampedVolume = volumePercent.coerceIn(0, 200)
+        _volume.value = clampedVolume
+        // Normal volume (0.0f to 1.0f)
+        exoPlayer.volume = (clampedVolume.coerceAtMost(100)) / 100f
+        if (clampedVolume > 100) {
+            val boostLevel = ((clampedVolume - 100) / 100f * 1000).toInt() // 0 to 1000 millibels
+            val sessionId = exoPlayer.audioSessionId
+            loudnessEnhancer?.release()
+            loudnessEnhancer = LoudnessEnhancer(sessionId).apply {
+                setTargetGain(boostLevel) // 1000 = +10dB, 2000 = +20dB
+                enabled = true
+            }
+        } else {
+            loudnessEnhancer?.release()
+            loudnessEnhancer = null
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        loudnessEnhancer?.release()
     }
 }
 

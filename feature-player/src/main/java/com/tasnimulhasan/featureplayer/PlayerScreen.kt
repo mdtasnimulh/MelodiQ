@@ -20,14 +20,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,12 +55,16 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
+import com.tasnimulhasan.designsystem.theme.CreamRed
 import com.tasnimulhasan.designsystem.theme.LightOrange
+import com.tasnimulhasan.designsystem.theme.MythicGreen
 import com.tasnimulhasan.designsystem.theme.PeaceOrange
+import com.tasnimulhasan.designsystem.theme.PeachYellow
 import com.tasnimulhasan.featureplayer.components.CustomButtonGroups
 import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
 import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
@@ -86,6 +96,9 @@ internal fun PlayerScreen(
     val repeatModeOne by viewModel.repeatModeOne.collectAsStateWithLifecycle()
     val repeatModeAll by viewModel.repeatModeAll.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
+
+    val showVolumeBoostDialog = remember { mutableStateOf(false) }
+    val volumeGain = remember { mutableFloatStateOf(0f) } // From 0 to 1
 
     // Animation and gesture handling
     val density = LocalDensity.current
@@ -389,7 +402,7 @@ internal fun PlayerScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             CustomButtonGroups(
                 buttonColor = Color(darkPaletteColor).copy(alpha = 0.05f),
@@ -418,6 +431,9 @@ internal fun PlayerScreen(
                         it.putExtra(Intent.EXTRA_STREAM, currentTrack.contentUri)
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
+                },
+                onVolumeBoostClicked = {
+                    showVolumeBoostDialog.value = true
                 }
             )
 
@@ -429,6 +445,95 @@ internal fun PlayerScreen(
                     }
                 )
             }
+
+            if (showVolumeBoostDialog.value) {
+                Dialog(onDismissRequest = {
+                    showVolumeBoostDialog.value = false
+                }) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Volume Booster",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+
+                            val volumePercent = (volumeGain.floatValue * 200).toInt()
+
+                            val sliderColor = when {
+                                volumePercent > 150 -> CreamRed
+                                volumePercent > 100 -> PeachYellow
+                                else -> MaterialTheme.colorScheme.primary
+                            }
+
+                            Text(
+                                text = "$volumePercent%",
+                                fontSize = 16.sp,
+                                color = Color.DarkGray,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+
+                            Slider(
+                                value = volumeGain.floatValue,
+                                onValueChange = {
+                                    volumeGain.floatValue = it
+                                },
+                                valueRange = 0f..1f,
+                                steps = 20,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = sliderColor,
+                                    activeTrackColor = sliderColor,
+                                    inactiveTrackColor = Color.LightGray
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "Cancel",
+                                    color = Color.Gray,
+                                    modifier = Modifier
+                                        .clickable {
+                                            showVolumeBoostDialog.value = false
+                                        }
+                                        .padding(8.dp)
+                                )
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Text(
+                                    text = "OK",
+                                    color = MythicGreen,
+                                    modifier = Modifier
+                                        .clickable {
+                                            val percent = (volumeGain.floatValue * 200).toInt()
+                                            viewModel.setVolumeWithBoost(percent)
+                                            showVolumeBoostDialog.value = false
+                                        }
+                                        .padding(8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
         }
     }
 }
