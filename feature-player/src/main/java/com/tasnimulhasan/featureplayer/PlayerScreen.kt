@@ -1,6 +1,8 @@
 package com.tasnimulhasan.featureplayer
 
+import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
@@ -447,6 +449,20 @@ internal fun PlayerScreen(
             }
 
             if (showVolumeBoostDialog.value) {
+                val context = LocalContext.current
+                val initialized = remember { mutableStateOf(false) }
+
+                if (!initialized.value) {
+                    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                    val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    val initialVolume = (currentVolume.toFloat() / maxVolume.toFloat()) // 0f..1f
+
+                    volumeGain.floatValue = initialVolume
+                    viewModel.setVolumeWithBoost((initialVolume * 200).toInt())
+                    initialized.value = true
+                }
+
                 Dialog(onDismissRequest = {
                     showVolumeBoostDialog.value = false
                 }) {
@@ -457,8 +473,7 @@ internal fun PlayerScreen(
                         shape = RoundedCornerShape(16.dp),
                     ) {
                         Column(
-                            modifier = Modifier
-                                .padding(24.dp),
+                            modifier = Modifier.padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -488,6 +503,8 @@ internal fun PlayerScreen(
                                 value = volumeGain.floatValue,
                                 onValueChange = {
                                     volumeGain.floatValue = it
+                                    val newPercent = (it * 200).toInt()
+                                    viewModel.setVolumeWithBoost(newPercent)
                                 },
                                 valueRange = 0f..1f,
                                 steps = 20,
@@ -506,24 +523,10 @@ internal fun PlayerScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "Cancel",
-                                    color = Color.Gray,
-                                    modifier = Modifier
-                                        .clickable {
-                                            showVolumeBoostDialog.value = false
-                                        }
-                                        .padding(8.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                Text(
                                     text = "OK",
                                     color = MythicGreen,
                                     modifier = Modifier
                                         .clickable {
-                                            val percent = (volumeGain.floatValue * 200).toInt()
-                                            viewModel.setVolumeWithBoost(percent)
                                             showVolumeBoostDialog.value = false
                                         }
                                         .padding(8.dp)
@@ -533,7 +536,6 @@ internal fun PlayerScreen(
                     }
                 }
             }
-
         }
     }
 }
