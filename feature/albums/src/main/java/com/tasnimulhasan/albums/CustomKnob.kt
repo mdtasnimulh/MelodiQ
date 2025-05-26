@@ -32,6 +32,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.tasnimulhasan.designsystem.theme.CreamRed
+import com.tasnimulhasan.designsystem.theme.MythicGreen
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -140,7 +142,7 @@ fun CustomKnob(
 
             val totalTicks = 31
             val centerTickIndex = totalTicks / 2
-            val tickPadding = 5f // Padding from main circle
+            val tickPadding = 10f // Padding from main circle
             val gain = ((currentAngle + 90f) / 360f * 3000f - 1500f) / 1000f // -1.5 to +1.5
             val maxGain = 1.5f
             val activeTicks = ((abs(gain) / maxGain) * centerTickIndex).roundToInt()
@@ -151,7 +153,7 @@ fun CustomKnob(
 
                 // Set different lengths for every 5th tick
                 val isMajorTick = i % 5 == 0
-                val tickLength = if (isMajorTick) 16f else 10f
+                val tickLength = if (isMajorTick) 25f else 20f
 
                 val outerRadius = radiusArc + tickPadding
                 val innerRadius = outerRadius - tickLength
@@ -168,7 +170,9 @@ fun CustomKnob(
                 }
 
                 drawLine(
-                    color = if (isActive) Color.Green else Color.DarkGray,
+                    color = if (isActive) {
+                        if (gain < 0) CreamRed else MythicGreen
+                    } else Color.DarkGray,
                     start = Offset(startX, startY),
                     end = Offset(endX, endY),
                     strokeWidth = if (isMajorTick) 3f else 2f,
@@ -228,7 +232,9 @@ fun CustomKnobProgressBar(volumeLevel: Float) {
                     .width(4.dp)
                     .fillMaxHeight()
                     .weight(1f)
-                    .background(if (isActive) Color.Green else Color.DarkGray)
+                    .background(if (isActive) {
+                        if (gain < 0) CreamRed else MythicGreen
+                    } else Color.Gray)
             )
         }
     }
