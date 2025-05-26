@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -22,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -33,6 +35,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -52,7 +55,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,8 +95,6 @@ internal fun PlayerScreen(
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val progressString by viewModel.progressString.collectAsStateWithLifecycle()
-    //val progressStringMinutes by viewModel.progressStringMinutes.collectAsStateWithLifecycle()
-    //val progressStringSeconds by viewModel.progressStringSeconds.collectAsStateWithLifecycle()
     val repeatModeOne by viewModel.repeatModeOne.collectAsStateWithLifecycle()
     val repeatModeAll by viewModel.repeatModeAll.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
@@ -325,7 +325,7 @@ internal fun PlayerScreen(
                     .clickable {
                         viewModel.toggleTimeDisplay()
                     },
-                text = "$progressString / " +viewModel.convertLongToReadableDateTime(
+                text = "$progressString / " + viewModel.convertLongToReadableDateTime(
                     currentTrack.duration.toLong(),
                     "mm:ss"
                 ),
@@ -387,7 +387,7 @@ internal fun PlayerScreen(
 
                     onNextClick = {
                         scope.launch {
-                            if (currentPage == viewModel.audioList.size-1)
+                            if (currentPage == viewModel.audioList.size - 1)
                                 pagerState.animateScrollToPage(0)
                             else
                                 pagerState.animateScrollToPage(currentPage + 1)
@@ -414,12 +414,10 @@ internal fun PlayerScreen(
                     if (repeatModeOff && !repeatModeOne && !repeatModeAll) {
                         viewModel.onUiEvents(UIEvents.RepeatOne)
                         Toast.makeText(context, Res.string.msg_repeat_one, Toast.LENGTH_SHORT).show()
-                    }
-                    else if (!repeatModeOff && repeatModeOne && !repeatModeAll) {
-                        viewModel.onUiEvents((UIEvents.RepeatAll))
+                    } else if (!repeatModeOff && repeatModeOne && !repeatModeAll) {
+                        viewModel.onUiEvents(UIEvents.RepeatAll)
                         Toast.makeText(context, Res.string.msg_repeat_all, Toast.LENGTH_SHORT).show()
-                    }
-                    else {
+                    } else {
                         viewModel.onUiEvents(UIEvents.RepeatOff)
                         Toast.makeText(context, Res.string.msg_repeat_off, Toast.LENGTH_SHORT).show()
                     }
@@ -451,16 +449,43 @@ internal fun PlayerScreen(
             if (showVolumeBoostDialog.value) {
                 val context = LocalContext.current
                 val initialized = remember { mutableStateOf(false) }
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
+                // Initialize volumeGain based on system volume
                 if (!initialized.value) {
-                    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
                     val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
                     val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                    val initialVolume = (currentVolume.toFloat() / maxVolume.toFloat()) // 0f..1f
-
-                    volumeGain.floatValue = initialVolume
-                    viewModel.setVolumeWithBoost((initialVolume * 200).toInt())
+                    val systemVolumePercent = (currentVolume.toFloat() / maxVolume.toFloat() * 100).toInt()
+                    volumeGain.floatValue = systemVolumePercent / 100f // Map to 0.0f–1.0f for slider
+                    viewModel.setVolumeWithBoost(systemVolumePercent) // Initialize with system volume
                     initialized.value = true
+                }
+
+                // Register ContentObserver for volume changes
+                DisposableEffect(showVolumeBoostDialog.value) {
+                    val handler = Handler(Looper.getMainLooper())
+                    val contentObserver = object : android.database.ContentObserver(handler) {
+                        override fun onChange(selfChange: Boolean) {
+                            super.onChange(selfChange)
+                            val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                            val systemVolumePercent = (currentVolume.toFloat() / maxVolume.toFloat() * 100).toInt()
+                            volumeGain.floatValue = (systemVolumePercent / 100f).coerceIn(0f, 1f)
+                            viewModel.setVolumeWithBoost(systemVolumePercent) // Update volume
+                        }
+                    }
+
+                    if (showVolumeBoostDialog.value) {
+                        context.contentResolver.registerContentObserver(
+                            Settings.System.CONTENT_URI,
+                            true,
+                            contentObserver
+                        )
+                    }
+
+                    onDispose {
+                        context.contentResolver.unregisterContentObserver(contentObserver)
+                    }
                 }
 
                 Dialog(onDismissRequest = {
@@ -484,7 +509,7 @@ internal fun PlayerScreen(
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
 
-                            val volumePercent = (volumeGain.floatValue * 200).toInt()
+                            val volumePercent = (volumeGain.floatValue * 200).toInt() // Display 0–200%
 
                             val sliderColor = when {
                                 volumePercent > 150 -> CreamRed
@@ -503,7 +528,7 @@ internal fun PlayerScreen(
                                 value = volumeGain.floatValue,
                                 onValueChange = {
                                     volumeGain.floatValue = it
-                                    val newPercent = (it * 200).toInt()
+                                    val newPercent = (it * 200).toInt() // Map slider (0–1) to 0–200%
                                     viewModel.setVolumeWithBoost(newPercent)
                                 },
                                 valueRange = 0f..1f,

@@ -266,14 +266,17 @@ class PlayerViewModel @Inject constructor(
     fun setVolumeWithBoost(volumePercent: Int) {
         val clampedVolume = volumePercent.coerceIn(0, 200)
         _volume.value = clampedVolume
-        // Normal volume (0.0f to 1.0f)
-        exoPlayer.volume = (clampedVolume.coerceAtMost(100)) / 100f
+
+        // Map 0–100% to ExoPlayer volume (0.0f to 1.0f)
+        val systemVolumePercent = clampedVolume.coerceAtMost(100)
+        exoPlayer.volume = systemVolumePercent / 100f
+
+        // Apply LoudnessEnhancer for boost above 100%
         if (clampedVolume > 100) {
             val boostLevel = ((clampedVolume - 100) / 100f * 1000).toInt() // 0 to 1000 millibels
-            val sessionId = exoPlayer.audioSessionId
             loudnessEnhancer?.release()
-            loudnessEnhancer = LoudnessEnhancer(sessionId).apply {
-                setTargetGain(boostLevel) // 1000 = +10dB, 2000 = +20dB
+            loudnessEnhancer = LoudnessEnhancer(exoPlayer.audioSessionId).apply {
+                setTargetGain(boostLevel)
                 enabled = true
             }
         } else {
