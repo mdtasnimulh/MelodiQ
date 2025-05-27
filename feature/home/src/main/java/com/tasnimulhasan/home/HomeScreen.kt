@@ -69,6 +69,7 @@ internal fun HomeScreen(
                             context.startService(intent)
                             isServiceRunning = true
                         }
+                        viewModel.onUiEvents(UIEvents.UpdateProgress(viewModel.progress / 100f))
                         navigateToPlayer(item.songId.toString())
                     }
                 )
