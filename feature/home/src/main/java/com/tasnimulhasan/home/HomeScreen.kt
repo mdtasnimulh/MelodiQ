@@ -1,6 +1,8 @@
 package com.tasnimulhasan.home
 
+import android.app.ActivityManager
 import android.content.Context
+import android.content.Context.ACTIVITY_SERVICE
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.home.components.MusicCard
+import timber.log.Timber
 
 @Composable
 internal fun HomeRoute(
@@ -39,6 +42,7 @@ internal fun HomeScreen(
     modifier: Modifier,
     navigateToPlayer: (String) -> Unit,
 ) {
+    Timber.e("CheckIsServiceRunning: ${context.isServiceRunning(MelodiqPlayerService::class.java)}")
     var isServiceRunning by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         viewModel.initializeListIfNeeded()
@@ -97,4 +101,11 @@ internal fun HomeScreen(
             )
         }
     }
+}
+
+@Suppress("DEPRECATION")
+fun <T> Context.isServiceRunning(service: Class<T>): Boolean {
+    return (getSystemService(ACTIVITY_SERVICE) as ActivityManager)
+        .getRunningServices(Integer.MAX_VALUE)
+        .any { it -> it.service.className == service.name }
 }
