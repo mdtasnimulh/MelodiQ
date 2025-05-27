@@ -25,7 +25,6 @@ class MelodiqServiceHandler @Inject constructor(
 
     init {
         exoPlayer.addListener(this)
-        // Emit initial state
         if (exoPlayer.playbackState == ExoPlayer.STATE_READY) {
             _audioState.value = MelodiqAudioState.Ready(exoPlayer.duration)
             _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
@@ -128,10 +127,6 @@ class MelodiqServiceHandler @Inject constructor(
     }
 
     private fun startProgressUpdate() = job.run {
-        /*while (true) {
-            delay(500)
-            _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
-        }*/
         job?.cancel()
         job = CoroutineScope(Dispatchers.Main).launch {
             while (isActive) {

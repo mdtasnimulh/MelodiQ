@@ -3,7 +3,6 @@ package com.tasnimulhasan.featureplayer
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -98,15 +97,16 @@ internal fun PlayerScreen(
     val repeatModeOne by viewModel.repeatModeOne.collectAsStateWithLifecycle()
     val repeatModeAll by viewModel.repeatModeAll.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
+    val volume by viewModel.volume.collectAsStateWithLifecycle()
 
     val showVolumeBoostDialog = remember { mutableStateOf(false) }
-    val volumeGain = remember { mutableFloatStateOf(0f) } // From 0 to 1
+    val volumeGain = remember { mutableFloatStateOf(0f) }
 
     // Animation and gesture handling
     val density = LocalDensity.current
-    val maxDragDistance = with(density) { 500.dp.toPx() } // Max drag distance (adjustable)
+    val maxDragDistance = with(density) { 500.dp.toPx() }
     val offsetY = remember { Animatable(0f) }
-    val thresholdFraction = 0.6f // 60% threshold for navigation
+    val thresholdFraction = 0.6f
 
     val showBottomSheet = remember { mutableStateOf(false) }
     val sleepTimerRunning = remember { mutableStateOf(false) }
@@ -447,31 +447,33 @@ internal fun PlayerScreen(
             }
 
             if (showVolumeBoostDialog.value) {
-                val context = LocalContext.current
-                val initialized = remember { mutableStateOf(false) }
-                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-
-                // Initialize volumeGain based on system volume
-                if (!initialized.value) {
-                    val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                    val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                    val systemVolumePercent = (currentVolume.toFloat() / maxVolume.toFloat() * 100).toInt()
-                    volumeGain.floatValue = systemVolumePercent / 100f // Map to 0.0f–1.0f for slider
-                    viewModel.setVolumeWithBoost(systemVolumePercent) // Initialize with system volume
-                    initialized.value = true
+                // Initialize volumeGain based on ViewModel's volume
+                LaunchedEffect(showVolumeBoostDialog.value, volume) {
+                    volumeGain.floatValue = volume / 200f // Map to 0.0f–1.0f for slider
                 }
 
-                // Register ContentObserver for volume changes
+                // Register ContentObserver for system volume changes
                 DisposableEffect(showVolumeBoostDialog.value) {
                     val handler = Handler(Looper.getMainLooper())
                     val contentObserver = object : android.database.ContentObserver(handler) {
                         override fun onChange(selfChange: Boolean) {
                             super.onChange(selfChange)
-                            val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                            val systemVolumePercent = (currentVolume.toFloat() / maxVolume.toFloat() * 100).toInt()
-                            volumeGain.floatValue = (systemVolumePercent / 100f).coerceIn(0f, 1f)
-                            viewModel.setVolumeWithBoost(systemVolumePercent) // Update volume
+                            if (!viewModel.isAdjustingFromSlider()) {
+                                val currentVolume = viewModel.volume.value
+                                // Use viewModel.volume directly to avoid coarse AudioManager steps
+                                volumeGain.floatValue = (currentVolume / 200f).coerceIn(0f, 1f)
+                                // Only update if system volume differs significantly
+                                val systemVolumePercent = viewModel.getCurrentVolumePercent()
+                                if (currentVolume <= 100 && kotlin.math.abs(currentVolume - systemVolumePercent) > 2) {
+                                    volumeGain.floatValue = (systemVolumePercent / 200f).coerceIn(0f, 0.5f)
+                                    viewModel.setVolumeWithBoost(systemVolumePercent)
+                                } else if (currentVolume > 100 && systemVolumePercent < 100) {
+                                    // Disable boost if system volume drops below max
+                                    volumeGain.floatValue = (systemVolumePercent / 200f).coerceIn(0f, 0.5f)
+                                    viewModel.setVolumeWithBoost(systemVolumePercent)
+                                }
+                                // Preserve boost if system volume is max
+                            }
                         }
                     }
 
@@ -529,7 +531,7 @@ internal fun PlayerScreen(
                                 onValueChange = {
                                     volumeGain.floatValue = it
                                     val newPercent = (it * 200).toInt() // Map slider (0–1) to 0–200%
-                                    viewModel.setVolumeWithBoost(newPercent)
+                                    viewModel.setVolumeWithBoost(newPercent, fromSlider = true)
                                 },
                                 valueRange = 0f..1f,
                                 steps = 20,

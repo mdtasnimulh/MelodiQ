@@ -24,6 +24,7 @@ import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,23 +43,23 @@ class PlayerViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
     private val exoPlayer: ExoPlayer,
+    context: Context,
     savedStateHandle: SavedStateHandle
 ) : BaseViewModel() {
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private val audioManager: AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
-    private val _volume = MutableStateFlow(100) // Default to 100%
-    val volume: StateFlow<Int> = _volume
+    private val _volume = MutableStateFlow(0)
+    val volume: StateFlow<Int> = _volume.asStateFlow()
+
+    private var isAdjustingFromSlider = false
 
     private val dummyAudio = MusicEntity(
         contentUri = "".toUri(), songId = 0L, cover = null, songTitle = "", artist = "", duration = "", albumId = 0L, album = ""
     )
 
     var duration by savedStateHandle.saveable { mutableLongStateOf(0L) }
-    //var progress by savedStateHandle.saveable { mutableFloatStateOf(0f) }
-    //var progressString by savedStateHandle.saveable { mutableStateOf("00:00") }
-    //var isPlaying by savedStateHandle.saveable { mutableStateOf(false) }
-    //var currentSelectedAudio by savedStateHandle.saveable { mutableStateOf(dummyAudio) }
     var audioList by savedStateHandle.saveable { mutableStateOf(listOf<MusicEntity>()) }
 
     private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
@@ -95,7 +96,6 @@ class PlayerViewModel @Inject constructor(
 
     fun toggleTimeDisplay() {
         _showElapsedTime.value = !_showElapsedTime.value
-        // Recalculate progressString with the new mode
         calculateProgressValue(audioServiceHandler.audioState.value.let { state ->
             when (state) {
                 is MelodiqAudioState.Progress -> state.progress
@@ -111,6 +111,7 @@ class PlayerViewModel @Inject constructor(
     init {
         fetchMusicList()
         observeAudioState()
+        _volume.value = getCurrentVolumePercent()
         viewModelScope.launch {
             val currentSong = playerUseCases.getCurrentSongInfoUseCase()
             currentSong?.let {
@@ -129,7 +130,6 @@ class PlayerViewModel @Inject constructor(
                     is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
-                        /*_currentSelectedAudio.value = audioList.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio*/
                         val newIndex = mediaState.mediaItemIndex
                         _currentSelectedAudio.value = audioList.getOrNull(newIndex) ?: dummyAudio
                     }
@@ -148,13 +148,8 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             audioList = fetchMusicUseCase.execute()
             _uIState.value = UIState.MusicList(audioList)
-            //setMediaItems()
         }
         initialized = true
-    }
-
-    fun getSelectedMusic(id: String) : MusicEntity {
-        return audioList.find { it.songId.toString() == id }!!
     }
 
     fun loadBitmapIfNeeded(context: Context, index: Int) {
@@ -234,13 +229,6 @@ class PlayerViewModel @Inject constructor(
         else formatDurationSeconds(if (duration > currentProgress) duration - currentProgress else 0L)
     }
 
-    /*private fun calculateElapsedTime(currentProgress: Long) {
-        _progress.value =
-            if (currentProgress > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f)
-            else 0f
-        _progressString.value = formatDuration(currentProgress) // later changed to upper method using condition
-    }*/
-
     private fun formatDuration(duration: Long): String {
         val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
@@ -263,32 +251,64 @@ class PlayerViewModel @Inject constructor(
     }
 
     @androidx.annotation.OptIn(UnstableApi::class)
-    fun setVolumeWithBoost(volumePercent: Int) {
+    fun setVolumeWithBoost(volumePercent: Int, fromSlider: Boolean = false) {
+        isAdjustingFromSlider = fromSlider
         val clampedVolume = volumePercent.coerceIn(0, 200)
         _volume.value = clampedVolume
 
-        // Map 0–100% to ExoPlayer volume (0.0f to 1.0f)
-        val systemVolumePercent = clampedVolume.coerceAtMost(100)
-        exoPlayer.volume = systemVolumePercent / 100f
-
-        // Apply LoudnessEnhancer for boost above 100%
-        if (clampedVolume > 100) {
-            val boostLevel = ((clampedVolume - 100) / 100f * 1000).toInt() // 0 to 1000 millibels
-            loudnessEnhancer?.release()
-            loudnessEnhancer = LoudnessEnhancer(exoPlayer.audioSessionId).apply {
-                setTargetGain(boostLevel)
-                enabled = true
-            }
-        } else {
+        // Control device volume only in 0–100 range
+        if (clampedVolume <= 100) {
+            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val newVolume = (clampedVolume * maxVolume / 100f).toInt()
+            audioManager.setStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                newVolume,
+                0
+            )
+            exoPlayer.volume = clampedVolume / 100f
             loudnessEnhancer?.release()
             loudnessEnhancer = null
+        } else {
+            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            audioManager.setStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                maxVolume,
+                0
+            )
+            exoPlayer.volume = 1.0f
+            val boostLevel = ((clampedVolume - 100) / 100f * 1000).toInt()
+            loudnessEnhancer?.release()
+            loudnessEnhancer = try {
+                LoudnessEnhancer(exoPlayer.audioSessionId).apply {
+                    setTargetGain(boostLevel)
+                    enabled = true
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to initialize LoudnessEnhancer")
+                null
+            }
+        }
+        // Reset flag after adjustment
+        if (fromSlider) {
+            viewModelScope.launch {
+                delay(200) // Debounce to allow system volume to settle
+                isAdjustingFromSlider = false
+            }
         }
     }
 
-    override fun onCleared() {
+    fun getCurrentVolumePercent(): Int {
+        val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        return (currentVolume.toFloat() / maxVolume.toFloat() * 100).toInt()
+    }
+
+    fun isAdjustingFromSlider(): Boolean = isAdjustingFromSlider
+
+    /*override fun onCleared() {
         super.onCleared()
         loudnessEnhancer?.release()
-    }
+    }*/
 }
 
 sealed class UIEvents {
