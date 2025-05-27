@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,21 +47,33 @@ fun CustomWaveProgressBar(
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(currentProgress) }
 
-    val displayProgress = if (isDragging) dragProgress else currentProgress
+    LaunchedEffect(currentProgress) {
+        if (!isDragging) {
+            dragProgress = currentProgress
+        }
+    }
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()  // ✅ 85% of screen width
+            .fillMaxWidth()
             .height(50.dp)
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .pointerInput(Unit) {
-                detectDragGestures { change, _ ->
-                    val newX = change.position.x
-                    val newProgress = (newX / size.width).coerceIn(0f, 1f)
-                    dragProgress = newProgress
-                    onSeek(newProgress)
-                    isDragging = true
-                }
+                detectDragGestures(
+                    onDragStart = { isDragging = true },
+                    onDragEnd = {
+                        isDragging = false
+                        onSeek(dragProgress) // Finalize seek on drag end
+                    },
+                    onDragCancel = { isDragging = false },
+                    onDrag = { change, _ ->
+                        val newX = change.position.x
+                        val newProgress = (newX / size.width).coerceIn(0f, 1f)
+                        dragProgress = newProgress
+                        onSeek(newProgress)
+                        change.consume()
+                    }
+                )
             }
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
@@ -69,14 +82,14 @@ fun CustomWaveProgressBar(
                     onSeek(newProgress)
                 }
             },
-        contentAlignment = Alignment.Center // ✅ Ensures vertical centering
+        contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val totalBars = amplitudes.size
             val totalBarWidth = totalBars * (barWidthPx + spacePx) - spacePx
-            val startX = (size.width - totalBarWidth) / 2f // ✅ Horizontal centering
+            val startX = (size.width - totalBarWidth) / 2f
             val maxHeight = size.height
-            val playedBars = (totalBars * displayProgress).toInt()
+            val playedBars = (totalBars * (if (isDragging) dragProgress else currentProgress)).toInt()
 
             amplitudes.forEachIndexed { index, amp ->
                 val x = startX + index * (barWidthPx + spacePx)
