@@ -51,18 +51,19 @@ class HomeViewModel @Inject constructor(
 
     private val _duration = MutableStateFlow(0L)
     val duration = _duration.asStateFlow()
+
     private val _progress = MutableStateFlow(0f)
     val progress = _progress.asStateFlow()
-    //var progressString by savedStateHandle.saveable { mutableStateOf("00:00") }
+
     private val _progressString = MutableStateFlow("00:00")
     val progressString = _progressString.asStateFlow()
-    //var isPlaying by savedStateHandle.saveable { mutableStateOf(false) }
+
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying = _isPlaying.asStateFlow()
-    //var currentSelectedAudio by savedStateHandle.saveable { mutableStateOf(dummyAudio) }
+
     private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
     val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
-    //var audioList by savedStateHandle.saveable { mutableStateOf(listOf<MusicEntity>()) }
+
     private val _audioList = MutableStateFlow(listOf<MusicEntity>())
     val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
 
@@ -80,14 +81,12 @@ class HomeViewModel @Inject constructor(
                     is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
-                        //currentSelectedAudio = audioList[mediaState.mediaItemIndex]
                         _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
                     }
 
                     is MelodiqAudioState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
-                        // Force initial progress update
                         calculateProgressValue(audioServiceHandler.getCurrentDuration())
                     }
                 }

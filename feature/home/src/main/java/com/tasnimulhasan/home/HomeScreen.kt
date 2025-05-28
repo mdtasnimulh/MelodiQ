@@ -11,17 +11,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.home.components.MusicCard
-import timber.log.Timber
 
 @Composable
 internal fun HomeRoute(
@@ -43,8 +41,6 @@ internal fun HomeScreen(
     modifier: Modifier,
     navigateToPlayer: (String) -> Unit,
 ) {
-    Timber.e("CheckIsServiceRunning: ${context.isServiceRunning(MelodiqPlayerService::class.java)}")
-    var isServiceRunning by remember { mutableStateOf(false) }
     val audioList by viewModel.audioList.collectAsStateWithLifecycle()
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
@@ -73,10 +69,9 @@ internal fun HomeScreen(
                     onMusicClicked = {
                         viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
                         viewModel.onUiEvents(UIEvents.PlayPause)
-                        if (!isServiceRunning) {
+                        if (!context.isServiceRunning(MelodiqPlayerService::class.java)) {
                             val intent = Intent(context, MelodiqPlayerService::class.java)
-                            context.startService(intent)
-                            isServiceRunning = true
+                            ContextCompat.startForegroundService(context, intent)
                         }
                         viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
                         navigateToPlayer(item.songId.toString())
