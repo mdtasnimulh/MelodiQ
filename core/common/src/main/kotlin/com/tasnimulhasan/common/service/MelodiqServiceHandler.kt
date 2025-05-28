@@ -89,6 +89,14 @@ class MelodiqServiceHandler @Inject constructor(
         }
     }
 
+    fun getCurrentMediaItemIndex(): Int = exoPlayer.currentMediaItemIndex
+
+    fun getDuration(): Long = exoPlayer.duration
+
+    fun isPlaying(): Boolean = exoPlayer.isPlaying
+
+    fun getMediaItemCount(): Int = exoPlayer.mediaItemCount
+
     override fun onPlaybackStateChanged(playbackState: Int) {
         when (playbackState) {
             ExoPlayer.STATE_BUFFERING -> _audioState.value = MelodiqAudioState.Buffering(exoPlayer.currentPosition)

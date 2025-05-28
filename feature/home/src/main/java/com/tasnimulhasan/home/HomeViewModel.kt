@@ -106,11 +106,27 @@ class HomeViewModel @Inject constructor(
         if (initialized) return
 
         viewModelScope.launch {
+            val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
+            if (existingMediaItemCount > 0) {
+                // Sync current state instead of resetting media items
+                _audioList.value = fetchMusicUseCase.execute()
+                _uIState.value = UIState.MusicList(_audioList.value)
+
+                _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
+                _duration.value = audioServiceHandler.getDuration()
+                calculateProgressValue(audioServiceHandler.getCurrentDuration())
+                _isPlaying.value = audioServiceHandler.isPlaying()
+
+                initialized = true
+                return@launch
+            }
+
+            // If no media items in ExoPlayer, initialize normally
             _audioList.value = fetchMusicUseCase.execute()
             _uIState.value = UIState.MusicList(_audioList.value)
             setMediaItems()
+            initialized = true
         }
-        initialized = true
     }
 
     private fun setMediaItems() {
