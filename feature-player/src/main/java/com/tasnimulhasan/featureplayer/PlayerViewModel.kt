@@ -7,13 +7,10 @@ import android.media.AudioManager
 import android.media.MediaMetadataRetriever
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.net.toUri
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
-import androidx.lifecycle.viewmodel.compose.saveable
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.tasnimulhasan.common.service.MelodiqAudioState
@@ -44,7 +41,6 @@ class PlayerViewModel @Inject constructor(
     private val audioServiceHandler: MelodiqServiceHandler,
     private val exoPlayer: ExoPlayer,
     context: Context,
-    savedStateHandle: SavedStateHandle
 ) : BaseViewModel() {
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
@@ -59,8 +55,11 @@ class PlayerViewModel @Inject constructor(
         contentUri = "".toUri(), songId = 0L, cover = null, songTitle = "", artist = "", duration = "", albumId = 0L, album = ""
     )
 
-    var duration by savedStateHandle.saveable { mutableLongStateOf(0L) }
-    var audioList by savedStateHandle.saveable { mutableStateOf(listOf<MusicEntity>()) }
+    private val _duration = MutableStateFlow(0L)
+    val duration: StateFlow<Long> = _duration.asStateFlow()
+
+    private val _audioList = MutableStateFlow(listOf<MusicEntity>())
+    val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
 
     private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
     val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
@@ -131,10 +130,10 @@ class PlayerViewModel @Inject constructor(
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
                         val newIndex = mediaState.mediaItemIndex
-                        _currentSelectedAudio.value = audioList.getOrNull(newIndex) ?: dummyAudio
+                        _currentSelectedAudio.value = _audioList.value[newIndex]
                     }
                     is MelodiqAudioState.Ready -> {
-                        duration = mediaState.duration
+                        _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
                         calculateProgressValue(audioServiceHandler.getCurrentDuration())
                     }
@@ -146,20 +145,20 @@ class PlayerViewModel @Inject constructor(
     private fun fetchMusicList() {
         if (initialized) return
         viewModelScope.launch {
-            audioList = fetchMusicUseCase.execute()
-            _uIState.value = UIState.MusicList(audioList)
+            _audioList.value = fetchMusicUseCase.execute()
+            _uIState.value = UIState.MusicList(_audioList.value)
         }
         initialized = true
     }
 
     fun loadBitmapIfNeeded(context: Context, index: Int) {
-        if (audioList[index].cover != null) return
+        if (_audioList.value[index].cover != null) return
         viewModelScope.launch(Dispatchers.Default) {
-            val bitmap = getAlbumArt(context, audioList[index].contentUri)
-            val updatedList = audioList.toMutableList().apply {
+            val bitmap = getAlbumArt(context, _audioList.value[index].contentUri)
+            val updatedList = _audioList.value.toMutableList().apply {
                 this[index] = this[index].copy(cover = bitmap)
             }
-            audioList = updatedList
+            _audioList.value = updatedList
         }
     }
 
@@ -204,7 +203,7 @@ class PlayerViewModel @Inject constructor(
                 else playerUseCases.play()
             }
             is UIEvents.SeekTo -> {
-                val position = ((duration * uiEvents.position) / 100f).toLong()
+                val position = ((_duration.value * uiEvents.position) / 100f).toLong()
                 playerUseCases.seekTo(position)
             }
             is UIEvents.SelectedAudioChange -> {
@@ -217,16 +216,16 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun calculateProgressValue(currentProgress: Long) {
-        _progress.value = if (currentProgress > 0 && duration > 0) ((currentProgress.toFloat() / duration.toFloat()) * 100f) else 0f
+        _progress.value = if (currentProgress > 0 && _duration.value > 0) ((currentProgress.toFloat() / _duration.value.toFloat()) * 100f) else 0f
 
         _progressString.value = if (_showElapsedTime.value) formatDuration(currentProgress) //Minutes Seconds Value
-        else formatDuration(if (duration > currentProgress) duration - currentProgress else 0L)
+        else formatDuration(if (_duration.value > currentProgress) _duration.value - currentProgress else 0L)
 
         _progressStringMinutes.value = if (_showElapsedTime.value) formatDurationMinutes(currentProgress) //Minutes Value
-        else formatDurationMinutes(if (duration > currentProgress) duration - currentProgress else 0L)
+        else formatDurationMinutes(if (_duration.value > currentProgress) _duration.value - currentProgress else 0L)
 
         _progressStringSeconds.value = if (_showElapsedTime.value) formatDurationSeconds(currentProgress)//Seconds Value
-        else formatDurationSeconds(if (duration > currentProgress) duration - currentProgress else 0L)
+        else formatDurationSeconds(if (_duration.value > currentProgress) _duration.value - currentProgress else 0L)
     }
 
     private fun formatDuration(duration: Long): String {

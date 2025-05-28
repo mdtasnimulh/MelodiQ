@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.home.components.MusicCard
 import timber.log.Timber
@@ -44,6 +45,10 @@ internal fun HomeScreen(
 ) {
     Timber.e("CheckIsServiceRunning: ${context.isServiceRunning(MelodiqPlayerService::class.java)}")
     var isServiceRunning by remember { mutableStateOf(false) }
+    val audioList by viewModel.audioList.collectAsStateWithLifecycle()
+    val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         viewModel.initializeListIfNeeded()
     }
@@ -52,7 +57,7 @@ internal fun HomeScreen(
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn {
-            itemsIndexed(viewModel.audioList) { index, item ->
+            itemsIndexed(audioList) { index, item ->
                 val shouldLoadBitmap = remember(item.songId) { true }
                 if (shouldLoadBitmap) {
                     LaunchedEffect(item.songId) {
@@ -73,24 +78,24 @@ internal fun HomeScreen(
                             context.startService(intent)
                             isServiceRunning = true
                         }
-                        viewModel.onUiEvents(UIEvents.UpdateProgress(viewModel.progress / 100f))
+                        viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
                         navigateToPlayer(item.songId.toString())
                     }
                 )
             }
         }
 
-        if (viewModel.currentSelectedAudio.songId != 0L) {
+        if (currentSelectedAudio.songId != 0L) {
             MiniPlayer2(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                cover = viewModel.currentSelectedAudio.cover,
-                songTitle = viewModel.currentSelectedAudio.songTitle,
-                progress = viewModel.progress,
+                cover = currentSelectedAudio.cover,
+                songTitle = currentSelectedAudio.songTitle,
+                progress = progress,
                 onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
-                isPlaying = viewModel.isPlaying,
+                isPlaying = isPlaying,
                 onMiniPlayerClick = {
-                    viewModel.onUiEvents(UIEvents.UpdateProgress(viewModel.progress / 100f))
-                    navigateToPlayer(viewModel.currentSelectedAudio.songId.toString())
+                    viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
+                    navigateToPlayer(currentSelectedAudio.songId.toString())
                 },
                 onPlayPauseClick = {
                     viewModel.onUiEvents(UIEvents.PlayPause)

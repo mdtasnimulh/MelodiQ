@@ -86,11 +86,7 @@ internal fun PlayerScreen(
     navigateToEqualizerScreen: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
-    val pagerState = rememberPagerState { viewModel.audioList.size }
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val audioList = viewModel.audioList
-
+    val audioList by viewModel.audioList.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val progressString by viewModel.progressString.collectAsStateWithLifecycle()
@@ -98,6 +94,10 @@ internal fun PlayerScreen(
     val repeatModeAll by viewModel.repeatModeAll.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
+
+    val pagerState = rememberPagerState { audioList.size }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val showVolumeBoostDialog = remember { mutableStateOf(false) }
     val volumeGain = remember { mutableFloatStateOf(0f) }
@@ -112,7 +112,7 @@ internal fun PlayerScreen(
     val sleepTimerRunning = remember { mutableStateOf(false) }
 
     // Find the index of the selected music
-    val initialPageIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
+    val initialPageIndex = audioList.indexOfFirst { it.songId.toString() == musicId }
     LaunchedEffect(initialPageIndex) {
         if (initialPageIndex >= 0) {
             pagerState.scrollToPage(initialPageIndex)
@@ -127,20 +127,20 @@ internal fun PlayerScreen(
     }
 
     val currentPage = pagerState.currentPage
-    val currentMusic = viewModel.audioList.getOrNull(currentPage)
+    val currentMusic = audioList.getOrNull(currentPage)
 
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     LaunchedEffect(currentSelectedAudio) {
-        val currentIndex = viewModel.audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
+        val currentIndex = audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
         if (currentIndex >= 0 && currentIndex != pagerState.currentPage) {
             pagerState.scrollToPage(currentIndex)
         }
     }
 
     LaunchedEffect(Unit) {
-        val currentIndex = viewModel.audioList.indexOfFirst { it.songId.toString() == musicId }
+        val currentIndex = audioList.indexOfFirst { it.songId.toString() == musicId }
         val currentPlayingIndex = viewModel.currentSelectedAudio.value.let { currentAudio ->
-            viewModel.audioList.indexOfFirst { it.songId == currentAudio.songId }
+            audioList.indexOfFirst { it.songId == currentAudio.songId }
         }
         if (currentIndex >= 0 && currentIndex != currentPlayingIndex) {
             viewModel.onUiEvents(UIEvents.SelectedAudioChange(currentIndex))
@@ -255,7 +255,7 @@ internal fun PlayerScreen(
                 viewModel.loadBitmapIfNeeded(context, page)
             }
 
-            val pageMusic = viewModel.audioList.getOrNull(page)
+            val pageMusic = audioList.getOrNull(page)
 
             Card(
                 modifier = Modifier
@@ -387,7 +387,7 @@ internal fun PlayerScreen(
 
                     onNextClick = {
                         scope.launch {
-                            if (currentPage == viewModel.audioList.size - 1)
+                            if (currentPage == audioList.size - 1)
                                 pagerState.animateScrollToPage(0)
                             else
                                 pagerState.animateScrollToPage(currentPage + 1)

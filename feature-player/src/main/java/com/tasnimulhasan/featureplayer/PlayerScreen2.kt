@@ -1,3 +1,4 @@
+/*
 package com.tasnimulhasan.featureplayer
 
 import androidx.compose.animation.core.Animatable
@@ -261,7 +262,8 @@ internal fun PlayerScreen2(
                                 width = Dimension.fillToConstraints
                                 height = Dimension.fillToConstraints
                             }
-                        /*.padding(horizontal = 15.dp)
+                        */
+/*.padding(horizontal = 15.dp)
                         .graphicsLayer {
                             val scale =
                                 lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
@@ -271,7 +273,8 @@ internal fun PlayerScreen2(
                                 lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
                             translationX =
                                 lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
-                        }*/
+                        }*//*
+
                     ) {
                         AsyncImage(
                             modifier = Modifier
@@ -522,4 +525,4 @@ internal fun PlayerScreen2(
             }
         }
     }
-}
+}*/
