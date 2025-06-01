@@ -1,8 +1,6 @@
 package com.tasnimulhasan.featureplayer
 
-import android.content.Context
 import android.content.Intent
-import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings

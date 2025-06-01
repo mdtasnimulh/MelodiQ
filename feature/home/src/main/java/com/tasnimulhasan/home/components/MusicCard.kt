@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.tasnimulhasan.designsystem.theme.CardBlueMediumTextColor
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.tasnimulhasan.designsystem.R as Res
@@ -40,11 +41,13 @@ fun MusicCard(
     title: String,
     artist: String,
     duration: String,
+    songId: Long,
+    selectedId: Long,
     onMusicClicked: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = if (selectedId == songId) CardBlueMediumTextColor.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surface,
         ),
         modifier = modifier
             .fillMaxWidth()
@@ -127,5 +130,14 @@ fun convertLongToReadableDateTime(time: Long, format: String): String {
 @Preview(showBackground = true)
 @Composable
 fun MusicCardPreview() {
-    MusicCard(bitmap = null, title = "Song df afdasdfadsf fasdf asdfasdf dasffsa Title", artist = "Artist Name", duration = "134654", onMusicClicked = {})
+    MusicCard(
+        bitmap = null,
+        title = "Song df afdasdfadsf fasdf asdfasdf dasffsa Title",
+        artist = "Artist Name",
+        duration = "134654",
+        onMusicClicked = {},
+        modifier = Modifier,
+        songId = 0L,
+        selectedId = 0L
+    )
 }

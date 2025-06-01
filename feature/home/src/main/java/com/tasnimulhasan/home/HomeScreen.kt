@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.home.components.MusicCard
 
@@ -66,14 +67,17 @@ internal fun HomeScreen(
                     title = item.songTitle,
                     artist = item.artist,
                     duration = item.duration,
+                    songId = item.songId,
+                    selectedId = currentSelectedAudio.songId,
                     onMusicClicked = {
-                        viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
-                        viewModel.onUiEvents(UIEvents.PlayPause)
                         if (!context.isServiceRunning(MelodiqPlayerService::class.java)) {
                             val intent = Intent(context, MelodiqPlayerService::class.java)
                             ContextCompat.startForegroundService(context, intent)
                         }
-                        viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
+                        if (currentSelectedAudio.songId != item.songId) {
+                            viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
+                        }
+                        //viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
                         navigateToPlayer(item.songId.toString())
                     }
                 )
@@ -89,7 +93,7 @@ internal fun HomeScreen(
                 onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
                 isPlaying = isPlaying,
                 onMiniPlayerClick = {
-                    viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
+                    //viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
                     navigateToPlayer(currentSelectedAudio.songId.toString())
                 },
                 onPlayPauseClick = {
