@@ -85,13 +85,16 @@ internal fun PlayerScreen(
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val audioList by viewModel.audioList.collectAsStateWithLifecycle()
+    val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+
     val progressString by viewModel.progressString.collectAsStateWithLifecycle()
     val repeatModeOne by viewModel.repeatModeOne.collectAsStateWithLifecycle()
     val repeatModeAll by viewModel.repeatModeAll.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { viewModel.initializeListIfNeeded() }
 
     val pagerState = rememberPagerState { audioList.size }
     val context = LocalContext.current
@@ -100,7 +103,6 @@ internal fun PlayerScreen(
     val showVolumeBoostDialog = remember { mutableStateOf(false) }
     val volumeGain = remember { mutableFloatStateOf(0f) }
 
-    // Animation and gesture handling
     val density = LocalDensity.current
     val maxDragDistance = with(density) { 500.dp.toPx() }
     val offsetY = remember { Animatable(0f) }
@@ -109,7 +111,6 @@ internal fun PlayerScreen(
     val showBottomSheet = remember { mutableStateOf(false) }
     val sleepTimerRunning = remember { mutableStateOf(false) }
 
-    // Find the index of the selected music
     val initialPageIndex = audioList.indexOfFirst { it.songId.toString() == musicId }
     LaunchedEffect(initialPageIndex) {
         if (initialPageIndex >= 0) {
@@ -127,24 +128,10 @@ internal fun PlayerScreen(
     val currentPage = pagerState.currentPage
     val currentMusic = audioList.getOrNull(currentPage)
 
-    val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     LaunchedEffect(currentSelectedAudio) {
         val currentIndex = audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
         if (currentIndex >= 0 && currentIndex != pagerState.currentPage) {
             pagerState.scrollToPage(currentIndex)
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        val currentIndex = audioList.indexOfFirst { it.songId.toString() == musicId }
-        val currentPlayingIndex = viewModel.currentSelectedAudio.value.let { currentAudio ->
-            audioList.indexOfFirst { it.songId == currentAudio.songId }
-        }
-        if (currentIndex >= 0 && currentIndex != currentPlayingIndex) {
-            viewModel.onUiEvents(UIEvents.SelectedAudioChange(currentIndex))
-            viewModel.onUiEvents(UIEvents.PlayPause)
-        } else if (currentIndex >= 0 && !viewModel.isPlaying.value) {
-            viewModel.onUiEvents(UIEvents.PlayPause)
         }
     }
 
@@ -168,16 +155,14 @@ internal fun PlayerScreen(
     }
 
     fun startSleepTimer(hours: Int, minutes: Int, seconds: Int) {
-        if (sleepTimerRunning.value) return // Prevent multiple timers
+        if (sleepTimerRunning.value) return
 
         val durationMillis = (hours * 3600 + minutes * 60 + seconds) * 1000L
         if (durationMillis > 0) {
             sleepTimerRunning.value = true
             scope.launch {
                 delay(durationMillis)
-                // Pause playback before killing
                 viewModel.onUiEvents(UIEvents.PlayPause)
-                // Kill the app
                 android.os.Process.killProcess(android.os.Process.myPid())
             }
         }
@@ -189,9 +174,9 @@ internal fun PlayerScreen(
             .offset { IntOffset(0, offsetY.value.toInt()) }
             .graphicsLayer {
                 val progressVal = (offsetY.value / maxDragDistance).coerceIn(0f, 1f)
-                scaleX = lerp(1f, 0.95f, progressVal) // Subtle scale down
+                scaleX = lerp(1f, 0.95f, progressVal)
                 scaleY = lerp(1f, 0.95f, progressVal)
-                alpha = lerp(1f, 0.8f, progressVal) // Slight fade
+                alpha = lerp(1f, 0.8f, progressVal)
             }
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
@@ -202,7 +187,7 @@ internal fun PlayerScreen(
                                     maxDragDistance,
                                     animationSpec = spring(
                                         dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMedium // Faster animation
+                                        stiffness = Spring.StiffnessMedium
                                     )
                                 )
                                 onNavigateUp()
@@ -248,25 +233,18 @@ internal fun PlayerScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) { page ->
             val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
-
-            LaunchedEffect(page) {
-                viewModel.loadBitmapIfNeeded(context, page)
-            }
-
+            LaunchedEffect(page) { viewModel.loadBitmapIfNeeded(context, page) }
             val pageMusic = audioList.getOrNull(page)
 
             Card(
                 modifier = Modifier
                     .padding(horizontal = 15.dp)
                     .graphicsLayer {
-                        val scale =
-                            lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
+                        val scale = lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
                         scaleX = scale
                         scaleY = scale
-                        alpha =
-                            lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
-                        translationX =
-                            lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
+                        alpha = lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
+                        translationX = lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
                     }
             ) {
                 AsyncImage(
@@ -370,35 +348,17 @@ internal fun PlayerScreen(
                 PlayPauseControlButton(
                     isPlaying = isPlaying,
                     playButtonColor = Color(darkPaletteColor),
-
                     onPreviousClick = {
-                        scope.launch {
-                            if (currentPage > 0)
-                                pagerState.animateScrollToPage(currentPage - 1)
-                            else
-                                pagerState.animateScrollToPage(audioList.size - 1)
-                        }
+                        scope.launch { if (currentPage > 0) pagerState.animateScrollToPage(currentPage - 1) else pagerState.animateScrollToPage(audioList.size - 1) }
                         viewModel.onUiEvents(UIEvents.SeekToPrevious)
                     },
-
                     onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
-
                     onNextClick = {
-                        scope.launch {
-                            if (currentPage == audioList.size - 1)
-                                pagerState.animateScrollToPage(0)
-                            else
-                                pagerState.animateScrollToPage(currentPage + 1)
-                        }
+                        scope.launch { if (currentPage == audioList.size - 1) pagerState.animateScrollToPage(0) else pagerState.animateScrollToPage(currentPage + 1) }
                         viewModel.onUiEvents(UIEvents.SeekToNext)
                     },
-
-                    onSeekNextClick = {
-                        viewModel.onUiEvents(UIEvents.Forward)
-                    },
-                    onSeekPreviousClick = {
-                        viewModel.onUiEvents(UIEvents.Backward)
-                    }
+                    onSeekNextClick = { viewModel.onUiEvents(UIEvents.Forward) },
+                    onSeekPreviousClick = { viewModel.onUiEvents(UIEvents.Backward) }
                 )
             }
 
@@ -430,9 +390,7 @@ internal fun PlayerScreen(
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
                 },
-                onVolumeBoostClicked = {
-                    showVolumeBoostDialog.value = true
-                }
+                onVolumeBoostClicked = { showVolumeBoostDialog.value = true }
             )
 
             if (showBottomSheet.value) {
@@ -445,12 +403,10 @@ internal fun PlayerScreen(
             }
 
             if (showVolumeBoostDialog.value) {
-                // Initialize volumeGain based on ViewModel's volume
                 LaunchedEffect(showVolumeBoostDialog.value, volume) {
-                    volumeGain.floatValue = volume / 200f // Map to 0.0f–1.0f for slider
+                    volumeGain.floatValue = volume / 200f
                 }
 
-                // Register ContentObserver for system volume changes
                 DisposableEffect(showVolumeBoostDialog.value) {
                     val handler = Handler(Looper.getMainLooper())
                     val contentObserver = object : android.database.ContentObserver(handler) {
@@ -458,19 +414,15 @@ internal fun PlayerScreen(
                             super.onChange(selfChange)
                             if (!viewModel.isAdjustingFromSlider()) {
                                 val currentVolume = viewModel.volume.value
-                                // Use viewModel.volume directly to avoid coarse AudioManager steps
                                 volumeGain.floatValue = (currentVolume / 200f).coerceIn(0f, 1f)
-                                // Only update if system volume differs significantly
                                 val systemVolumePercent = viewModel.getCurrentVolumePercent()
                                 if (currentVolume <= 100 && kotlin.math.abs(currentVolume - systemVolumePercent) > 2) {
                                     volumeGain.floatValue = (systemVolumePercent / 200f).coerceIn(0f, 0.5f)
                                     viewModel.setVolumeWithBoost(systemVolumePercent)
                                 } else if (currentVolume > 100 && systemVolumePercent < 100) {
-                                    // Disable boost if system volume drops below max
                                     volumeGain.floatValue = (systemVolumePercent / 200f).coerceIn(0f, 0.5f)
                                     viewModel.setVolumeWithBoost(systemVolumePercent)
                                 }
-                                // Preserve boost if system volume is max
                             }
                         }
                     }
@@ -528,7 +480,7 @@ internal fun PlayerScreen(
                                 value = volumeGain.floatValue,
                                 onValueChange = {
                                     volumeGain.floatValue = it
-                                    val newPercent = (it * 200).toInt() // Map slider (0–1) to 0–200%
+                                    val newPercent = (it * 200).toInt()
                                     viewModel.setVolumeWithBoost(newPercent, fromSlider = true)
                                 },
                                 valueRange = 0f..1f,

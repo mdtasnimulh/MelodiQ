@@ -7,13 +7,13 @@ import android.media.AudioManager
 import android.media.MediaMetadataRetriever
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
-import androidx.compose.runtime.mutableStateOf
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.tasnimulhasan.common.service.MelodiqAudioState
+import com.tasnimulhasan.common.service.MelodiqPlayerEvent.*
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -43,6 +42,17 @@ class PlayerViewModel @Inject constructor(
     context: Context,
 ) : BaseViewModel() {
 
+    private val dummyAudio = MusicEntity(
+        contentUri = "".toUri(),
+        songId = 0L,
+        cover = null,
+        songTitle = "",
+        artist = "",
+        duration = "",
+        albumId = 0L,
+        album = ""
+    )
+    private var initialized = false
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private val audioManager: AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -50,10 +60,6 @@ class PlayerViewModel @Inject constructor(
     val volume: StateFlow<Int> = _volume.asStateFlow()
 
     private var isAdjustingFromSlider = false
-
-    private val dummyAudio = MusicEntity(
-        contentUri = "".toUri(), songId = 0L, cover = null, songTitle = "", artist = "", duration = "", albumId = 0L, album = ""
-    )
 
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
@@ -73,16 +79,7 @@ class PlayerViewModel @Inject constructor(
     private val _progressString = MutableStateFlow("00:00")
     val progressString = _progressString.asStateFlow()
 
-    private val _progressStringMinutes = MutableStateFlow("00")
-    val progressStringMinutes = _progressStringMinutes.asStateFlow()
-
-    private val _progressStringSeconds = MutableStateFlow("00")
-    val progressStringSeconds = _progressStringSeconds.asStateFlow()
-
-    private var initialized = false
-
-    private val _showElapsedTime = MutableStateFlow(true) // Default to elapsed time
-    val showElapsedTime = _showElapsedTime.asStateFlow()
+    private val _showElapsedTime = MutableStateFlow(true)
 
     private val _repeatModeOne = MutableStateFlow(false)
     val repeatModeOne = _repeatModeOne.asStateFlow()
@@ -108,30 +105,19 @@ class PlayerViewModel @Inject constructor(
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
     init {
-        fetchMusicList()
-        observeAudioState()
-        _volume.value = getCurrentVolumePercent()
-        viewModelScope.launch {
-            val currentSong = playerUseCases.getCurrentSongInfoUseCase()
-            currentSong?.let {
-                /*currentSelectedAudio.value = it*/
-                Timber.e("Check Current Song: \n${it.songTitle}")
-            }
-        }
-    }
+        initializeListIfNeeded()
 
-    private fun observeAudioState() {
         viewModelScope.launch {
-            playerUseCases.observeAudioState().collectLatest { mediaState ->
+            audioServiceHandler.audioState.collectLatest { mediaState ->
                 when (mediaState) {
                     MelodiqAudioState.Initial -> _uIState.value = UIState.Initial
                     is MelodiqAudioState.Buffering -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
-                        val newIndex = mediaState.mediaItemIndex
-                        _currentSelectedAudio.value = _audioList.value[newIndex]
+                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
                     }
+
                     is MelodiqAudioState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
@@ -140,15 +126,31 @@ class PlayerViewModel @Inject constructor(
                 }
             }
         }
+
+        viewModelScope.launch {
+            val currentSong = playerUseCases.getCurrentSongInfoUseCase()
+            currentSong?.let {/*_currentSelectedAudio.value = it*/ }
+        }
     }
 
-    private fun fetchMusicList() {
+    fun initializeListIfNeeded() {
         if (initialized) return
         viewModelScope.launch {
+            val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
+            if (existingMediaItemCount > 0) {
+                _audioList.value = fetchMusicUseCase.execute()
+                _uIState.value = UIState.MusicList(_audioList.value)
+                _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
+                _duration.value = audioServiceHandler.getDuration()
+                calculateProgressValue(audioServiceHandler.getCurrentDuration())
+                _isPlaying.value = audioServiceHandler.isPlaying()
+                initialized = true
+                return@launch
+            }
             _audioList.value = fetchMusicUseCase.execute()
             _uIState.value = UIState.MusicList(_audioList.value)
+            initialized = true
         }
-        initialized = true
     }
 
     fun loadBitmapIfNeeded(context: Context, index: Int) {
@@ -166,21 +168,34 @@ class PlayerViewModel @Inject constructor(
         val mmr = MediaMetadataRetriever()
         mmr.setDataSource(context, uri)
         val data = mmr.embeddedPicture
-
-        return if (data != null) {
-            BitmapFactory.decodeByteArray(data, 0, data.size)
-        } else {
-            null
-        }
+        return if (data != null) BitmapFactory.decodeByteArray(data, 0, data.size) else null
     }
 
     fun onUiEvents(uiEvents: UIEvents) = viewModelScope.launch {
         when (uiEvents) {
             UIEvents.Backward -> playerUseCases.backwardTrackUseCase()
             UIEvents.Forward -> playerUseCases.forwardTrackUseCase()
+            is UIEvents.PlayPause -> {
+                if (_isPlaying.value) playerUseCases.pause()
+                else playerUseCases.play()
+            }
+            is UIEvents.SeekTo -> {
+                val position = ((_duration.value * uiEvents.position) / 100f).toLong()
+                playerUseCases.seekTo(position)
+            }
             UIEvents.SeekToNext -> playerUseCases.next()
+            is UIEvents.SelectedAudioChange -> {
+                audioServiceHandler.onPlayerEvents(
+                    SelectAudioChange,
+                    selectedAudionIndex = uiEvents.index
+                )
+            }
+            is UIEvents.UpdateProgress -> {
+                audioServiceHandler.onPlayerEvents(
+                    UpdateProgress(uiEvents.newProgress)
+                )
+            }
             UIEvents.SeekToPrevious -> playerUseCases.previous()
-
             UIEvents.RepeatOne -> {
                 _repeatModeOff.value = false
                 _repeatModeOne.value = true
@@ -197,51 +212,21 @@ class PlayerViewModel @Inject constructor(
                 _repeatModeOff.value = true
                 playerUseCases.repeatTrackOffUseCase()
             }
-
-            is UIEvents.PlayPause -> {
-                if (_isPlaying.value) playerUseCases.pause()
-                else playerUseCases.play()
-            }
-            is UIEvents.SeekTo -> {
-                val position = ((_duration.value * uiEvents.position) / 100f).toLong()
-                playerUseCases.seekTo(position)
-            }
-            is UIEvents.SelectedAudioChange -> {
-                playerUseCases.selectAudioChange(uiEvents.index)
-            }
-            is UIEvents.UpdateProgress -> {
-                playerUseCases.updateProgress(uiEvents.newProgress)
-            }
         }
     }
 
     private fun calculateProgressValue(currentProgress: Long) {
-        _progress.value = if (currentProgress > 0 && _duration.value > 0) ((currentProgress.toFloat() / _duration.value.toFloat()) * 100f) else 0f
-
-        _progressString.value = if (_showElapsedTime.value) formatDuration(currentProgress) //Minutes Seconds Value
+        _progress.value =
+            if (currentProgress > 0 && _duration.value > 0) ((currentProgress.toFloat() / _duration.value.toFloat()) * 100f)
+            else 0f
+        _progressString.value = if (_showElapsedTime.value) formatDuration(currentProgress)
         else formatDuration(if (_duration.value > currentProgress) _duration.value - currentProgress else 0L)
-
-        _progressStringMinutes.value = if (_showElapsedTime.value) formatDurationMinutes(currentProgress) //Minutes Value
-        else formatDurationMinutes(if (_duration.value > currentProgress) _duration.value - currentProgress else 0L)
-
-        _progressStringSeconds.value = if (_showElapsedTime.value) formatDurationSeconds(currentProgress)//Seconds Value
-        else formatDurationSeconds(if (_duration.value > currentProgress) _duration.value - currentProgress else 0L)
     }
 
     private fun formatDuration(duration: Long): String {
         val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
         return String.format(Locale.getDefault(), "%02d:%02d", minute, seconds)
-    }
-
-    private fun formatDurationMinutes(duration: Long): String {
-        val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
-        return String.format(Locale.getDefault(), "%02d", minute)
-    }
-
-    private fun formatDurationSeconds(duration: Long): String {
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
-        return String.format(Locale.getDefault(), "%02d", seconds)
     }
 
     fun convertLongToReadableDateTime(time: Long, format: String): String {
@@ -255,25 +240,16 @@ class PlayerViewModel @Inject constructor(
         val clampedVolume = volumePercent.coerceIn(0, 200)
         _volume.value = clampedVolume
 
-        // Control device volume only in 0–100 range
         if (clampedVolume <= 100) {
             val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val newVolume = (clampedVolume * maxVolume / 100f).toInt()
-            audioManager.setStreamVolume(
-                AudioManager.STREAM_MUSIC,
-                newVolume,
-                0
-            )
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
             exoPlayer.volume = clampedVolume / 100f
             loudnessEnhancer?.release()
             loudnessEnhancer = null
         } else {
             val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            audioManager.setStreamVolume(
-                AudioManager.STREAM_MUSIC,
-                maxVolume,
-                0
-            )
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, 0)
             exoPlayer.volume = 1.0f
             val boostLevel = ((clampedVolume - 100) / 100f * 1000).toInt()
             loudnessEnhancer?.release()
@@ -282,15 +258,12 @@ class PlayerViewModel @Inject constructor(
                     setTargetGain(boostLevel)
                     enabled = true
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to initialize LoudnessEnhancer")
-                null
-            }
+            } catch (_: Exception) { null }
         }
-        // Reset flag after adjustment
+
         if (fromSlider) {
             viewModelScope.launch {
-                delay(200) // Debounce to allow system volume to settle
+                delay(200)
                 isAdjustingFromSlider = false
             }
         }
@@ -303,11 +276,6 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun isAdjustingFromSlider(): Boolean = isAdjustingFromSlider
-
-    /*override fun onCleared() {
-        super.onCleared()
-        loudnessEnhancer?.release()
-    }*/
 }
 
 sealed class UIEvents {
