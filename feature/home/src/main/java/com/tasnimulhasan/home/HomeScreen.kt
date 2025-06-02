@@ -11,14 +11,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.home.components.MusicCard
 
@@ -46,6 +47,9 @@ internal fun HomeScreen(
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+
+    var isFavourite by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewModel.initializeListIfNeeded()
     }
@@ -69,6 +73,7 @@ internal fun HomeScreen(
                     duration = item.duration,
                     songId = item.songId,
                     selectedId = currentSelectedAudio.songId,
+                    isFavourite = isFavourite,
                     onMusicClicked = {
                         if (!context.isServiceRunning(MelodiqPlayerService::class.java)) {
                             val intent = Intent(context, MelodiqPlayerService::class.java)
@@ -77,8 +82,10 @@ internal fun HomeScreen(
                         if (currentSelectedAudio.songId != item.songId) {
                             viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
                         }
-                        //viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
                         navigateToPlayer(item.songId.toString())
+                    },
+                    onFavouriteIconClicked = {
+                        isFavourite = !isFavourite
                     }
                 )
             }
@@ -92,16 +99,9 @@ internal fun HomeScreen(
                 progress = progress,
                 onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
                 isPlaying = isPlaying,
-                onMiniPlayerClick = {
-                    //viewModel.onUiEvents(UIEvents.UpdateProgress(progress / 100f))
-                    navigateToPlayer(currentSelectedAudio.songId.toString())
-                },
-                onPlayPauseClick = {
-                    viewModel.onUiEvents(UIEvents.PlayPause)
-                },
-                onNextClick = {
-                    viewModel.onUiEvents(UIEvents.SeekToNext)
-                }
+                onMiniPlayerClick = { navigateToPlayer(currentSelectedAudio.songId.toString()) },
+                onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
+                onNextClick = { viewModel.onUiEvents(UIEvents.SeekToNext) }
             )
         }
     }
