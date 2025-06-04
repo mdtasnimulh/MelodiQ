@@ -101,7 +101,10 @@ internal fun HomeScreen(
                 isPlaying = isPlaying,
                 onMiniPlayerClick = { navigateToPlayer(currentSelectedAudio.songId.toString()) },
                 onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
-                onNextClick = { viewModel.onUiEvents(UIEvents.SeekToNext) }
+                onNextClick = { viewModel.onUiEvents(UIEvents.SeekToNext) },
+                onPreviousClick = { viewModel.onUiEvents(UIEvents.SeekToPrevious) },
+                onSeekNextClick = { viewModel.onUiEvents(UIEvents.Forward) },
+                onSeekPreviousClick = { viewModel.onUiEvents(UIEvents.Backward) }
             )
         }
     }
