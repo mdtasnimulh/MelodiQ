@@ -171,8 +171,8 @@ class HomeViewModel @Inject constructor(
 
     fun onUiEvents(uiEvents: UIEvents) = viewModelScope.launch {
         when (uiEvents) {
-            UIEvents.Backward -> playerUseCases.previous()
-            UIEvents.Forward -> playerUseCases.next()
+            is UIEvents.Backward -> playerUseCases.backwardTrackUseCase()
+            is UIEvents.Forward -> playerUseCases.forwardTrackUseCase()
             is UIEvents.PlayPause -> {
                 if (_isPlaying.value) playerUseCases.pause()
                 else playerUseCases.play()
