@@ -48,6 +48,7 @@ internal fun HomeScreen(
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val progressString by viewModel.progressString.collectAsStateWithLifecycle()
+    var showPopUpPlayer by remember { mutableStateOf(false) }
 
     var isFavourite by remember { mutableStateOf(false) }
 
@@ -92,7 +93,16 @@ internal fun HomeScreen(
             }
         }
 
-        if (currentSelectedAudio.songId != 0L) {
+        if (currentSelectedAudio.songId != 0L && !showPopUpPlayer) {
+            MiniPlayer(
+                modifier = Modifier.align(Alignment.BottomEnd),
+                cover = currentSelectedAudio.cover,
+            ) {
+                showPopUpPlayer = !showPopUpPlayer
+            }
+        }
+
+        if (showPopUpPlayer) {
             MiniPlayer2(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 cover = currentSelectedAudio.cover,
@@ -109,7 +119,8 @@ internal fun HomeScreen(
                 onNextClick = { viewModel.onUiEvents(UIEvents.SeekToNext) },
                 onPreviousClick = { viewModel.onUiEvents(UIEvents.SeekToPrevious) },
                 onSeekNextClick = { viewModel.onUiEvents(UIEvents.Forward) },
-                onSeekPreviousClick = { viewModel.onUiEvents(UIEvents.Backward) }
+                onSeekPreviousClick = { viewModel.onUiEvents(UIEvents.Backward) },
+                onImageClick = { showPopUpPlayer = !showPopUpPlayer }
             )
         }
     }

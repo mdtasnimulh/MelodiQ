@@ -56,6 +56,7 @@ fun MiniPlayer2(
     onNextClick: () -> Unit,
     onSeekPreviousClick: () -> Unit,
     onSeekNextClick: () -> Unit,
+    onImageClick: () -> Unit,
 ) {
     Card(
         modifier = modifier
@@ -79,7 +80,8 @@ fun MiniPlayer2(
                     .constrainAs(coverArt) {
                         top.linkTo(parent.top)
                         start.linkTo(parent.start)
-                    },
+                    }
+                    .clickable(onClick = onImageClick),
                 model = cover,
                 contentDescription = "Album cover",
                 contentScale = ContentScale.Crop,
@@ -255,7 +257,8 @@ fun PreviewMiniPlayer2() {
             onNextClick = {},
             onPreviousClick = {},
             onSeekNextClick = {},
-            onSeekPreviousClick = {}
+            onSeekPreviousClick = {},
+            onImageClick = {}
         )
     }
 }
