@@ -4,6 +4,12 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Context.ACTIVITY_SERVICE
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,14 +56,13 @@ internal fun HomeScreen(
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val progressString by viewModel.progressString.collectAsStateWithLifecycle()
     var showPopUpPlayer by remember { mutableStateOf(false) }
-
     var isFavourite by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.initializeListIfNeeded()
     }
 
-    Box (
+    Box(
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn {
@@ -93,18 +99,40 @@ internal fun HomeScreen(
             }
         }
 
-        if (currentSelectedAudio.songId != 0L && !showPopUpPlayer) {
+        // MiniPlayer with animation
+        AnimatedVisibility(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            visible = currentSelectedAudio.songId != 0L && !showPopUpPlayer,
+            enter = scaleIn(
+                animationSpec = tween(durationMillis = 300),
+                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f) // Bottom-end corner
+            ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+            exit = scaleOut(
+                animationSpec = tween(durationMillis = 300),
+                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f) // Bottom-end corner
+            ) + fadeOut(animationSpec = tween(durationMillis = 300))
+        ) {
             MiniPlayer(
-                modifier = Modifier.align(Alignment.BottomEnd),
+                modifier = Modifier,
                 cover = currentSelectedAudio.cover,
-            ) {
-                showPopUpPlayer = !showPopUpPlayer
-            }
+                onImageClick = { showPopUpPlayer = !showPopUpPlayer }
+            )
         }
 
-        if (showPopUpPlayer) {
+        AnimatedVisibility(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            visible = showPopUpPlayer,
+            enter = scaleIn(
+                animationSpec = tween(durationMillis = 300),
+                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f) // Bottom-end corner
+            ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+            exit = scaleOut(
+                animationSpec = tween(durationMillis = 300),
+                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f) // Bottom-end corner
+            ) + fadeOut(animationSpec = tween(durationMillis = 300))
+        ) {
             MiniPlayer2(
-                modifier = Modifier.align(Alignment.BottomCenter),
+                modifier = Modifier,
                 cover = currentSelectedAudio.cover,
                 songTitle = currentSelectedAudio.songTitle,
                 progress = progress,
