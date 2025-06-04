@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -208,6 +209,11 @@ class HomeViewModel @Inject constructor(
         val minute = TimeUnit.MILLISECONDS.toMinutes(duration)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
         return String.format(Locale.getDefault(), "%02d:%02d", minute, seconds)
+    }
+
+    fun convertLongToReadableDateTime(time: Long, format: String): String {
+        val df = SimpleDateFormat(format, Locale.US)
+        return df.format(time)
     }
 }
 

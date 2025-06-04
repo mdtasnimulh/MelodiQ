@@ -20,11 +20,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -32,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import coil.compose.AsyncImage
+import com.tasnimulhasan.designsystem.theme.Blue
 import com.tasnimulhasan.designsystem.theme.BlueDarker
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
 import com.tasnimulhasan.designsystem.theme.PeaceOrange
@@ -46,6 +49,7 @@ fun MiniPlayer2(
     progress: Float,
     onProgress: (Float) -> Unit,
     isPlaying: Boolean,
+    progressString: String,
     onMiniPlayerClick: () -> Unit,
     onPlayPauseClick: () -> Unit,
     onPreviousClick: () -> Unit,
@@ -57,12 +61,8 @@ fun MiniPlayer2(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { onMiniPlayerClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = BlueDarker,
-            contentColor = PeaceOrange
-        )
     ) {
         ConstraintLayout (
             modifier = Modifier
@@ -70,7 +70,7 @@ fun MiniPlayer2(
                 .wrapContentHeight()
                 .padding(8.dp),
         ) {
-            val (coverArt, title, slider, playPauseBtn, nextBtn, previousBtn, seek5SecForward, seek5SecBackward) = createRefs()
+            val (coverArt, title, slider, playPauseBtn, nextBtn, previousBtn, seek5SecForward, seek5SecBackward, progressStringTv) = createRefs()
 
             AsyncImage(
                 modifier = Modifier
@@ -90,7 +90,7 @@ fun MiniPlayer2(
             Text(
                 modifier = Modifier
                     .constrainAs(title) {
-                        top.linkTo(coverArt.top)
+                        top.linkTo(coverArt.top, margin = 8.dp)
                         start.linkTo(coverArt.end, margin = 8.dp)
                         end.linkTo(parent.end)
                         width = Dimension.fillToConstraints
@@ -99,9 +99,30 @@ fun MiniPlayer2(
                     .basicMarquee(),
                 text = songTitle,
                 style = TextStyle(
-                    color = WhiteOrange,
+                    color = BlueDarker,
                     fontWeight = FontWeight.Medium,
                     fontSize = 14.sp,
+                    platformStyle = PlatformTextStyle(
+                        includeFontPadding = false
+                    )
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                modifier = Modifier
+                    .constrainAs(progressStringTv) {
+                        top.linkTo(title.bottom, margin = 6.dp)
+                        start.linkTo(title.start)
+                        width = Dimension.wrapContent
+                        height = Dimension.wrapContent
+                    },
+                text = progressString,
+                style = TextStyle(
+                    color = BlueDarker,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 12.sp,
                     platformStyle = PlatformTextStyle(
                         includeFontPadding = false
                     )
@@ -113,9 +134,9 @@ fun MiniPlayer2(
             Slider(
                 modifier = Modifier
                     .constrainAs(slider) {
-                        top.linkTo(title.bottom, margin = 8.dp)
-                        start.linkTo(title.start)
-                        end.linkTo(title.end)
+                        top.linkTo(coverArt.bottom, margin = 8.dp)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
                         width = Dimension.fillToConstraints
                         height = Dimension.value(24.dp)
                     },
@@ -127,9 +148,9 @@ fun MiniPlayer2(
             IconButton(
                 modifier = Modifier
                     .constrainAs(playPauseBtn) {
-                        start.linkTo(title.start)
-                        end.linkTo(title.end)
-                        top.linkTo(coverArt.bottom)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                        top.linkTo(slider.bottom, margin = 6.dp)
                         width = Dimension.wrapContent
                         height = Dimension.wrapContent
                     },
@@ -228,6 +249,7 @@ fun PreviewMiniPlayer2() {
             progress = 50f,
             onProgress = {},
             isPlaying = true,
+            progressString = "05:00",
             onMiniPlayerClick = {},
             onPlayPauseClick = {},
             onNextClick = {},

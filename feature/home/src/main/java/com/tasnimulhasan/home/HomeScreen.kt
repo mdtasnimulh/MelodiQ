@@ -47,6 +47,7 @@ internal fun HomeScreen(
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val progressString by viewModel.progressString.collectAsStateWithLifecycle()
 
     var isFavourite by remember { mutableStateOf(false) }
 
@@ -99,6 +100,10 @@ internal fun HomeScreen(
                 progress = progress,
                 onProgress = { viewModel.onUiEvents(UIEvents.SeekTo(it)) },
                 isPlaying = isPlaying,
+                progressString = "$progressString / " + viewModel.convertLongToReadableDateTime(
+                    currentSelectedAudio.duration.toLong(),
+                    "mm:ss"
+                ),
                 onMiniPlayerClick = { navigateToPlayer(currentSelectedAudio.songId.toString()) },
                 onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
                 onNextClick = { viewModel.onUiEvents(UIEvents.SeekToNext) },
