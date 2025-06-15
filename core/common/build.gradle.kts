@@ -18,5 +18,5 @@ dependencies {
     implementation(libs.bundles.androidx.lifecycle.dependencies)
     implementation(libs.bundles.androidx.navigation.dependencies)
     implementation(libs.bundles.media3.dependencies)
-    implementation(libs.compose)
+    implementation(libs.glide.compose)
 }

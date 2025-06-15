@@ -1,6 +1,6 @@
 [versions]
 androidGradlePlugin = "8.10.1"
-compose = "1.0.0-beta01"
+glideVersion = "1.0.0-beta01"
 datastorePreferences = "1.1.7"
 kotlin = "2.1.20"
 androidTools = "31.10.1"
@@ -100,7 +100,7 @@ androidx-dataStore-core = { group = "androidx.datastore", name = "datastore", ve
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "androidxHiltNavigationCompose" }
-compose = { module = "com.github.bumptech.glide:compose", version.ref = "compose" }
+glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "glideVersion" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-ext-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltExt" }

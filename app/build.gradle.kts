@@ -125,6 +125,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.coil.kt.compose)
     implementation(libs.androidx.constraintlayout.compose)
+    implementation(libs.glide.compose)
 
     ksp(libs.hilt.compiler)
     implementation(libs.timber)
