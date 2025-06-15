@@ -70,7 +70,7 @@ internal fun HomeScreen(
                     duration = item.duration,
                     songId = item.songId,
                     selectedId = currentSelectedAudio.songId,
-                    isPlaying = isPlaying,
+                    isPlaying = context.isServiceRunning(MelodiqPlayerService::class.java),
                     isFavourite = isFavourite,
                     onMusicClicked = {
                         if (!context.isServiceRunning(MelodiqPlayerService::class.java)) {

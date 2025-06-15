@@ -34,6 +34,7 @@ fun MiniPlayer(
             .wrapContentSize()
             .background(color = Color.Transparent)
             .padding(horizontal = 16.dp, vertical = 12.dp)
+            .clip(shape = RoundedCornerShape(15.dp))
             .clickable {
                 onImageClick.invoke()
             },
