@@ -18,8 +18,10 @@ import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.common.utils.CoroutinesDispatchers
 import com.tasnimulhasan.domain.localusecase.datastore.GetEqTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetEqTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetEqualizerEnabledUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.player.BackwardTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.ForwardTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.GetCurrentDurationUseCase
@@ -169,4 +171,16 @@ object ApplicationModule {
     fun provideSetEqualizerEnabledUseCase(
         repository: PreferencesDataStoreRepository
     ): SetEqualizerEnabledUseCase = SetEqualizerEnabledUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideSetSortTypeUseCase(
+        repository: PreferencesDataStoreRepository
+    ): SetSortTypeUseCase = SetSortTypeUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetSortTypeUseCase(
+        repository: PreferencesDataStoreRepository
+    ): GetSortTypeUseCase = GetSortTypeUseCase(repository)
 }

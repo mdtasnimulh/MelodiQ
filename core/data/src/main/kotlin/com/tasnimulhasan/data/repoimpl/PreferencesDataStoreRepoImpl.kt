@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.preferencesOf
 import com.google.gson.Gson
 import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
 import com.tasnimulhasan.entity.AppConfiguration
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import com.tasnimulhasan.common.constant.AppConstants.FLAT
 import com.tasnimulhasan.common.constant.AppConstants.PRESET_FLAT
+import com.tasnimulhasan.entity.enums.SortType
 
 class PreferencesDataStoreRepoImpl @Inject constructor(
     private val gson: Gson,
@@ -69,8 +71,24 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
             AppConfiguration(audioEffects = audioEffects, enableEqualizer = enableEqualizer)
         }
 
+    override suspend fun saveSortType(type: SortType) {
+        tryIt {
+            dataStorePreferences.edit { preferences ->
+                preferences[PreferencesKeys.sortType] = type.name
+            }
+        }
+    }
+
+    override fun getSortType(): Flow<SortType> {
+        return dataStorePreferences.data.map { preferences ->
+            val sortTypeName = preferences[PreferencesKeys.sortType]
+            SortType.entries.find { it.name == sortTypeName } ?: SortType.DATE_MODIFIED_DESC
+        }
+    }
+
     private object PreferencesKeys {
         val eqType = stringPreferencesKey(name = "eq_type")
         val enableEqualizer = booleanPreferencesKey(name = "enable_equalizer")
+        val sortType = stringPreferencesKey("sort_type")
     }
 }

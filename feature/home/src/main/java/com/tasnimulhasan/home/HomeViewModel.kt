@@ -14,8 +14,11 @@ import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
+import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
+import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -31,11 +34,12 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel
-@OptIn(SavedStateHandleSaveableApi::class)
 class HomeViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
+    private val getSortTypeUseCase: GetSortTypeUseCase,
+    private val setSortTypeUseCase: SetSortTypeUseCase,
 ) : BaseViewModel() {
 
     private val dummyAudio = MusicEntity(
@@ -49,6 +53,9 @@ class HomeViewModel @Inject constructor(
         album = ""
     )
     private var initialized = false
+
+    private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
+    val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
     private val _duration = MutableStateFlow(0L)
     val duration = _duration.asStateFlow()
@@ -72,6 +79,13 @@ class HomeViewModel @Inject constructor(
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            getSortTypeUseCase().collect {
+                _sortType.value = it
+                Timber.e("SortType: $it")
+            }
+        }
+
         initializeListIfNeeded()
 
         viewModelScope.launch {
@@ -100,6 +114,12 @@ class HomeViewModel @Inject constructor(
                 /*currentSelectedAudio = it*/
                 Timber.e("Check Current Song: \n${it.songTitle}")
             }
+        }
+    }
+
+    fun setSortType(type: SortType) {
+        viewModelScope.launch {
+            setSortTypeUseCase(type)
         }
     }
 
@@ -214,6 +234,19 @@ class HomeViewModel @Inject constructor(
     fun convertLongToReadableDateTime(time: Long, format: String): String {
         val df = SimpleDateFormat(format, Locale.US)
         return df.format(time)
+    }
+
+    fun sortTypeToDisplayString(sortType: SortType): String {
+        return when (sortType) {
+            SortType.DATE_MODIFIED_ASC -> "Date Modified (ASC)"
+            SortType.DATE_MODIFIED_DESC -> "Date Modified (DESC)"
+            SortType.NAME_ASC -> "Name (ASC)"
+            SortType.NAME_DESC -> "Name (DESC)"
+            SortType.ARTIST_ASC -> "Artist (ASC)"
+            SortType.ARTIST_DESC -> "Artist (DESC)"
+            SortType.DURATION_ASC -> "Duration (ASC)"
+            SortType.DURATION_DESC -> "Duration (DESC)"
+        }
     }
 }
 
