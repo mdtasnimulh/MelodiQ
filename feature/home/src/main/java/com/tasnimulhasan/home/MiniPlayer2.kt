@@ -62,7 +62,7 @@ fun MiniPlayer2(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .clickable { onMiniPlayerClick() },
     ) {
         ConstraintLayout (

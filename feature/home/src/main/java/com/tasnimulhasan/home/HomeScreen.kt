@@ -104,13 +104,13 @@ internal fun HomeScreen(
             modifier = Modifier.align(Alignment.BottomEnd),
             visible = currentSelectedAudio.songId != 0L && !showPopUpPlayer,
             enter = scaleIn(
-                animationSpec = tween(durationMillis = 300),
-                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f) // Bottom-end corner
-            ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+                animationSpec = tween(durationMillis = 500),
+                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f)
+            ) + fadeIn(animationSpec = tween(durationMillis = 500)),
             exit = scaleOut(
-                animationSpec = tween(durationMillis = 300),
-                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f) // Bottom-end corner
-            ) + fadeOut(animationSpec = tween(durationMillis = 300))
+                animationSpec = tween(durationMillis = 500),
+                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f)
+            ) + fadeOut(animationSpec = tween(durationMillis = 500))
         ) {
             MiniPlayer(
                 modifier = Modifier,
@@ -123,13 +123,13 @@ internal fun HomeScreen(
             modifier = Modifier.align(Alignment.BottomCenter),
             visible = showPopUpPlayer,
             enter = scaleIn(
-                animationSpec = tween(durationMillis = 300),
-                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f) // Bottom-end corner
-            ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+                animationSpec = tween(durationMillis = 500),
+                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f)
+            ) + fadeIn(animationSpec = tween(durationMillis = 500)),
             exit = scaleOut(
-                animationSpec = tween(durationMillis = 300),
-                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f) // Bottom-end corner
-            ) + fadeOut(animationSpec = tween(durationMillis = 300))
+                animationSpec = tween(durationMillis = 500),
+                transformOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 1f)
+            ) + fadeOut(animationSpec = tween(durationMillis = 500))
         ) {
             MiniPlayer2(
                 modifier = Modifier,

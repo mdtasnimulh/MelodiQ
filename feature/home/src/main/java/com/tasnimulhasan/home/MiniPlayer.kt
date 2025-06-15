@@ -33,7 +33,7 @@ fun MiniPlayer(
         modifier = modifier
             .wrapContentSize()
             .background(color = Color.Transparent)
-            .padding(start = 16.dp, bottom = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .clickable {
                 onImageClick.invoke()
             },
