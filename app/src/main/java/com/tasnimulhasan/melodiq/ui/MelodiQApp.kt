@@ -1,5 +1,6 @@
 package com.tasnimulhasan.melodiq.ui
 
+import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -31,6 +32,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -232,6 +234,14 @@ internal fun MmApp(
                     .padding(padding)
                     .consumeWindowInsets(padding)
             ) {
+                var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+                val shouldLoadBitmap = remember(currentSelectedAudio.songId) { true }
+                if (audioList.indexOf(currentSelectedAudio) >= 0 && shouldLoadBitmap) {
+                    LaunchedEffect(audioList.indexOf(currentSelectedAudio)) {
+                        bitmap = viewModel.getAlbumArt(context, currentSelectedAudio.contentUri)
+                    }
+                }
+
                 GetContent(appState = appState)
 
                 if (currentDestination?.route != PlayerRoute::class.qualifiedName.plus("/{musicId}")) {
@@ -255,7 +265,7 @@ internal fun MmApp(
                     ) {
                         MiniPlayer(
                             modifier = Modifier,
-                            cover = currentSelectedAudio.cover,
+                            cover = bitmap,
                             onImageClick = { showPopUpPlayer = !showPopUpPlayer }
                         )
                     }
@@ -280,7 +290,7 @@ internal fun MmApp(
                     ) {
                         MiniPlayer2(
                             modifier = Modifier,
-                            cover = currentSelectedAudio.cover,
+                            cover = bitmap,
                             songTitle = currentSelectedAudio.songTitle,
                             progress = progress,
                             onProgress = { viewModel.onUiEvents(UiEvent.SeekTo(it)) },

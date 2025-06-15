@@ -157,7 +157,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun getAlbumArt(context: Context, uri: Uri): Bitmap? {
+    fun getAlbumArt(context: Context, uri: Uri): Bitmap? {
         val mmr = MediaMetadataRetriever()
         mmr.setDataSource(context, uri)
         val data = mmr.embeddedPicture
