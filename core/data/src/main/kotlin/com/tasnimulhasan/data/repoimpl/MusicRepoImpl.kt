@@ -27,7 +27,7 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
         )
 
         val selection = MediaStore.Audio.Media.IS_MUSIC + "!= 0"
-        val sortOrder = "${MediaStore.Audio.Media.DISPLAY_NAME} DESC"
+        val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC"
 
         val query = context.contentResolver.query(
             collection,

@@ -47,8 +47,8 @@ fun MiniPlayer(
             model = cover,
             contentDescription = "Cover art",
             contentScale = ContentScale.FillHeight,
-            placeholder = painterResource(R.drawable.ic_launcher_background),
-            error = painterResource(R.drawable.ic_launcher_background),
+            placeholder = painterResource(R.drawable.default_cover),
+            error = painterResource(R.drawable.default_cover),
             alignment = Alignment.Center,
         )
     }

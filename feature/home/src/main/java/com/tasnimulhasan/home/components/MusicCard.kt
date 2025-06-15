@@ -78,8 +78,8 @@ fun MusicCard(
                     .fillMaxHeight()
                     .weight(2f),
                 contentScale = ContentScale.FillHeight,
-                placeholder = painterResource(Res.drawable.ic_launcher_background),
-                error = painterResource(Res.drawable.ic_launcher_background)
+                placeholder = painterResource(Res.drawable.default_cover),
+                error = painterResource(Res.drawable.default_cover)
             )
 
             Column(

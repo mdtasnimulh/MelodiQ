@@ -253,8 +253,8 @@ internal fun PlayerScreen(
                     model = pageMusic?.cover,
                     contentDescription = context.getString(Res.string.desc_album_cover_art),
                     contentScale = ContentScale.FillBounds,
-                    placeholder = painterResource(Res.drawable.ic_launcher_background),
-                    error = painterResource(Res.drawable.ic_launcher_background)
+                    placeholder = painterResource(Res.drawable.default_cover),
+                    error = painterResource(Res.drawable.default_cover)
                 )
             }
         }

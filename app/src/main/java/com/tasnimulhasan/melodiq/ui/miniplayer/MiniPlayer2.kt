@@ -79,8 +79,8 @@ fun MiniPlayer2(
                 model = cover,
                 contentDescription = "Album cover",
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(Res.drawable.ic_launcher_background),
-                error = painterResource(Res.drawable.ic_launcher_background)
+                placeholder = painterResource(Res.drawable.default_cover),
+                error = painterResource(Res.drawable.default_cover)
             )
 
             Text(
