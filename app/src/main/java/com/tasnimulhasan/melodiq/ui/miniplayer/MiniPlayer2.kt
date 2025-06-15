@@ -174,7 +174,7 @@ fun MiniPlayer2(
                         width = Dimension.wrapContent
                         height = Dimension.wrapContent
                     },
-                onClick = onPreviousClick
+                onClick = onNextClick
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_next),
@@ -192,7 +192,7 @@ fun MiniPlayer2(
                         width = Dimension.wrapContent
                         height = Dimension.wrapContent
                     },
-                onClick = onNextClick
+                onClick = onPreviousClick
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_backward),

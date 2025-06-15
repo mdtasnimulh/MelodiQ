@@ -12,7 +12,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -32,7 +31,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,12 +65,12 @@ import com.tasnimulhasan.featurefavourite.navigation.FavouriteRoute
 import com.tasnimulhasan.featurefeedback.navigation.FeedbackRoute
 import com.tasnimulhasan.featureplayer.navigation.PlayerRoute
 import com.tasnimulhasan.featurequeue.navigation.QueueRoute
-import com.tasnimulhasan.home.MiniPlayer
-import com.tasnimulhasan.home.MiniPlayer2
 import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.melodiq.component.CustomDrawer
 import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
 import com.tasnimulhasan.melodiq.navigation.MelodiQNavHost
+import com.tasnimulhasan.melodiq.ui.miniplayer.MiniPlayer
+import com.tasnimulhasan.melodiq.ui.miniplayer.MiniPlayer2
 import com.tasnimulhasan.melodiq.ui.viewmodel.MainViewModel
 import com.tasnimulhasan.melodiq.ui.viewmodel.UiEvent
 import com.tasnimulhasan.playlists.navigation.PlaylistsRoute
