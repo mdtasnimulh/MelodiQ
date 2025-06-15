@@ -49,11 +49,12 @@ fun MusicCard(
     duration: String,
     songId: Long,
     selectedId: Long,
+    isPlaying: Boolean,
     isFavourite: Boolean,
     onMusicClicked: () -> Unit,
     onFavouriteIconClicked: () -> Unit,
 ) {
-    val isSelected = selectedId == songId
+    val isSelected = selectedId == songId && isPlaying
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
@@ -159,6 +160,7 @@ fun MusicCardPreview() {
         modifier = Modifier,
         songId = 0L,
         selectedId = 0L,
+        isPlaying = true,
         isFavourite = true,
         onFavouriteIconClicked = {}
     )

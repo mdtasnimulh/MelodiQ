@@ -111,6 +111,7 @@ dependencies {
     implementation(libs.androidx.compose.material3.adaptive)
     implementation(libs.androidx.compose.material3.adaptive.layout)
     implementation(libs.androidx.compose.material3.adaptive.navigation)
+    implementation(libs.androidx.compose.material.iconsExtended)
     implementation(libs.androidx.compose.material3.windowSizeClass)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.hilt.navigation.compose)
@@ -122,6 +123,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.dataStore.core)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.coil.kt.compose)
+    implementation(libs.androidx.constraintlayout.compose)
 
     ksp(libs.hilt.compiler)
     implementation(libs.timber)
