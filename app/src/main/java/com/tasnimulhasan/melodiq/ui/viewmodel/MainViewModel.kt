@@ -7,15 +7,17 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
+import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
+import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -24,18 +26,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel
-@OptIn(SavedStateHandleSaveableApi::class)
 class MainViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
+    private val getSortTypeUseCase: GetSortTypeUseCase,
+    private val setSortTypeUseCase: SetSortTypeUseCase,
 ) : BaseViewModel() {
     private val dummyAudio = MusicEntity(
         contentUri = "".toUri(),
@@ -47,7 +49,10 @@ class MainViewModel @Inject constructor(
         albumId = 0L,
         album = ""
     )
-    private var initialized = false
+    private var initialized = MutableStateFlow(false)
+
+    private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
+    val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
     private val _duration = MutableStateFlow(0L)
     val duration = _duration.asStateFlow()
@@ -71,6 +76,12 @@ class MainViewModel @Inject constructor(
     val uIState: StateFlow<UiState> = _uIState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            getSortTypeUseCase().collect {
+                _sortType.value = it
+            }
+        }
+
         initializeListIfNeeded()
 
         viewModelScope.launch {
@@ -97,19 +108,18 @@ class MainViewModel @Inject constructor(
             val currentSong = playerUseCases.getCurrentSongInfoUseCase()
             currentSong?.let {
                 /*currentSelectedAudio = it*/
-                Timber.e("Check Current Song: \n${it.songTitle}")
             }
         }
     }
 
     fun initializeListIfNeeded() {
-        if (initialized) return
+        if (initialized.value) return
 
         viewModelScope.launch {
             val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
             if (existingMediaItemCount > 0) {
                 // Sync current state instead of resetting media items
-                _audioList.value = fetchMusicUseCase.execute()
+                _audioList.value = fetchMusicUseCase(sortType.value)
                 _uIState.value = UiState.MusicList(_audioList.value)
 
                 _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
@@ -117,15 +127,15 @@ class MainViewModel @Inject constructor(
                 calculateProgressValue(audioServiceHandler.getCurrentDuration())
                 _isPlaying.value = audioServiceHandler.isPlaying()
 
-                initialized = true
+                initialized.value = true
                 return@launch
             }
 
             // If no media items in ExoPlayer, initialize normally
-            _audioList.value = fetchMusicUseCase.execute()
+            _audioList.value = fetchMusicUseCase(sortType.value)
             _uIState.value = UiState.MusicList(_audioList.value)
             setMediaItems()
-            initialized = true
+            initialized.value= true
         }
     }
 

@@ -3,8 +3,10 @@ package com.tasnimulhasan.data.repoimpl.player
 import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
+import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.repository.PlayerRepository
+import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -12,6 +14,7 @@ import javax.inject.Inject
 class PlayerRepositoryImpl @Inject constructor(
     private val serviceHandler: MelodiqServiceHandler,
     private val fetchMusicUseCase: FetchMusicUseCase,
+    private val getSortTypeUseCase: GetSortTypeUseCase,
 ) : PlayerRepository {
 
     override suspend fun play() {
@@ -61,7 +64,7 @@ class PlayerRepositoryImpl @Inject constructor(
             if (state is MelodiqAudioState.CurrentPlaying) state.mediaItemIndex else -1
         }
         return if (currentIndex >= 0) {
-            val audioLIst = fetchMusicUseCase.execute()
+            val audioLIst = fetchMusicUseCase(SortType.DATE_MODIFIED_DESC)
             audioLIst.getOrNull(currentIndex)
         } else {
             null

@@ -81,12 +81,9 @@ internal fun HomeScreen(
     val showSortDialog = remember { mutableStateOf(false) }
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.initializeListIfNeeded()
-    }
-
     LaunchedEffect(sortType) {
         selectedSortOption.value = viewModel.sortTypeToDisplayString(sortType)
+        viewModel.initializeListIfNeeded()
     }
 
     Box(

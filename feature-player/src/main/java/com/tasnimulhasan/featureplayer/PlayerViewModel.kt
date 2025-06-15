@@ -16,8 +16,11 @@ import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent.*
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
+import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
+import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -33,11 +36,11 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel
-@OptIn(SavedStateHandleSaveableApi::class)
 class PlayerViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
+    private val getSortTypeUseCase: GetSortTypeUseCase,
     private val exoPlayer: ExoPlayer,
     context: Context,
 ) : BaseViewModel() {
@@ -52,7 +55,11 @@ class PlayerViewModel @Inject constructor(
         albumId = 0L,
         album = ""
     )
-    private var initialized = false
+    private var initialized = MutableStateFlow(false)
+
+    private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
+    val sortType: StateFlow<SortType> = _sortType.asStateFlow()
+
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private val audioManager: AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -105,6 +112,12 @@ class PlayerViewModel @Inject constructor(
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            getSortTypeUseCase().collect {
+                _sortType.value = it
+                initialized.value = false
+            }
+        }
         initializeListIfNeeded()
 
         viewModelScope.launch {
@@ -134,22 +147,22 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun initializeListIfNeeded() {
-        if (initialized) return
+        if (initialized.value) return
         viewModelScope.launch {
             val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
             if (existingMediaItemCount > 0) {
-                _audioList.value = fetchMusicUseCase.execute()
+                _audioList.value = fetchMusicUseCase(sortType.value)
                 _uIState.value = UIState.MusicList(_audioList.value)
                 _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
                 _duration.value = audioServiceHandler.getDuration()
                 calculateProgressValue(audioServiceHandler.getCurrentDuration())
                 _isPlaying.value = audioServiceHandler.isPlaying()
-                initialized = true
+                initialized.value = true
                 return@launch
             }
-            _audioList.value = fetchMusicUseCase.execute()
+            _audioList.value = fetchMusicUseCase(sortType.value)
             _uIState.value = UIState.MusicList(_audioList.value)
-            initialized = true
+            initialized.value = true
         }
     }
 

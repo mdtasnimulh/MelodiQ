@@ -52,7 +52,7 @@ class HomeViewModel @Inject constructor(
         albumId = 0L,
         album = ""
     )
-    private var initialized = false
+    private var initialized = MutableStateFlow(false)
 
     private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
@@ -82,6 +82,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             getSortTypeUseCase().collect {
                 _sortType.value = it
+                initialized.value = false
                 Timber.e("SortType: $it")
             }
         }
@@ -119,18 +120,19 @@ class HomeViewModel @Inject constructor(
 
     fun setSortType(type: SortType) {
         viewModelScope.launch {
+            _sortType.value = type
             setSortTypeUseCase(type)
         }
     }
 
     fun initializeListIfNeeded() {
-        if (initialized) return
+        if (initialized.value) return
 
         viewModelScope.launch {
             val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
             if (existingMediaItemCount > 0) {
                 // Sync current state instead of resetting media items
-                _audioList.value = fetchMusicUseCase.execute()
+                _audioList.value = fetchMusicUseCase(sortType.value)
                 _uIState.value = UIState.MusicList(_audioList.value)
 
                 _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
@@ -138,15 +140,15 @@ class HomeViewModel @Inject constructor(
                 calculateProgressValue(audioServiceHandler.getCurrentDuration())
                 _isPlaying.value = audioServiceHandler.isPlaying()
 
-                initialized = true
+                initialized.value = true
                 return@launch
             }
 
             // If no media items in ExoPlayer, initialize normally
-            _audioList.value = fetchMusicUseCase.execute()
+            _audioList.value = fetchMusicUseCase(sortType.value)
             _uIState.value = UIState.MusicList(_audioList.value)
             setMediaItems()
-            initialized = true
+            initialized.value = true
         }
     }
 

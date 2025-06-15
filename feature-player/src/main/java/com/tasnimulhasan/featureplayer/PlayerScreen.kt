@@ -92,9 +92,13 @@ internal fun PlayerScreen(
     val progressString by viewModel.progressString.collectAsStateWithLifecycle()
     val repeatModeOne by viewModel.repeatModeOne.collectAsStateWithLifecycle()
     val repeatModeAll by viewModel.repeatModeAll.collectAsStateWithLifecycle()
+    val sortType by viewModel.sortType.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { viewModel.initializeListIfNeeded() }
+
+    LaunchedEffect(sortType) {
+        viewModel.initializeListIfNeeded()
+    }
 
     val pagerState = rememberPagerState { audioList.size }
     val context = LocalContext.current
