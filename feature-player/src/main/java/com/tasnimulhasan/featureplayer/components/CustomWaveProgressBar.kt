@@ -1,5 +1,7 @@
 package com.tasnimulhasan.featureplayer.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -26,13 +28,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 @Composable
 fun CustomWaveProgressBar(
-    amplitudes: List<Float>,           // List of values from 0f to 1f
-    currentProgress: Float,            // 0f to 1f
-    onSeek: (Float) -> Unit,           // Called when user seeks
+    amplitudes: List<Float>,
+    currentProgress: Float,
+    onSeek: (Float) -> Unit,
+    isPlaying: Boolean,
     barColor: Color = Color(0xFFFFC5BF),
     playedColor: Color = Color(0xFFF3422D),
     barWidth: Dp = 2.5.dp,
@@ -53,6 +59,30 @@ fun CustomWaveProgressBar(
         }
     }
 
+    val animatedAmplitudes = remember(amplitudes.size) {
+        List(amplitudes.size) { Animatable(amplitudes[it]) }
+    }
+
+    LaunchedEffect(isPlaying, currentProgress) {
+        if (!isPlaying) return@LaunchedEffect
+
+        val playedBars = (animatedAmplitudes.size * (if (isDragging) dragProgress else currentProgress)).toInt()
+        coroutineScope {
+            animatedAmplitudes.forEachIndexed { index, animatable ->
+                if (index <= playedBars) {
+                    launch {
+                        val target = Random.nextFloat()
+                        animatable.animateTo(
+                            target,
+                            animationSpec = tween(durationMillis = 150)
+                        )
+                    }
+                }
+            }
+        }
+        delay(150)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -63,7 +93,7 @@ fun CustomWaveProgressBar(
                     onDragStart = { isDragging = true },
                     onDragEnd = {
                         isDragging = false
-                        onSeek(dragProgress) // Finalize seek on drag end
+                        onSeek(dragProgress)
                     },
                     onDragCancel = { isDragging = false },
                     onDrag = { change, _ ->
@@ -85,17 +115,18 @@ fun CustomWaveProgressBar(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val totalBars = amplitudes.size
+            val totalBars = animatedAmplitudes.size
             val totalBarWidth = totalBars * (barWidthPx + spacePx) - spacePx
             val startX = (size.width - totalBarWidth) / 2f
             val maxHeight = size.height
             val playedBars = (totalBars * (if (isDragging) dragProgress else currentProgress)).toInt()
 
-            amplitudes.forEachIndexed { index, amp ->
+            animatedAmplitudes.forEachIndexed { index, amp ->
                 val x = startX + index * (barWidthPx + spacePx)
                 if (x > size.width) return@forEachIndexed
 
-                val barHeight = amp.coerceIn(0f, 1f) * maxHeight
+                val amplitude = if (index <= playedBars) amp.value else amplitudes[index]
+                val barHeight = amplitude.coerceIn(0f, 1f) * maxHeight
                 val top = (size.height - barHeight) / 2
                 drawRoundRect(
                     color = if (index <= playedBars) playedColor else barColor,
@@ -116,9 +147,9 @@ fun PreviewProgressBar() {
     CustomWaveProgressBar(
         amplitudes = amplitudes,
         currentProgress = progress,
+        isPlaying = false,
         onSeek = { newProgress ->
             progress = newProgress
-            // call your ViewModel or player service here to seek
         }
     )
 }

@@ -330,7 +330,8 @@ internal fun PlayerScreen(
 
                 CustomWaveProgressBar(
                     amplitudes = amplitudes,
-                    currentProgress = normalizedProgress,
+                    currentProgress = normalizedProgress.coerceIn(0f, 1f),
+                    isPlaying = isPlaying,
                     barColor = Color(darkPaletteColor).copy(alpha = 0.25f),
                     playedColor = Color(darkPaletteColor),
                     onSeek = { normalized ->
