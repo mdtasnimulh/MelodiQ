@@ -76,7 +76,7 @@ import com.tasnimulhasan.melodiq.component.CustomDrawer
 import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
 import com.tasnimulhasan.melodiq.navigation.MelodiQNavHost
 import com.tasnimulhasan.melodiq.ui.miniplayer.MiniPlayer
-import com.tasnimulhasan.melodiq.ui.miniplayer.MiniPlayer2
+import com.tasnimulhasan.melodiq.ui.miniplayer.PopUpPlayer
 import com.tasnimulhasan.melodiq.ui.viewmodel.MainViewModel
 import com.tasnimulhasan.melodiq.ui.viewmodel.UiEvent
 import com.tasnimulhasan.playlists.navigation.PlaylistsRoute
@@ -292,12 +292,12 @@ internal fun MmApp(
                             )
                         ) + fadeOut(animationSpec = tween(durationMillis = 500))
                     ) {
-                        MiniPlayer2(
+                        PopUpPlayer(
                             modifier = Modifier,
                             cover = bitmap,
                             songTitle = currentSelectedAudio.songTitle,
                             progress = progress,
-                            onProgress = { viewModel.onUiEvents(UiEvent.SeekTo(it)) },
+                            onProgress = { seekPosition -> viewModel.onUiEvents(UiEvent.SeekTo(seekPosition)) },
                             isPlaying = isPlaying,
                             progressString = "$progressString / " + viewModel.convertLongToReadableDateTime(
                                 currentSelectedAudio.duration.toLong(),

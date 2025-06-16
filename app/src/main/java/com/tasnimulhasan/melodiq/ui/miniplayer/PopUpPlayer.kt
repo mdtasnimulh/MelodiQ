@@ -2,7 +2,9 @@ package com.tasnimulhasan.melodiq.ui.miniplayer
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,11 +16,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
@@ -30,13 +35,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.theme.BlueDarker
+import com.tasnimulhasan.designsystem.theme.LightOrange
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
+import com.tasnimulhasan.melodiq.ui.components.MiniPlayerWaveProgressBar
+import kotlin.random.Random
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
-fun MiniPlayer2(
+fun PopUpPlayer(
     modifier: Modifier = Modifier,
     cover: Bitmap?,
     songTitle: String,
@@ -52,6 +61,16 @@ fun MiniPlayer2(
     onSeekNextClick: () -> Unit,
     onImageClick: () -> Unit,
 ) {
+    val darkPaletteColor = remember(cover) {
+        cover?.let {
+            val palette = Palette.from(it).generate()
+            palette.vibrantSwatch?.rgb
+                ?: palette.mutedSwatch?.rgb
+                ?: palette.dominantSwatch?.rgb
+                ?: LightOrange.toArgb()
+        } ?: LightOrange.toArgb()
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -70,7 +89,8 @@ fun MiniPlayer2(
             AsyncImage(
                 modifier = Modifier
                     .size(60.dp)
-                    .clip(MaterialTheme.shapes.small)
+                    .clip(MaterialTheme.shapes.medium)
+                    .border(width = 3.dp, shape = MaterialTheme.shapes.medium, color = Color(darkPaletteColor))
                     .constrainAs(coverArt) {
                         top.linkTo(parent.top)
                         start.linkTo(parent.start)
@@ -127,19 +147,32 @@ fun MiniPlayer2(
                 overflow = TextOverflow.Ellipsis
             )
 
-            Slider(
+            Box(
                 modifier = Modifier
                     .constrainAs(slider) {
                         top.linkTo(coverArt.bottom, margin = 8.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                         width = Dimension.fillToConstraints
-                        height = Dimension.value(24.dp)
+                        height = Dimension.value(32.dp)
                     },
-                value = progress,
-                onValueChange = onProgress,
-                valueRange = 0f..100f,
-            )
+                contentAlignment = Alignment.Center
+            ) {
+                val amplitudes = remember { List(60) { Random.nextFloat() } }
+                val normalizedProgress = progress / 100f
+
+                MiniPlayerWaveProgressBar(
+                    amplitudes = amplitudes,
+                    currentProgress = normalizedProgress.coerceIn(0f, 1f),
+                    isPlaying = isPlaying,
+                    barColor = Color(darkPaletteColor).copy(alpha = 0.25f),
+                    playedColor = Color(darkPaletteColor),
+                    onSeek = { normalized ->
+                        val seekPosition = normalized * 100f
+                        onProgress.invoke(seekPosition)
+                    }
+                )
+            }
 
             IconButton(
                 modifier = Modifier
@@ -238,7 +271,7 @@ fun MiniPlayer2(
 @Composable
 fun PreviewMiniPlayer2() {
     MelodiqTheme {
-        MiniPlayer2(
+        PopUpPlayer(
             modifier = Modifier,
             cover = null,
             songTitle = "Song Title Song Title Song Title Song Title Song Title",
