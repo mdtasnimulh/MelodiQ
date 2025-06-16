@@ -1,5 +1,8 @@
 package com.tasnimulhasan.melodiq.ui
 
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Context.ACTIVITY_SERVICE
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -56,6 +59,7 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.tasnimulhasan.albums.navigation.AlbumRoute
+import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.common.utils.coloredShadow
 import com.tasnimulhasan.designsystem.component.MelodiQNavigationBar
 import com.tasnimulhasan.designsystem.component.MelodiQNavigationBarItem
@@ -247,7 +251,7 @@ internal fun MmApp(
                 if (currentDestination?.route != PlayerRoute::class.qualifiedName.plus("/{musicId}")) {
                     AnimatedVisibility(
                         modifier = Modifier.align(Alignment.BottomEnd),
-                        visible = currentSelectedAudio.songId != 0L && !showPopUpPlayer,
+                        visible = context.isServiceRunning(MelodiqPlayerService::class.java) && currentSelectedAudio.songId != 0L && !showPopUpPlayer,
                         enter = scaleIn(
                             animationSpec = tween(durationMillis = 500),
                             transformOrigin = TransformOrigin(
@@ -330,6 +334,13 @@ private fun GetContent(appState: MelodiQAppState) {
             }
         )
     }
+}
+
+@Suppress("DEPRECATION")
+fun <T> Context.isServiceRunning(service: Class<T>): Boolean {
+    return (getSystemService(ACTIVITY_SERVICE) as ActivityManager)
+        .getRunningServices(Integer.MAX_VALUE)
+        .any { it -> it.service.className == service.name }
 }
 
 private fun NavDestination?.isRouteInHierarchy(route: KClass<*>) =
