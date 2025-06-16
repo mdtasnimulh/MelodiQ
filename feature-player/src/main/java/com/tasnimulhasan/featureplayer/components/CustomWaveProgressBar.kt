@@ -29,7 +29,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
@@ -64,23 +63,21 @@ fun CustomWaveProgressBar(
     }
 
     LaunchedEffect(isPlaying, currentProgress) {
-        if (!isPlaying) return@LaunchedEffect
-
-        val playedBars = (animatedAmplitudes.size * (if (isDragging) dragProgress else currentProgress)).toInt()
-        coroutineScope {
-            animatedAmplitudes.forEachIndexed { index, animatable ->
-                if (index <= playedBars) {
-                    launch {
-                        val target = Random.nextFloat()
-                        animatable.animateTo(
-                            target,
-                            animationSpec = tween(durationMillis = 150)
-                        )
+        while (isPlaying) {
+            val playedBars = (animatedAmplitudes.size * (if (isDragging) dragProgress else currentProgress)).toInt()
+            coroutineScope {
+                animatedAmplitudes.forEachIndexed { index, animateAmp ->
+                    if (index <= playedBars) {
+                        launch {
+                            animateAmp.animateTo(
+                                targetValue = Random.nextFloat(),
+                                animationSpec = tween(durationMillis = 250)
+                            )
+                        }
                     }
                 }
             }
         }
-        delay(150)
     }
 
     Box(
