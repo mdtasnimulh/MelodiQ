@@ -82,6 +82,7 @@ import com.tasnimulhasan.melodiq.ui.viewmodel.UiEvent
 import com.tasnimulhasan.playlists.navigation.PlaylistsRoute
 import com.tasnimulhasan.settings.navigation.SettingsRoute
 import com.tasnimulhasan.songs.navigation.SongsRoute
+import timber.log.Timber
 import kotlin.math.roundToInt
 import kotlin.reflect.KClass
 import com.tasnimulhasan.designsystem.R as Res
@@ -112,6 +113,7 @@ internal fun MmApp(
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
     val context = LocalContext.current
+    val sortType by viewModel.sortType.collectAsStateWithLifecycle()
     val audioList by viewModel.audioList.collectAsStateWithLifecycle()
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
@@ -166,6 +168,11 @@ internal fun MmApp(
     )
     BackHandler(enabled = customDrawerState.isOpened()) {
         customDrawerState = CustomDrawerState.Closed
+    }
+
+    LaunchedEffect(sortType) {
+        viewModel.initializeListIfNeeded()
+        Timber.e("Check Audio List Size Changed Type: ${sortType.name}")
     }
 
     Box(

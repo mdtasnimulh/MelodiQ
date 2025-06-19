@@ -1,8 +1,11 @@
 package com.tasnimulhasan.common.service
 
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.tasnimulhasan.entity.enums.SortType
+import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,6 +24,9 @@ class MelodiqServiceHandler @Inject constructor(
     private val _audioState: MutableStateFlow<MelodiqAudioState> = MutableStateFlow(MelodiqAudioState.Initial)
     val audioState: StateFlow<MelodiqAudioState> = _audioState.asStateFlow()
 
+    val audioList = MutableStateFlow<List<MusicEntity>>(emptyList())
+    val sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
+
     private var job: Job? = null
 
     init {
@@ -33,14 +39,33 @@ class MelodiqServiceHandler @Inject constructor(
         }
     }
 
-    fun addMediaItem(mediaItem: MediaItem) {
-        exoPlayer.setMediaItem(mediaItem)
+    fun setMediaItemList(mediaItems: List<MediaItem>, resetPosition: Boolean = false) {
+        exoPlayer.setMediaItems(mediaItems, resetPosition)
         exoPlayer.prepare()
+        if (!resetPosition && mediaItems.isNotEmpty()) {
+            val currentIndex = exoPlayer.currentMediaItemIndex
+            if (currentIndex in mediaItems.indices) {
+                exoPlayer.seekToDefaultPosition(currentIndex)
+            }
+        }
     }
 
-    fun setMediaItemList(mediaItems: List<MediaItem>) {
-        exoPlayer.setMediaItems(mediaItems)
-        exoPlayer.prepare()
+    fun updateMediaItems(audioList: List<MusicEntity>, sortType: SortType) {
+        this.sortType.value = sortType
+        this.audioList.value = audioList.toList()
+        val mediaItems = audioList.map { audio ->
+            MediaItem.Builder()
+                .setUri(audio.contentUri)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setAlbumArtist(audio.artist)
+                        .setDisplayTitle(audio.songTitle)
+                        .setSubtitle(audio.album)
+                        .build()
+                )
+                .build()
+        }
+        setMediaItemList(mediaItems)
     }
 
     fun getCurrentDuration(): Long {

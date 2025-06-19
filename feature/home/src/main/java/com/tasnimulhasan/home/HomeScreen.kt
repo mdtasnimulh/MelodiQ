@@ -81,9 +81,10 @@ internal fun HomeScreen(
     val showSortDialog = remember { mutableStateOf(false) }
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
 
-    LaunchedEffect(sortType) {
+    LaunchedEffect(audioList, sortType) {
         selectedSortOption.value = viewModel.sortTypeToDisplayString(sortType)
         viewModel.initializeListIfNeeded()
+        Timber.e("Check Audio List Size Home First Song Title SLaunch: ${audioList.first().songId}_${audioList.first().songTitle}")
     }
 
     Box(

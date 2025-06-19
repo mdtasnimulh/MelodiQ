@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -144,25 +145,31 @@ class PlayerViewModel @Inject constructor(
             val currentSong = playerUseCases.getCurrentSongInfoUseCase()
             currentSong?.let {/*_currentSelectedAudio.value = it*/ }
         }
+
+        _audioList.value = audioServiceHandler.audioList.value
+        Timber.e("Check Audio List Size PV1: ${audioList.value.size}")
+        Timber.e("Check Audio List Size PV1 Handler: ${audioServiceHandler.audioList.value.size}")
     }
 
     fun initializeListIfNeeded() {
-        if (initialized.value) return
         viewModelScope.launch {
             val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
             if (existingMediaItemCount > 0) {
-                _audioList.value = fetchMusicUseCase(sortType.value)
+                _sortType.value = audioServiceHandler.sortType.value
+                _audioList.value = audioServiceHandler.audioList.value
                 _uIState.value = UIState.MusicList(_audioList.value)
                 _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
                 _duration.value = audioServiceHandler.getDuration()
                 calculateProgressValue(audioServiceHandler.getCurrentDuration())
                 _isPlaying.value = audioServiceHandler.isPlaying()
-                initialized.value = true
                 return@launch
             }
-            _audioList.value = fetchMusicUseCase(sortType.value)
+
+            _sortType.value = audioServiceHandler.sortType.value
+            val sortedList = fetchMusicUseCase(_sortType.value)
+            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
+            _audioList.value = audioServiceHandler.audioList.value // New list instance
             _uIState.value = UIState.MusicList(_audioList.value)
-            initialized.value = true
         }
     }
 

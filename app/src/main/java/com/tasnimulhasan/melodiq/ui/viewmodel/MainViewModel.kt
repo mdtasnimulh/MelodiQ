@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -49,9 +50,8 @@ class MainViewModel @Inject constructor(
         albumId = 0L,
         album = ""
     )
-    private var initialized = MutableStateFlow(false)
 
-    private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
+    private val _sortType = MutableStateFlow(audioServiceHandler.sortType.value)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
     private val _duration = MutableStateFlow(0L)
@@ -79,6 +79,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             getSortTypeUseCase().collect {
                 _sortType.value = it
+                audioServiceHandler.sortType.value = _sortType.value
             }
         }
 
@@ -110,32 +111,35 @@ class MainViewModel @Inject constructor(
                 /*currentSelectedAudio = it*/
             }
         }
+
+        _sortType.value = audioServiceHandler.sortType.value
+        audioServiceHandler.audioList.value = _audioList.value
+        Timber.e("Check Audio List Size MV1: ${audioList.value.size}")
+        Timber.e("Check Audio List Size MV1 Handler: ${audioServiceHandler.audioList.value.size}")
+        Timber.e("Check Audio List Size Sort Type MV1: ${sortType.value}")
     }
 
     fun initializeListIfNeeded() {
-        if (initialized.value) return
-
         viewModelScope.launch {
             val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
             if (existingMediaItemCount > 0) {
-                // Sync current state instead of resetting media items
-                _audioList.value = fetchMusicUseCase(sortType.value)
+                _sortType.value = audioServiceHandler.sortType.value
+                audioServiceHandler.audioList.value = fetchMusicUseCase(sortType.value)
+                _audioList.value = audioServiceHandler.audioList.value
                 _uIState.value = UiState.MusicList(_audioList.value)
-
                 _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
                 _duration.value = audioServiceHandler.getDuration()
                 calculateProgressValue(audioServiceHandler.getCurrentDuration())
                 _isPlaying.value = audioServiceHandler.isPlaying()
 
-                initialized.value = true
                 return@launch
             }
 
-            // If no media items in ExoPlayer, initialize normally
-            _audioList.value = fetchMusicUseCase(sortType.value)
+            _sortType.value = audioServiceHandler.sortType.value
+            audioServiceHandler.audioList.value = fetchMusicUseCase(sortType.value)
+            _audioList.value = audioServiceHandler.audioList.value
             _uIState.value = UiState.MusicList(_audioList.value)
             setMediaItems()
-            initialized.value= true
         }
     }
 

@@ -38,7 +38,6 @@ class HomeViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
-    private val getSortTypeUseCase: GetSortTypeUseCase,
     private val setSortTypeUseCase: SetSortTypeUseCase,
 ) : BaseViewModel() {
 
@@ -52,9 +51,8 @@ class HomeViewModel @Inject constructor(
         albumId = 0L,
         album = ""
     )
-    private var initialized = MutableStateFlow(false)
 
-    private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
+    private val _sortType = MutableStateFlow(audioServiceHandler.sortType.value)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
     private val _duration = MutableStateFlow(0L)
@@ -72,21 +70,13 @@ class HomeViewModel @Inject constructor(
     private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
     val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
 
-    private val _audioList = MutableStateFlow(listOf<MusicEntity>())
+    private val _audioList = MutableStateFlow(audioServiceHandler.audioList.value)
     val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
 
     private val _uIState: MutableStateFlow<UIState> = MutableStateFlow(UIState.Initial)
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            getSortTypeUseCase().collect {
-                _sortType.value = it
-                initialized.value = false
-                Timber.e("SortType: $it")
-            }
-        }
-
         initializeListIfNeeded()
 
         viewModelScope.launch {
@@ -116,39 +106,44 @@ class HomeViewModel @Inject constructor(
                 Timber.e("Check Current Song: \n${it.songTitle}")
             }
         }
+
+        Timber.e("Check Audio List Size HV1 Sort Type: ${sortType.value}")
+        Timber.e("Check Audio List Size HV1: ${audioList.value.size}")
+        Timber.e("Check Audio List Size HV2 Handler: ${audioServiceHandler.audioList.value.size}")
     }
 
     fun setSortType(type: SortType) {
         viewModelScope.launch {
+            audioServiceHandler.sortType.value = type
             _sortType.value = type
             setSortTypeUseCase(type)
+            val sortedList = fetchMusicUseCase(type)
+            audioServiceHandler.updateMediaItems(sortedList, type)
+            _audioList.value = audioServiceHandler.audioList.value.toList()
+            _uIState.value = UIState.MusicList(_audioList.value)
+            Timber.d("HomeViewModel: Set sort type to $type, updated audioList size: ${_audioList.value.size}")
         }
     }
 
     fun initializeListIfNeeded() {
-        if (initialized.value) return
-
         viewModelScope.launch {
             val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
             if (existingMediaItemCount > 0) {
-                // Sync current state instead of resetting media items
-                _audioList.value = fetchMusicUseCase(sortType.value)
+                _sortType.value = audioServiceHandler.sortType.value
+                _audioList.value = audioServiceHandler.audioList.value.toList()
                 _uIState.value = UIState.MusicList(_audioList.value)
-
                 _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
                 _duration.value = audioServiceHandler.getDuration()
                 calculateProgressValue(audioServiceHandler.getCurrentDuration())
                 _isPlaying.value = audioServiceHandler.isPlaying()
-
-                initialized.value = true
                 return@launch
             }
 
-            // If no media items in ExoPlayer, initialize normally
-            _audioList.value = fetchMusicUseCase(sortType.value)
+            _sortType.value = audioServiceHandler.sortType.value
+            val sortedList = fetchMusicUseCase(_sortType.value)
+            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
+            _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UIState.MusicList(_audioList.value)
-            setMediaItems()
-            initialized.value = true
         }
     }
 
