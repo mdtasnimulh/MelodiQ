@@ -52,6 +52,8 @@ class HomeViewModel @Inject constructor(
         album = ""
     )
 
+    var initializedList = MutableStateFlow(false)
+
     private val _sortType = MutableStateFlow(audioServiceHandler.sortType.value)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
@@ -121,6 +123,7 @@ class HomeViewModel @Inject constructor(
             audioServiceHandler.updateMediaItems(sortedList, type)
             _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UIState.MusicList(_audioList.value)
+            initializedList.value = true
             Timber.d("HomeViewModel: Set sort type to $type, updated audioList size: ${_audioList.value.size}")
         }
     }
@@ -144,6 +147,17 @@ class HomeViewModel @Inject constructor(
             audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
             _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UIState.MusicList(_audioList.value)
+        }
+    }
+
+    fun updateMusicList() {
+        execute {
+            if (initializedList.value) return@execute
+
+            _sortType.value = audioServiceHandler.sortType.value
+            val sortedList = fetchMusicUseCase(_sortType.value)
+            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
+            initializedList.value = true
         }
     }
 

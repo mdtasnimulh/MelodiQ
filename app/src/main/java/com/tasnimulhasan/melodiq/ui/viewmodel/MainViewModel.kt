@@ -19,6 +19,7 @@ import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
+import com.tasnimulhasan.home.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -124,22 +125,20 @@ class MainViewModel @Inject constructor(
             val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
             if (existingMediaItemCount > 0) {
                 _sortType.value = audioServiceHandler.sortType.value
-                audioServiceHandler.audioList.value = fetchMusicUseCase(sortType.value)
-                _audioList.value = audioServiceHandler.audioList.value
+                _audioList.value = audioServiceHandler.audioList.value.toList()
                 _uIState.value = UiState.MusicList(_audioList.value)
                 _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
                 _duration.value = audioServiceHandler.getDuration()
                 calculateProgressValue(audioServiceHandler.getCurrentDuration())
                 _isPlaying.value = audioServiceHandler.isPlaying()
-
                 return@launch
             }
 
             _sortType.value = audioServiceHandler.sortType.value
-            audioServiceHandler.audioList.value = fetchMusicUseCase(sortType.value)
-            _audioList.value = audioServiceHandler.audioList.value
+            val sortedList = fetchMusicUseCase(_sortType.value)
+            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
+            _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UiState.MusicList(_audioList.value)
-            setMediaItems()
         }
     }
 

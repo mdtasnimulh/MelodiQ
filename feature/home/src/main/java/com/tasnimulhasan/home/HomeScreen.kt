@@ -83,6 +83,7 @@ internal fun HomeScreen(
 
     LaunchedEffect(audioList, sortType) {
         selectedSortOption.value = viewModel.sortTypeToDisplayString(sortType)
+        viewModel.updateMusicList()
         viewModel.initializeListIfNeeded()
         Timber.e("Check Audio List Size Home First Song Title SLaunch: ${audioList.first().songId}_${audioList.first().songTitle}")
     }
