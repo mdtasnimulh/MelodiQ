@@ -78,13 +78,12 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            getSortTypeUseCase().collect {
-                _sortType.value = it
-                audioServiceHandler.sortType.value = _sortType.value
+            getSortTypeUseCase().collectLatest { persistedSortType ->
+                _sortType.value = persistedSortType
+                audioServiceHandler.sortType.value = persistedSortType
+                initializeListIfNeeded()
             }
         }
-
-        initializeListIfNeeded()
 
         viewModelScope.launch {
             audioServiceHandler.audioState.collectLatest { mediaState ->
@@ -96,7 +95,6 @@ class MainViewModel @Inject constructor(
                     is MelodiqAudioState.CurrentPlaying -> {
                         _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
                     }
-
                     is MelodiqAudioState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UiState.Ready
@@ -108,16 +106,8 @@ class MainViewModel @Inject constructor(
 
         viewModelScope.launch {
             val currentSong = playerUseCases.getCurrentSongInfoUseCase()
-            currentSong?.let {
-                /*currentSelectedAudio = it*/
-            }
+            currentSong?.let { /*_currentSelectedAudio.value = it*/ }
         }
-
-        _sortType.value = audioServiceHandler.sortType.value
-        audioServiceHandler.audioList.value = _audioList.value
-        Timber.e("Check Audio List Size MV1: ${audioList.value.size}")
-        Timber.e("Check Audio List Size MV1 Handler: ${audioServiceHandler.audioList.value.size}")
-        Timber.e("Check Audio List Size Sort Type MV1: ${sortType.value}")
     }
 
     fun initializeListIfNeeded() {
@@ -136,7 +126,7 @@ class MainViewModel @Inject constructor(
 
             _sortType.value = audioServiceHandler.sortType.value
             val sortedList = fetchMusicUseCase(_sortType.value)
-            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
+            audioServiceHandler.updateMediaItemsWithCurrentTrack(sortedList, _sortType.value) // Updated call
             _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UiState.MusicList(_audioList.value)
         }

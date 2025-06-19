@@ -68,6 +68,45 @@ class MelodiqServiceHandler @Inject constructor(
         setMediaItemList(mediaItems)
     }
 
+    fun updateMediaItemsWithCurrentTrack(audioList: List<MusicEntity>, sortType: SortType) {
+        this.sortType.value = sortType
+        this.audioList.value = audioList.toList()
+        val mediaItems = audioList.map { audio ->
+            MediaItem.Builder()
+                .setUri(audio.contentUri)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setAlbumArtist(audio.artist)
+                        .setDisplayTitle(audio.songTitle)
+                        .setSubtitle(audio.album)
+                        .build()
+                )
+                .build()
+        }
+
+        // Preserve current playback state
+        val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
+        val currentPosition = exoPlayer.currentPosition
+        val isPlaying = exoPlayer.isPlaying
+
+        // Find the new index of the current track
+        val newIndex = if (currentUri != null) {
+            mediaItems.indexOfFirst { it.localConfiguration?.uri == currentUri }
+                .takeIf { it >= 0 } ?: exoPlayer.currentMediaItemIndex
+        } else {
+            exoPlayer.currentMediaItemIndex
+        }
+
+        // Set media items with the new index and position
+        exoPlayer.setMediaItems(mediaItems, newIndex, if (isPlaying) currentPosition else 0L)
+        exoPlayer.prepare()
+        if (isPlaying) {
+            exoPlayer.playWhenReady = true
+            startProgressUpdate()
+        }
+        _audioState.value = MelodiqAudioState.CurrentPlaying(newIndex)
+    }
+
     fun getCurrentDuration(): Long {
         return exoPlayer.currentPosition
     }

@@ -13,6 +13,7 @@ import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
+import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
@@ -37,6 +38,7 @@ class HomeViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
     private val setSortTypeUseCase: SetSortTypeUseCase,
+    private val getSortTypeUseCase: GetSortTypeUseCase,
 ) : BaseViewModel() {
 
     private val dummyAudio = MusicEntity(
@@ -77,7 +79,13 @@ class HomeViewModel @Inject constructor(
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
     init {
-        initializeListIfNeeded()
+        viewModelScope.launch {
+            getSortTypeUseCase().collectLatest { persistedSortType ->
+                _sortType.value = persistedSortType
+                audioServiceHandler.sortType.value = persistedSortType
+                initializeListIfNeeded()
+            }
+        }
 
         viewModelScope.launch {
             audioServiceHandler.audioState.collectLatest { mediaState ->
@@ -89,7 +97,6 @@ class HomeViewModel @Inject constructor(
                     is MelodiqAudioState.CurrentPlaying -> {
                         _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
                     }
-
                     is MelodiqAudioState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
@@ -101,9 +108,7 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             val currentSong = playerUseCases.getCurrentSongInfoUseCase()
-            currentSong?.let {
-                /*currentSelectedAudio = it*/
-            }
+            currentSong?.let { /*_currentSelectedAudio.value = it*/ }
         }
     }
 
@@ -113,7 +118,7 @@ class HomeViewModel @Inject constructor(
             _sortType.value = type
             setSortTypeUseCase(type)
             val sortedList = fetchMusicUseCase(type)
-            audioServiceHandler.updateMediaItems(sortedList, type)
+            audioServiceHandler.updateMediaItemsWithCurrentTrack(sortedList, type) // Updated call
             _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UIState.MusicList(_audioList.value)
             initializedList.value = true
@@ -137,7 +142,7 @@ class HomeViewModel @Inject constructor(
 
             _sortType.value = audioServiceHandler.sortType.value
             val sortedList = fetchMusicUseCase(_sortType.value)
-            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
+            audioServiceHandler.updateMediaItemsWithCurrentTrack(sortedList, _sortType.value) // Updated call
             _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UIState.MusicList(_audioList.value)
         }

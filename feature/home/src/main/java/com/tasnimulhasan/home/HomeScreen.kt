@@ -77,13 +77,12 @@ internal fun HomeScreen(
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     var isFavourite by remember { mutableStateOf(false) }
-    val selectedSortOption = remember { mutableStateOf("") }
+    val selectedSortOption = remember { mutableStateOf(viewModel.sortTypeToDisplayString(viewModel.sortType.value)) }
     val showSortDialog = remember { mutableStateOf(false) }
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
 
     LaunchedEffect(sortType) {
         selectedSortOption.value = viewModel.sortTypeToDisplayString(sortType)
-        viewModel.initializeListIfNeeded()
     }
 
     Box(
@@ -120,7 +119,7 @@ internal fun HomeScreen(
                         Icon(
                             modifier = Modifier,
                             imageVector = Icons.AutoMirrored.Filled.Sort,
-                            contentDescription = "Favourite Icon",
+                            contentDescription = "Sort Icon",
                             tint = Color.Red
                         )
                     }
