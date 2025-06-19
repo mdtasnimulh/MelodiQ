@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -122,7 +121,6 @@ class HomeViewModel @Inject constructor(
             _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UIState.MusicList(_audioList.value)
             initializedList.value = true
-            Timber.d("HomeViewModel: Set sort type to $type, updated audioList size: ${_audioList.value.size}")
         }
     }
 

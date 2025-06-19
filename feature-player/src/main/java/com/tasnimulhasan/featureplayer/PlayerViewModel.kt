@@ -9,7 +9,6 @@ import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.tasnimulhasan.common.service.MelodiqAudioState
@@ -17,7 +16,6 @@ import com.tasnimulhasan.common.service.MelodiqPlayerEvent.*
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
-import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.enums.SortType
@@ -30,7 +28,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -147,8 +144,6 @@ class PlayerViewModel @Inject constructor(
         }
 
         _audioList.value = audioServiceHandler.audioList.value
-        Timber.e("Check Audio List Size PV1: ${audioList.value.size}")
-        Timber.e("Check Audio List Size PV1 Handler: ${audioServiceHandler.audioList.value.size}")
     }
 
     fun initializeListIfNeeded() {
