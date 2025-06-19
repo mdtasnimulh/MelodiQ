@@ -7,14 +7,12 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
-import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
@@ -105,13 +103,8 @@ class HomeViewModel @Inject constructor(
             val currentSong = playerUseCases.getCurrentSongInfoUseCase()
             currentSong?.let {
                 /*currentSelectedAudio = it*/
-                Timber.e("Check Current Song: \n${it.songTitle}")
             }
         }
-
-        Timber.e("Check Audio List Size HV1 Sort Type: ${sortType.value}")
-        Timber.e("Check Audio List Size HV1: ${audioList.value.size}")
-        Timber.e("Check Audio List Size HV2 Handler: ${audioServiceHandler.audioList.value.size}")
     }
 
     fun setSortType(type: SortType) {

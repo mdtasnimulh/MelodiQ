@@ -174,12 +174,7 @@ class MainViewModel @Inject constructor(
         val mmr = MediaMetadataRetriever()
         mmr.setDataSource(context, uri)
         val data = mmr.embeddedPicture
-
-        return if (data != null) {
-            BitmapFactory.decodeByteArray(data, 0, data.size)
-        } else {
-            null
-        }
+        return if (data != null) BitmapFactory.decodeByteArray(data, 0, data.size) else null
     }
 
     fun onUiEvents(uiEvents: UiEvent) = viewModelScope.launch {

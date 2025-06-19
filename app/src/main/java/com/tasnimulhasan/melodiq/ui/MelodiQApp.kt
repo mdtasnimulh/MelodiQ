@@ -248,9 +248,10 @@ internal fun MmApp(
                 var bitmap by remember { mutableStateOf<Bitmap?>(null) }
                 val shouldLoadBitmap = remember(currentSelectedAudio.songId) { true }
                 if (audioList.indexOf(currentSelectedAudio) >= 0 && shouldLoadBitmap) {
-                    LaunchedEffect(audioList.indexOf(currentSelectedAudio)) {
+                    /*LaunchedEffect(audioList.indexOf(currentSelectedAudio)) {
                         bitmap = viewModel.getAlbumArt(context, currentSelectedAudio.contentUri)
-                    }
+                    }*/
+                    bitmap = viewModel.getAlbumArt(context, currentSelectedAudio.contentUri)
                 }
 
                 GetContent(appState = appState)

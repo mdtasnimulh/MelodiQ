@@ -81,11 +81,9 @@ internal fun HomeScreen(
     val showSortDialog = remember { mutableStateOf(false) }
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
 
-    LaunchedEffect(audioList, sortType) {
+    LaunchedEffect(sortType) {
         selectedSortOption.value = viewModel.sortTypeToDisplayString(sortType)
-        viewModel.updateMusicList()
         viewModel.initializeListIfNeeded()
-        Timber.e("Check Audio List Size Home First Song Title SLaunch: ${audioList.first().songId}_${audioList.first().songTitle}")
     }
 
     Box(
@@ -131,12 +129,13 @@ internal fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             itemsIndexed(audioList) { index, item ->
-                val shouldLoadBitmap = remember(item.songId) { true }
+                /*val shouldLoadBitmap = remember(item.songId) { true }
                 if (shouldLoadBitmap) {
                     LaunchedEffect(item.songId) {
                         viewModel.loadBitmapIfNeeded(context, index)
                     }
-                }
+                }*/
+                viewModel.loadBitmapIfNeeded(context, index)
                 MusicCard(
                     modifier = modifier,
                     bitmap = item.cover,
