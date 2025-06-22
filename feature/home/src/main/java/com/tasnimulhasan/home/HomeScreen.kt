@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -81,6 +82,8 @@ internal fun HomeScreen(
     val showSortDialog = remember { mutableStateOf(false) }
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
 
+    val listState = rememberLazyListState()
+
     LaunchedEffect(sortType) {
         selectedSortOption.value = viewModel.sortTypeToDisplayString(sortType)
     }
@@ -88,7 +91,10 @@ internal fun HomeScreen(
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        LazyColumn {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState
+        ) {
             item {
                 Row(
                     modifier = Modifier
