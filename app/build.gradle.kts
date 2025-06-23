@@ -117,6 +117,7 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.animation.compose)
     implementation(libs.androidx.window.core)
     implementation(libs.coil.kt)
     implementation(libs.gson)
