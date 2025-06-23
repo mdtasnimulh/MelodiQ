@@ -20,7 +20,7 @@ class MelodiQRepoImpl @Inject constructor(
     }
 
     override fun fetchAllMusic(sortType: SortType): Flow<List<MelodiqEntity>> {
-        return melodiQDao.fetchAllMusic(sortType = sortType)
+        return melodiQDao.fetchAllMusic(/*sortType = "musicId DESC"*/)
     }
 
     override suspend fun deleteMusicFromRoom(melodiqEntity: MelodiqEntity) {

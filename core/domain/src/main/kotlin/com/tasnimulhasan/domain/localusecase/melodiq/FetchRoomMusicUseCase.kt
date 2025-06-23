@@ -1,7 +1,6 @@
-package com.tasnimulhasan.domain.localusecase.incomeexpense
+package com.tasnimulhasan.domain.localusecase.melodiq
 
 import com.tasnimulhasan.domain.localusecase.RoomCollectableUseCase
-import com.tasnimulhasan.domain.localusecase.RoomSuspendableUseCase
 import com.tasnimulhasan.domain.repository.local.MelodiQRepository
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.room.music.MelodiqEntity

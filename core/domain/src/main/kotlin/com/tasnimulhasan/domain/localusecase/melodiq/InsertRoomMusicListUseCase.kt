@@ -1,19 +1,19 @@
-package com.tasnimulhasan.domain.localusecase.incomeexpense
+package com.tasnimulhasan.domain.localusecase.melodiq
 
 import com.tasnimulhasan.domain.localusecase.RoomSuspendableUseCaseNonReturn
 import com.tasnimulhasan.domain.repository.local.MelodiQRepository
 import com.tasnimulhasan.entity.room.music.MelodiqEntity
 import javax.inject.Inject
 
-class InsertRoomMusicUseCase @Inject constructor(
+class InsertRoomMusicListUseCase @Inject constructor(
     private val repository: MelodiQRepository
-) : RoomSuspendableUseCaseNonReturn<InsertRoomMusicUseCase.Params> {
+) : RoomSuspendableUseCaseNonReturn<InsertRoomMusicListUseCase.Params> {
 
     data class Params(
-        val melodiqEntity: MelodiqEntity
+        val musicList: List<MelodiqEntity>
     )
 
     override suspend fun invoke(params: Params) {
-        return repository.insertMusic(params.melodiqEntity)
+        return repository.insertAllMusic(params.musicList)
     }
 }

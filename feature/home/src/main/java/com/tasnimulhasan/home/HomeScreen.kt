@@ -135,12 +135,12 @@ internal fun SharedTransitionScope.HomeScreen(
                 viewModel.loadBitmapIfNeeded(context, index)
                 MusicCard(
                     modifier = modifier,
-                    bitmap = item.cover,
-                    title = item.songTitle,
-                    artist = item.artist,
-                    duration = item.duration,
-                    songId = item.songId,
-                    selectedId = currentSelectedAudio.songId,
+                    bitmap = item.musicCover,
+                    title = item.musicTitle,
+                    artist = item.musicArtist,
+                    duration = item.musicDuration,
+                    songId = item.musicId,
+                    selectedId = currentSelectedAudio.musicId,
                     isPlaying = context.isServiceRunning(MelodiqPlayerService::class.java),
                     isFavourite = isFavourite,
                     onMusicClicked = {
@@ -148,10 +148,10 @@ internal fun SharedTransitionScope.HomeScreen(
                             val intent = Intent(context, MelodiqPlayerService::class.java)
                             ContextCompat.startForegroundService(context, intent)
                         }
-                        if (currentSelectedAudio.songId != item.songId) {
+                        if (currentSelectedAudio.musicId != item.musicId) {
                             viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
                         }
-                        navigateToPlayer(item.songId.toString())
+                        navigateToPlayer(item.musicId.toString())
                     },
                     onFavouriteIconClicked = {
                         isFavourite = !isFavourite

@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
@@ -244,12 +245,12 @@ internal fun MmApp(
                     .consumeWindowInsets(padding)
             ) {
                 var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-                val shouldLoadBitmap = remember(currentSelectedAudio.songId) { true }
+                val shouldLoadBitmap = remember(currentSelectedAudio.musicId) { true }
                 if (audioList.indexOf(currentSelectedAudio) >= 0 && shouldLoadBitmap) {
                     /*LaunchedEffect(audioList.indexOf(currentSelectedAudio)) {
                         bitmap = viewModel.getAlbumArt(context, currentSelectedAudio.contentUri)
                     }*/
-                    bitmap = viewModel.getAlbumArt(context, currentSelectedAudio.contentUri)
+                    bitmap = viewModel.getAlbumArt(context, currentSelectedAudio.musicPath.toUri())
                 }
 
                 GetContent(appState = appState)
@@ -257,7 +258,7 @@ internal fun MmApp(
                 if (currentDestination?.route != PlayerRoute::class.qualifiedName.plus("/{musicId}")) {
                     AnimatedVisibility(
                         modifier = Modifier.align(Alignment.BottomEnd),
-                        visible = context.isServiceRunning(MelodiqPlayerService::class.java) && currentSelectedAudio.songId != 0L && !showPopUpPlayer,
+                        visible = context.isServiceRunning(MelodiqPlayerService::class.java) && currentSelectedAudio.musicId != 0L && !showPopUpPlayer,
                         enter = scaleIn(
                             animationSpec = tween(durationMillis = 500),
                             transformOrigin = TransformOrigin(
@@ -301,15 +302,15 @@ internal fun MmApp(
                         PopUpPlayer(
                             modifier = Modifier,
                             cover = bitmap,
-                            songTitle = currentSelectedAudio.songTitle,
+                            songTitle = currentSelectedAudio.musicTitle,
                             progress = progress,
                             onProgress = { seekPosition -> viewModel.onUiEvents(UiEvent.SeekTo(seekPosition)) },
                             isPlaying = isPlaying,
                             progressString = "$progressString / " + viewModel.convertLongToReadableDateTime(
-                                currentSelectedAudio.duration.toLong(),
+                                currentSelectedAudio.musicDuration.toLong(),
                                 "mm:ss"
                             ),
-                            onMiniPlayerClick = { appState.navigateToPlayer(currentSelectedAudio.songId.toString()) },
+                            onMiniPlayerClick = { appState.navigateToPlayer(currentSelectedAudio.musicId.toString()) },
                             onPlayPauseClick = { viewModel.onUiEvents(UiEvent.PlayPause) },
                             onNextClick = { viewModel.onUiEvents(UiEvent.SeekToNext) },
                             onPreviousClick = { viewModel.onUiEvents(UiEvent.SeekToPrevious) },

@@ -16,10 +16,12 @@ import com.tasnimulhasan.common.service.MelodiqPlayerEvent.*
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
+import com.tasnimulhasan.domain.localusecase.melodiq.FetchRoomMusicUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
+import com.tasnimulhasan.entity.room.music.MelodiqEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -36,6 +39,7 @@ import javax.inject.Inject
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
+    private val fetchRoomMusicUseCase: FetchRoomMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val audioServiceHandler: MelodiqServiceHandler,
     private val getSortTypeUseCase: GetSortTypeUseCase,
@@ -53,6 +57,17 @@ class PlayerViewModel @Inject constructor(
         albumId = 0L,
         album = ""
     )
+
+    private val dummyRoomAudio = MelodiqEntity(
+        musicId = 0L,
+        musicPath = "",
+        musicTitle = "",
+        musicArtist = "",
+        musicCover = null,
+        musicDuration = "",
+        album = "",
+        albumId = 0L
+    )
     private var initialized = MutableStateFlow(false)
 
     private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
@@ -69,10 +84,10 @@ class PlayerViewModel @Inject constructor(
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
-    private val _audioList = MutableStateFlow(listOf<MusicEntity>())
-    val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
+    private val _audioList = MutableStateFlow(listOf<MelodiqEntity>())
+    val audioList: StateFlow<List<MelodiqEntity>> = _audioList.asStateFlow()
 
-    private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
+    private val _currentSelectedAudio = MutableStateFlow(dummyRoomAudio)
     val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
 
     private val _isPlaying = MutableStateFlow(false)
@@ -111,6 +126,10 @@ class PlayerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            fetchRoomMusicUseCase.invoke(SortType.DATE_MODIFIED_DESC).collectLatest {
+                Timber.e("RoomMusic: PlayerViewModel ${it.size}")
+                _audioList.value = it
+            }
             getSortTypeUseCase().collect {
                 _sortType.value = it
                 initialized.value = false
@@ -126,7 +145,7 @@ class PlayerViewModel @Inject constructor(
                     is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
                     is MelodiqAudioState.CurrentPlaying -> {
-                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
+                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyRoomAudio
                     }
 
                     is MelodiqAudioState.Ready -> {
@@ -153,7 +172,7 @@ class PlayerViewModel @Inject constructor(
                 _sortType.value = audioServiceHandler.sortType.value
                 _audioList.value = audioServiceHandler.audioList.value
                 _uIState.value = UIState.MusicList(_audioList.value)
-                _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
+                _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyRoomAudio
                 _duration.value = audioServiceHandler.getDuration()
                 calculateProgressValue(audioServiceHandler.getCurrentDuration())
                 _isPlaying.value = audioServiceHandler.isPlaying()
@@ -161,19 +180,20 @@ class PlayerViewModel @Inject constructor(
             }
 
             _sortType.value = audioServiceHandler.sortType.value
-            val sortedList = fetchMusicUseCase(_sortType.value)
-            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
+            fetchRoomMusicUseCase.invoke(_sortType.value).collectLatest{
+                audioServiceHandler.updateMediaItemsWithCurrentTrack(it, _sortType.value)
+            }
             _audioList.value = audioServiceHandler.audioList.value // New list instance
             _uIState.value = UIState.MusicList(_audioList.value)
         }
     }
 
     fun loadBitmapIfNeeded(context: Context, index: Int) {
-        if (_audioList.value[index].cover != null) return
+        if (_audioList.value[index].musicCover != null) return
         viewModelScope.launch(Dispatchers.Default) {
-            val bitmap = getAlbumArt(context, _audioList.value[index].contentUri)
+            val bitmap = getAlbumArt(context, _audioList.value[index].musicPath.toUri())
             val updatedList = _audioList.value.toMutableList().apply {
-                this[index] = this[index].copy(cover = bitmap)
+                this[index] = this[index].copy(musicCover = bitmap)
             }
             _audioList.value = updatedList
         }
@@ -308,7 +328,7 @@ sealed class UIEvents {
 }
 
 sealed class UIState {
-    data class MusicList(val musics: List<MusicEntity>) : UIState()
+    data class MusicList(val musics: List<MelodiqEntity>) : UIState()
     data object Initial : UIState()
     data object Ready : UIState()
 }

@@ -18,9 +18,9 @@ data class MelodiqEntity(
     @ColumnInfo(name = "musicPath")
     val musicPath: String,
     @ColumnInfo(name = "musicCover")
-    val musicCover: Bitmap,
+    val musicCover: Bitmap?,
     @ColumnInfo(name = "musicDuration")
-    val musicDuration: Long,
+    val musicDuration: String,
     @ColumnInfo(name = "album")
     val album: String,
     @ColumnInfo(name = "albumId")

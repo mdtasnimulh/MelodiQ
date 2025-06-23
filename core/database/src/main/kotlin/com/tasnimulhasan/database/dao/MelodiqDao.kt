@@ -18,8 +18,8 @@ interface MelodiQDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllMusic(musicList: List<MelodiqEntity>)
 
-    @Query("SELECT * FROM melodiq_music_table ORDER BY:sortType")
-    fun fetchAllMusic(sortType: SortType): Flow<List<MelodiqEntity>>
+    @Query("SELECT * FROM melodiq_music_table ORDER BY musicId DESC")
+    fun fetchAllMusic(/*sortType: String*/): Flow<List<MelodiqEntity>>
 
     @Delete()
     suspend fun deleteMusicFromRoom(melodiqEntity: MelodiqEntity)

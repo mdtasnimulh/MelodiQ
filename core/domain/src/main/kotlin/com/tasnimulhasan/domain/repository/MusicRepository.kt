@@ -7,4 +7,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface MusicRepository {
     suspend fun fetchMusic(context: Context, sortType: SortType): List<MusicEntity>
+
+    suspend fun insertMusicToRoom(context: Context)
 }

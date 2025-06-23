@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.window.Dialog
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
@@ -120,7 +121,7 @@ internal fun SharedTransitionScope.PlayerScreen(
     val showBottomSheet = remember { mutableStateOf(false) }
     val sleepTimerRunning = remember { mutableStateOf(false) }
 
-    val initialPageIndex = audioList.indexOfFirst { it.songId.toString() == musicId }
+    val initialPageIndex = audioList.indexOfFirst { it.musicId.toString() == musicId }
     LaunchedEffect(initialPageIndex) {
         if (initialPageIndex >= 0) {
             pagerState.scrollToPage(initialPageIndex)
@@ -138,14 +139,14 @@ internal fun SharedTransitionScope.PlayerScreen(
     val currentMusic = audioList.getOrNull(currentPage)
 
     LaunchedEffect(currentSelectedAudio) {
-        val currentIndex = audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
+        val currentIndex = audioList.indexOfFirst { it.musicId == currentSelectedAudio.musicId }
         if (currentIndex >= 0 && currentIndex != pagerState.currentPage) {
             pagerState.scrollToPage(currentIndex)
         }
     }
 
-    val darkPaletteColor = remember(currentMusic?.cover) {
-        currentMusic?.cover?.let {
+    val darkPaletteColor = remember(currentMusic?.musicCover) {
+        currentMusic?.musicCover?.let {
             val palette = Palette.from(it).generate()
             palette.vibrantSwatch?.rgb
                 ?: palette.mutedSwatch?.rgb
@@ -153,8 +154,8 @@ internal fun SharedTransitionScope.PlayerScreen(
                 ?: LightOrange.toArgb()
         } ?: LightOrange.toArgb()
     }
-    val lightPaletteColor = remember(currentMusic?.cover) {
-        currentMusic?.cover?.let {
+    val lightPaletteColor = remember(currentMusic?.musicCover) {
+        currentMusic?.musicCover?.let {
             val palette = Palette.from(it).generate()
             palette.lightVibrantSwatch?.rgb
                 ?: palette.lightMutedSwatch?.rgb
@@ -262,11 +263,11 @@ internal fun SharedTransitionScope.PlayerScreen(
                 AsyncImage(
                     modifier = Modifier
                         .sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = "image-${pageMusic?.songId}"),
+                            sharedContentState = rememberSharedContentState(key = "image-${pageMusic?.musicId}"),
                             animatedVisibilityScope = animatedVisibilityScope,
                         )
                         .fillMaxSize(),
-                    model = pageMusic?.cover,
+                    model = pageMusic?.musicCover,
                     contentDescription = context.getString(Res.string.desc_album_cover_art),
                     contentScale = ContentScale.FillBounds,
                     placeholder = painterResource(Res.drawable.default_cover),
@@ -281,13 +282,13 @@ internal fun SharedTransitionScope.PlayerScreen(
             Text(
                 modifier = Modifier
                     .sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = "title-${currentTrack.songId}"),
+                        sharedContentState = rememberSharedContentState(key = "title-${currentTrack.musicId}"),
                         animatedVisibilityScope = animatedVisibilityScope,
                     )
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .basicMarquee(),
-                text = currentTrack.songTitle,
+                text = currentTrack.musicTitle,
                 maxLines = 1,
                 style = TextStyle(
                     color = Color.Black,
@@ -303,7 +304,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                text = currentTrack.artist,
+                text = currentTrack.musicArtist,
                 maxLines = 1,
                 style = TextStyle(
                     color = Color.Gray,
@@ -322,7 +323,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                         viewModel.toggleTimeDisplay()
                     },
                 text = "$progressString / " + viewModel.convertLongToReadableDateTime(
-                    currentTrack.duration.toLong(),
+                    currentTrack.musicDuration.toLong(),
                     "mm:ss"
                 ),
                 textAlign = TextAlign.Center,
@@ -407,9 +408,9 @@ internal fun SharedTransitionScope.PlayerScreen(
                     val shareIntent = Intent().also {
                         it.action = Intent.ACTION_SEND
                         it.type = "audio/*"
-                        it.putExtra(Intent.EXTRA_STREAM, currentTrack.contentUri)
+                        it.putExtra(Intent.EXTRA_STREAM, currentTrack.musicPath.toUri())
                     }
-                    context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
+                    context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.musicTitle}"))
                 },
                 onVolumeBoostClicked = { showVolumeBoostDialog.value = true }
             )

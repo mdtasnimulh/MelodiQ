@@ -1,11 +1,13 @@
 package com.tasnimulhasan.common.service
 
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
+import com.tasnimulhasan.entity.room.music.MelodiqEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -24,7 +26,7 @@ class MelodiqServiceHandler @Inject constructor(
     private val _audioState: MutableStateFlow<MelodiqAudioState> = MutableStateFlow(MelodiqAudioState.Initial)
     val audioState: StateFlow<MelodiqAudioState> = _audioState.asStateFlow()
 
-    val audioList = MutableStateFlow<List<MusicEntity>>(emptyList())
+    val audioList = MutableStateFlow<List<MelodiqEntity>>(emptyList())
     val sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
 
     private var job: Job? = null
@@ -50,16 +52,16 @@ class MelodiqServiceHandler @Inject constructor(
         }
     }
 
-    fun updateMediaItems(audioList: List<MusicEntity>, sortType: SortType) {
+    fun updateMediaItems(audioList: List<MelodiqEntity>, sortType: SortType) {
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
         val mediaItems = audioList.map { audio ->
             MediaItem.Builder()
-                .setUri(audio.contentUri)
+                .setUri(audio.musicPath.toUri())
                 .setMediaMetadata(
                     MediaMetadata.Builder()
-                        .setAlbumArtist(audio.artist)
-                        .setDisplayTitle(audio.songTitle)
+                        .setAlbumArtist(audio.musicArtist)
+                        .setDisplayTitle(audio.musicTitle)
                         .setSubtitle(audio.album)
                         .build()
                 )
@@ -68,16 +70,16 @@ class MelodiqServiceHandler @Inject constructor(
         setMediaItemList(mediaItems)
     }
 
-    fun updateMediaItemsWithCurrentTrack(audioList: List<MusicEntity>, sortType: SortType) {
+    fun updateMediaItemsWithCurrentTrack(audioList: List<MelodiqEntity>, sortType: SortType) {
         this.sortType.value = sortType
-        this.audioList.value = audioList.toList()
+        this.audioList.value = audioList
         val mediaItems = audioList.map { audio ->
             MediaItem.Builder()
-                .setUri(audio.contentUri)
+                .setUri(audio.musicPath.toUri())
                 .setMediaMetadata(
                     MediaMetadata.Builder()
-                        .setAlbumArtist(audio.artist)
-                        .setDisplayTitle(audio.songTitle)
+                        .setAlbumArtist(audio.musicArtist)
+                        .setDisplayTitle(audio.musicTitle)
                         .setSubtitle(audio.album)
                         .build()
                 )
