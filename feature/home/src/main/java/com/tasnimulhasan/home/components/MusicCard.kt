@@ -59,7 +59,7 @@ fun SharedTransitionScope.MusicCard(
     isFavourite: Boolean,
     onMusicClicked: () -> Unit,
     onFavouriteIconClicked: () -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val isSelected = selectedId == songId && isPlaying
     Card(
@@ -83,7 +83,7 @@ fun SharedTransitionScope.MusicCard(
                 modifier = modifier
                     .sharedBounds(
                         sharedContentState = rememberSharedContentState(key = "image-$songId"),
-                        animatedVisibilityScope = animatedVisibilityScope,
+                        animatedVisibilityScope = animatedVisibilityScope ?: return@Row,
                     )
                     .width(100.dp)
                     .fillMaxHeight()
@@ -162,7 +162,6 @@ fun convertLongToReadableDateTime(time: Long, format: String): String {
     val df = SimpleDateFormat(format, Locale.US)
     return df.format(time)
 }
-/*
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Preview(showBackground = true)
@@ -180,7 +179,7 @@ fun MusicCardPreview() {
             selectedId = 0L,
             isPlaying = true,
             isFavourite = true,
-            onFavouriteIconClicked = {}
+            onFavouriteIconClicked = {},
         )
     }
-}*/
+}
