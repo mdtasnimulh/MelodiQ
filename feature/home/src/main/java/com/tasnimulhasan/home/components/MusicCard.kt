@@ -1,6 +1,11 @@
 package com.tasnimulhasan.home.components
 
 import android.graphics.Bitmap
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,8 +45,9 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import com.tasnimulhasan.designsystem.R as Res
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun MusicCard(
+fun SharedTransitionScope.MusicCard(
     modifier: Modifier = Modifier,
     bitmap: Bitmap?,
     title: String,
@@ -53,6 +59,7 @@ fun MusicCard(
     isFavourite: Boolean,
     onMusicClicked: () -> Unit,
     onFavouriteIconClicked: () -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
     val isSelected = selectedId == songId && isPlaying
     Card(
@@ -74,6 +81,10 @@ fun MusicCard(
                 model = bitmap,
                 contentDescription = "Cover art",
                 modifier = modifier
+                    .sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "image-$songId"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                    )
                     .width(100.dp)
                     .fillMaxHeight()
                     .weight(2f),
@@ -92,7 +103,11 @@ fun MusicCard(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    modifier = modifier,
+                    modifier = modifier
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "title-$songId"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                        ),
                     text = title,
                     style = TextStyle(
                         fontSize = 14.sp,
@@ -147,21 +162,25 @@ fun convertLongToReadableDateTime(time: Long, format: String): String {
     val df = SimpleDateFormat(format, Locale.US)
     return df.format(time)
 }
+/*
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Preview(showBackground = true)
 @Composable
 fun MusicCardPreview() {
-    MusicCard(
-        bitmap = null,
-        title = "Song df afdasdfadsf fasdf asdfasdf dasffsa Title",
-        artist = "Artist Name",
-        duration = "134654",
-        onMusicClicked = {},
-        modifier = Modifier,
-        songId = 0L,
-        selectedId = 0L,
-        isPlaying = true,
-        isFavourite = true,
-        onFavouriteIconClicked = {}
-    )
-}
+    SharedTransitionLayout {
+        MusicCard(
+            bitmap = null,
+            title = "Song df afdasdfadsf fasdf asdfasdf dasffsa Title",
+            artist = "Artist Name",
+            duration = "134654",
+            onMusicClicked = {},
+            modifier = Modifier,
+            songId = 0L,
+            selectedId = 0L,
+            isPlaying = true,
+            isFavourite = true,
+            onFavouriteIconClicked = {}
+        )
+    }
+}*/

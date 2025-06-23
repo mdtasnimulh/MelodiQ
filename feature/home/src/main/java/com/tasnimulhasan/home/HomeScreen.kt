@@ -4,6 +4,9 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Context.ACTIVITY_SERVICE
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,25 +57,13 @@ import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.home.components.MusicCard
 import timber.log.Timber
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-internal fun HomeRoute(
+internal fun SharedTransitionScope.HomeScreen(
+    navigateToPlayer: (String) -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
-    navigateToPlayer: (String) -> Unit,
-) {
-    HomeScreen(
-        context = LocalContext.current,
-        viewModel,
-        Modifier,
-        navigateToPlayer,
-    )
-}
-
-@Composable
-internal fun HomeScreen(
-    context: Context,
-    viewModel: HomeViewModel,
-    modifier: Modifier,
-    navigateToPlayer: (String) -> Unit,
 ) {
     val audioList by viewModel.audioList.collectAsStateWithLifecycle()
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
@@ -81,6 +72,7 @@ internal fun HomeScreen(
     val selectedSortOption = remember { mutableStateOf(viewModel.sortTypeToDisplayString(viewModel.sortType.value)) }
     val showSortDialog = remember { mutableStateOf(false) }
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     val listState = rememberLazyListState()
 
@@ -163,7 +155,8 @@ internal fun HomeScreen(
                     },
                     onFavouriteIconClicked = {
                         isFavourite = !isFavourite
-                    }
+                    },
+                    animatedVisibilityScope = animatedVisibilityScope,
                 )
             }
         }

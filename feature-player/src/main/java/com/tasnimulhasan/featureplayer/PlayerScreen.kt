@@ -5,6 +5,9 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -76,12 +79,14 @@ import kotlin.math.absoluteValue
 import kotlin.random.Random
 import com.tasnimulhasan.designsystem.R as Res
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-internal fun PlayerScreen(
+internal fun SharedTransitionScope.PlayerScreen(
     musicId: String,
     modifier: Modifier = Modifier,
     onNavigateUp: () -> Unit,
     navigateToEqualizerScreen: () -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val audioList by viewModel.audioList.collectAsStateWithLifecycle()
@@ -244,15 +249,22 @@ internal fun PlayerScreen(
                 modifier = Modifier
                     .padding(horizontal = 15.dp)
                     .graphicsLayer {
-                        val scale = lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
+                        val scale =
+                            lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
                         scaleX = scale
                         scaleY = scale
-                        alpha = lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
-                        translationX = lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
+                        alpha =
+                            lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
+                        translationX =
+                            lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
                     }
             ) {
                 AsyncImage(
                     modifier = Modifier
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "image-${pageMusic?.songId}"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                        )
                         .fillMaxSize(),
                     model = pageMusic?.cover,
                     contentDescription = context.getString(Res.string.desc_album_cover_art),
@@ -268,6 +280,10 @@ internal fun PlayerScreen(
         currentMusic?.let { currentTrack ->
             Text(
                 modifier = Modifier
+                    .sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "title-${currentTrack.songId}"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                    )
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .basicMarquee(),

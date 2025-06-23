@@ -1,5 +1,7 @@
 package com.tasnimulhasan.featureplayer.navigation
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -19,6 +21,7 @@ fun NavController.navigateToPlayer(musicId: String, navOptions: NavOptionsBuilde
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 fun NavGraphBuilder.playerScreen(
     navigateBack: () -> Unit,
     navigateToEqualizerScreen: () -> Unit,
@@ -30,10 +33,13 @@ fun NavGraphBuilder.playerScreen(
         popExitTransition = { fadeOut() }
     ) { backStackEntry ->
         val musicId = backStackEntry.arguments?.getString("musicId") ?: ""
-        PlayerScreen(
-            musicId = musicId,
-            onNavigateUp = navigateBack,
-            navigateToEqualizerScreen = navigateToEqualizerScreen
-        )
+        SharedTransitionLayout {
+            PlayerScreen(
+                musicId = musicId,
+                onNavigateUp = navigateBack,
+                navigateToEqualizerScreen = navigateToEqualizerScreen,
+                animatedVisibilityScope = this@composable
+            )
+        }
     }
 }
