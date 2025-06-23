@@ -12,7 +12,7 @@ import dagger.hilt.components.SingletonComponent
 internal object DaoModule {
 
     @Provides
-    fun providesIncomeExpenseDao(
+    fun providesMelodiQDao(
         database: MelodiQDatabase
     ): MelodiQDao = database.melodiQDao()
 

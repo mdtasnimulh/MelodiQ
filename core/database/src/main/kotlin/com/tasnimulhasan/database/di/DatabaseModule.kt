@@ -15,11 +15,11 @@ import javax.inject.Singleton
 internal object DatabaseModule {
     @Provides
     @Singleton
-    fun providesMmDatabase(
+    fun providesMelodiQDatabase(
         @ApplicationContext context: Context
     ): MelodiQDatabase = Room.databaseBuilder(
         context,
         MelodiQDatabase::class.java,
-        "mm_database"
+        "melodiq_music_database"
     ).build()
 }
