@@ -1,0 +1,3 @@
+MelodiQMusic#123 -> pass
+MelodiQMusic1 -> alias
+MelodiQMusic.jks
