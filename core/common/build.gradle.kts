@@ -19,4 +19,5 @@ dependencies {
     implementation(libs.bundles.androidx.navigation.dependencies)
     implementation(libs.bundles.media3.dependencies)
     implementation(libs.glide.compose)
+    implementation(libs.coil.kt.compose)
 }
