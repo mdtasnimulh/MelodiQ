@@ -80,9 +80,14 @@ class HomeViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             getSortTypeUseCase().collectLatest { persistedSortType ->
-                _sortType.value = persistedSortType
                 audioServiceHandler.sortType.value = persistedSortType
-                initializeListIfNeeded()
+                _sortType.value = persistedSortType
+
+                val sorted = fetchMusicUseCase(persistedSortType)
+                audioServiceHandler.updateMediaItemsWithCurrentTrack(sorted, persistedSortType)
+                _audioList.value = audioServiceHandler.audioList.value.toList()
+                _uIState.value = UIState.MusicList(_audioList.value)
+                restorePlaybackState()
             }
         }
 
@@ -109,6 +114,15 @@ class HomeViewModel @Inject constructor(
             val currentSong = playerUseCases.getCurrentSongInfoUseCase()
             currentSong?.let { /*_currentSelectedAudio.value = it*/ }
         }
+    }
+
+    private fun restorePlaybackState() {
+        _currentSelectedAudio.value = _audioList.value.getOrNull(
+            audioServiceHandler.getCurrentMediaItemIndex()
+        ) ?: dummyAudio
+        _duration.value = audioServiceHandler.getDuration()
+        calculateProgressValue(audioServiceHandler.getCurrentDuration())
+        _isPlaying.value = audioServiceHandler.isPlaying()
     }
 
     fun setSortType(type: SortType) {
