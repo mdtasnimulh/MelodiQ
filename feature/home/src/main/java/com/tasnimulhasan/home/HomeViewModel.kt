@@ -7,8 +7,6 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import com.tasnimulhasan.common.service.MelodiqAudioState
 import com.tasnimulhasan.common.service.MelodiqPlayerEvent
 import com.tasnimulhasan.common.service.MelodiqServiceHandler
@@ -109,11 +107,6 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
-
-        viewModelScope.launch {
-            val currentSong = playerUseCases.getCurrentSongInfoUseCase()
-            currentSong?.let { /*_currentSelectedAudio.value = it*/ }
-        }
     }
 
     private fun restorePlaybackState() {
@@ -135,56 +128,6 @@ class HomeViewModel @Inject constructor(
             _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UIState.MusicList(_audioList.value)
             initializedList.value = true
-        }
-    }
-
-    fun initializeListIfNeeded() {
-        viewModelScope.launch {
-            val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
-            if (existingMediaItemCount > 0) {
-                _sortType.value = audioServiceHandler.sortType.value
-                _audioList.value = audioServiceHandler.audioList.value.toList()
-                _uIState.value = UIState.MusicList(_audioList.value)
-                _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
-                _duration.value = audioServiceHandler.getDuration()
-                calculateProgressValue(audioServiceHandler.getCurrentDuration())
-                _isPlaying.value = audioServiceHandler.isPlaying()
-                return@launch
-            }
-
-            _sortType.value = audioServiceHandler.sortType.value
-            val sortedList = fetchMusicUseCase(_sortType.value)
-            audioServiceHandler.updateMediaItemsWithCurrentTrack(sortedList, _sortType.value) // Updated call
-            _audioList.value = audioServiceHandler.audioList.value.toList()
-            _uIState.value = UIState.MusicList(_audioList.value)
-        }
-    }
-
-    fun updateMusicList() {
-        execute {
-            if (initializedList.value) return@execute
-
-            _sortType.value = audioServiceHandler.sortType.value
-            val sortedList = fetchMusicUseCase(_sortType.value)
-            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
-            initializedList.value = true
-        }
-    }
-
-    private fun setMediaItems() {
-        _audioList.value.map { audio ->
-            MediaItem.Builder()
-                .setUri(audio.contentUri)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setAlbumArtist(audio.artist)
-                        .setDisplayTitle(audio.songTitle)
-                        .setSubtitle(audio.album)
-                        .build()
-                )
-                .build()
-        }.also {
-            audioServiceHandler.setMediaItemList(it)
         }
     }
 
