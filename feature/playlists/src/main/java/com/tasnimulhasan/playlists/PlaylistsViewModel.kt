@@ -29,10 +29,10 @@ class PlaylistsViewModel @Inject constructor(
     val action:(UiAction) -> Unit = {
         when (it) {
             is UiAction.InsertPlaylist -> insertPlaylist(it.params)
-            is UiAction.UpdatePlaylist -> {}
-            is UiAction.DeletePlaylist -> {}
-            is UiAction.SearchPlaylists -> {}
-            is UiAction.FetchAllPlaylists -> {}
+            is UiAction.UpdatePlaylist -> updatePlaylist(it.params)
+            is UiAction.DeletePlaylist -> deletePlaylist(it.params)
+            is UiAction.SearchPlaylists -> searchPlaylists(it.params)
+            is UiAction.FetchAllPlaylists -> fetchAllPlaylists()
         }
     }
 
