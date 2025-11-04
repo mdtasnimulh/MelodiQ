@@ -20,6 +20,6 @@ internal object DatabaseModule {
     ): MelodiQDatabase = Room.databaseBuilder(
         context,
         MelodiQDatabase::class.java,
-        "mm_database"
+        "melodiq_database"
     ).build()
 }

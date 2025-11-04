@@ -14,6 +14,7 @@ object AppConstants {
     const val ACTION_PREVIOUS = "previous"
     const val ACTION_PLAY_PAUSE = "play_pause"
     const val ACTION_NEXT = "next"
+    const val PLAYLISTS_TABLE_NAME = "melodiq_playlist_table"
 
     const val PRESET_CUSTOM = 0
     const val PRESET_FLAT = 1

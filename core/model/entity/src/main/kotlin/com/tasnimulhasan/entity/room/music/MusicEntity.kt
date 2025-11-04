@@ -1,4 +1,4 @@
-package com.tasnimulhasan.entity.room.incomeexpense
+package com.tasnimulhasan.entity.room.music
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
