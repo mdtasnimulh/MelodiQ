@@ -2,6 +2,7 @@ package com.tasnimulhasan.database.di
 
 import com.tasnimulhasan.database.MelodiQDatabase
 import com.tasnimulhasan.database.dao.MelodiQDao
+import com.tasnimulhasan.database.dao.PlaylistDetailsDao
 import com.tasnimulhasan.database.dao.PlaylistsDao
 import dagger.Module
 import dagger.Provides
@@ -21,5 +22,10 @@ internal object DaoModule {
     fun providesPlaylistDao(
         database: MelodiQDatabase
     ): PlaylistsDao = database.playlistsDao()
+
+    @Provides
+    fun providesPlaylistDetailsDao(
+        database: MelodiQDatabase
+    ): PlaylistDetailsDao = database.playlistDetailsDao()
 
 }

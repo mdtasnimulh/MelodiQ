@@ -52,7 +52,8 @@ fun MelodiQNavHost(
         feedbackScreen()
         equalizerScreen()
         playlistDetailsScreen(
-            navigateBack = navigateBack
+            navigateBack = navigateBack,
+            navigateToPlayer = navigateToPlayer
         )
     }
 }

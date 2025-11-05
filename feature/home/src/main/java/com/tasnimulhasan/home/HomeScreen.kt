@@ -30,6 +30,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +38,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +56,12 @@ import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.designsystem.theme.BlueDarker
 import com.tasnimulhasan.designsystem.theme.RobotoFontFamily
 import com.tasnimulhasan.entity.enums.SortType
+import com.tasnimulhasan.entity.home.MusicEntity
+import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
+import com.tasnimulhasan.home.components.AddToPlaylistDialog
 import com.tasnimulhasan.home.components.MusicCard
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -68,13 +75,48 @@ internal fun SharedTransitionScope.HomeScreen(
     val audioList by viewModel.audioList.collectAsStateWithLifecycle()
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     var isFavourite by remember { mutableStateOf(false) }
     val selectedSortOption = remember { mutableStateOf(viewModel.sortTypeToDisplayString(viewModel.sortType.value)) }
     val showSortDialog = remember { mutableStateOf(false) }
+
+    // NEW STATE FOR THE DIALOG
+    val showAddToPlaylistDialog = remember { mutableStateOf(false) }
+    val selectedSongForPlaylist = remember { mutableStateOf<MusicEntity?>(null) }
+
+    val snackBarHostState = remember { SnackbarHostState() }
+    val playlists = remember { mutableStateOf<List<PlaylistEntity>>(emptyList()) }
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val isLoading = remember { mutableStateOf(false) }
+    val isEmpty = remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
+
+    LaunchedEffect(Unit) {
+        viewModel.action(UiAction.FetchAllPlaylists)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is UiEvent.ShowToast -> {
+                    scope.launch {
+                        snackBarHostState.showSnackbar(event.message)
+                    }
+                }
+                is UiEvent.Loading -> isLoading.value = event.loading
+                is UiEvent.DataEmpty -> {
+                    isEmpty.value = true
+                    playlists.value = emptyList()
+                }
+                is UiEvent.Playlists -> {
+                    isEmpty.value = false
+                    playlists.value = event.playlists
+                }
+            }
+        }
+    }
 
     LaunchedEffect(sortType) {
         selectedSortOption.value = viewModel.sortTypeToDisplayString(sortType)
@@ -135,9 +177,12 @@ internal fun SharedTransitionScope.HomeScreen(
                 viewModel.loadBitmapIfNeeded(context, index)
                 MusicCard(
                     modifier = modifier,
+                    path = item.contentUri,
                     bitmap = item.cover,
                     title = item.songTitle,
                     artist = item.artist,
+                    album = item.album,
+                    albumId = item.albumId,
                     duration = item.duration,
                     songId = item.songId,
                     selectedId = currentSelectedAudio.songId,
@@ -152,6 +197,10 @@ internal fun SharedTransitionScope.HomeScreen(
                             viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
                         }
                         navigateToPlayer(item.songId.toString())
+                    },
+                    onMusicLongClicked = {
+                        selectedSongForPlaylist.value = item
+                        showAddToPlaylistDialog.value = true
                     },
                     onFavouriteIconClicked = {
                         isFavourite = !isFavourite
@@ -181,6 +230,25 @@ internal fun SharedTransitionScope.HomeScreen(
 
                 viewModel.setSortType(sortedBy)
             }
+        )
+
+        // NEW DIALOG
+        AddToPlaylistDialog(
+            show = showAddToPlaylistDialog,
+            song = selectedSongForPlaylist.value,
+            playlists = playlists.value,               // you already fetch them
+            onPlaylistSelected = { playlist ->
+                selectedSongForPlaylist.value?.let { song ->
+                    viewModel.action(
+                        UiAction.AddMusicToPlaylist(
+                            playlistId = playlist.id,
+                            music = song
+                        )
+                    )
+                }
+                showAddToPlaylistDialog.value = false
+            },
+            onDismiss = { showAddToPlaylistDialog.value = false }
         )
     }
 }

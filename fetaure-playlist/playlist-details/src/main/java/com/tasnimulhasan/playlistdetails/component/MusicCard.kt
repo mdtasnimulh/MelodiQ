@@ -1,11 +1,8 @@
-package com.tasnimulhasan.home.components
+package com.tasnimulhasan.playlistdetails.component
 
 import android.graphics.Bitmap
-import android.net.Uri
-import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,14 +43,11 @@ import com.tasnimulhasan.designsystem.R as Res
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun SharedTransitionScope.MusicCard(
+fun MusicCard(
     modifier: Modifier = Modifier,
-    path: Uri,
     bitmap: Bitmap?,
     title: String,
     artist: String,
-    album: String?,
-    albumId: Long?,
     duration: String,
     songId: Long,
     selectedId: Long,
@@ -62,7 +56,6 @@ fun SharedTransitionScope.MusicCard(
     onMusicClicked: () -> Unit,
     onMusicLongClicked: () -> Unit,
     onFavouriteIconClicked: () -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val isSelected = selectedId == songId && isPlaying
     Card(
@@ -91,10 +84,6 @@ fun SharedTransitionScope.MusicCard(
                 model = bitmap,
                 contentDescription = "Cover art",
                 modifier = modifier
-                    .sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = "image-$songId"),
-                        animatedVisibilityScope = animatedVisibilityScope ?: return@Row,
-                    )
                     .width(100.dp)
                     .fillMaxHeight()
                     .weight(2f),
@@ -113,11 +102,7 @@ fun SharedTransitionScope.MusicCard(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    modifier = modifier
-                        .sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = "title-$songId"),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                        ),
+                    modifier = modifier,
                     text = title,
                     style = TextStyle(
                         fontSize = 14.sp,
@@ -190,10 +175,7 @@ fun MusicCardPreview() {
             isPlaying = true,
             isFavourite = true,
             onFavouriteIconClicked = {},
-            onMusicLongClicked = {},
-            album = null,
-            albumId = null,
-            path = Uri.EMPTY
+            onMusicLongClicked = {}
         )
     }
 }

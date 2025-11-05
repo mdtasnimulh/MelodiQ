@@ -15,14 +15,25 @@ import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
+import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicListToPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.GetAllPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.SearchPlaylistByNameUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.UpdatePlaylistUseCase
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
+import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
+import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -36,6 +47,9 @@ class HomeViewModel @Inject constructor(
     private val audioServiceHandler: MelodiqServiceHandler,
     private val setSortTypeUseCase: SetSortTypeUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
+    private val getAllPlaylistUseCase: GetAllPlaylistUseCase,
+    private val insertMusicToPlaylist: InsertMusicToPlaylistUseCase,
+    private val insertMusicListToPlaylistUseCase: InsertMusicListToPlaylistUseCase,
 ) : BaseViewModel() {
 
     private val dummyAudio = MusicEntity(
@@ -74,6 +88,20 @@ class HomeViewModel @Inject constructor(
 
     private val _uIState: MutableStateFlow<UIState> = MutableStateFlow(UIState.Initial)
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
+
+    private val _uiEvent = Channel<UiEvent>()
+    val uiEvent get() = _uiEvent.receiveAsFlow()
+
+    val action:(UiAction) -> Unit = {
+        when (it) {
+            is UiAction.FetchAllPlaylists -> fetchAllPlaylists()
+            // NEW
+            is UiAction.AddMusicToPlaylist -> addMusicToPlaylist(
+                playlistId = it.playlistId,
+                music = it.music
+            )
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -212,6 +240,43 @@ class HomeViewModel @Inject constructor(
             SortType.DURATION_DESC -> "Duration (DESC)"
         }
     }
+
+    private fun fetchAllPlaylists() {
+        execute {
+            _uiEvent.send(UiEvent.Loading(true))
+            getAllPlaylistUseCase.invoke().collect {
+                _uiEvent.send(UiEvent.Loading(false))
+                if (it.isEmpty()) _uiEvent.send(UiEvent.DataEmpty)
+                else _uiEvent.send(UiEvent.Playlists(it))
+            }
+        }
+    }
+
+    // ── NEW FUNCTION ───────────────────────────────────────────────────────
+    private fun addMusicToPlaylist(playlistId: Int, music: MusicEntity) {
+        execute {
+            // Convert MusicEntity → PlaylistDetailsEntity
+            val details = PlaylistDetailsEntity(
+                playlistId = playlistId,
+                contentUri = music.contentUri.toString(),
+                songId = music.songId,
+                cover = music.contentUri.toString(),
+                songTitle = music.songTitle,
+                artist = music.artist,
+                duration = music.duration,
+                album = music.album,
+                albumId = music.albumId
+            )
+
+            insertMusicToPlaylist(
+                params = InsertMusicToPlaylistUseCase.Params(
+                    details
+                )
+            )
+            // Optional toast
+            _uiEvent.send(UiEvent.ShowToast("Added to playlist"))
+        }
+    }
 }
 
 sealed class UIEvents {
@@ -229,4 +294,20 @@ sealed class UIState {
     data class MusicList(val musics: List<MusicEntity>) : UIState()
     data object Initial : UIState()
     data object Ready : UIState()
+}
+
+sealed interface UiEvent {
+    data class Loading(val loading: Boolean) : UiEvent
+    data class ShowToast(val message: String) : UiEvent
+    data object DataEmpty : UiEvent
+    data class Playlists(val playlists: List<PlaylistEntity>) : UiEvent
+}
+
+sealed interface UiAction {
+    data object FetchAllPlaylists : UiAction
+    // NEW
+    data class AddMusicToPlaylist(
+        val playlistId: Int,
+        val music: MusicEntity
+    ) : UiAction
 }

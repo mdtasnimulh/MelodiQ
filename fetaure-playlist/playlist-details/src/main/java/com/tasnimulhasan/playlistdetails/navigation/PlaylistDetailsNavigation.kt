@@ -22,6 +22,7 @@ fun NavController.navigateToPlaylistDetails(playlistId: Int, navOptions: NavOpti
 @OptIn(ExperimentalSharedTransitionApi::class)
 fun NavGraphBuilder.playlistDetailsScreen(
     navigateBack: () -> Unit,
+    navigateToPlayer: (musicId: String) -> Unit,
 ) {
     composable<PlaylistDetailsRoute>(
         enterTransition = { fadeIn() },
@@ -34,6 +35,7 @@ fun NavGraphBuilder.playlistDetailsScreen(
             PlaylistDetailsScreen(
                 playlistId = playlistId,
                 onNavigateUp = navigateBack,
+                navigateToPlayer = navigateToPlayer,
             )
         }
     }
