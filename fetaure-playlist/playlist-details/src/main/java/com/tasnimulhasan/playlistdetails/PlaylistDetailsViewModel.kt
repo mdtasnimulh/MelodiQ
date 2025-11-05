@@ -6,8 +6,11 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
+import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
+import com.tasnimulhasan.entity.enums.SortType
+import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +23,7 @@ import javax.inject.Inject
 class PlaylistDetailsViewModel @Inject constructor(
     context: Context,
     private val getAllMusicFromPlaylistUseCase: GetAllMusicFromPlaylistUseCase,
+    private val audioServiceHandler: MelodiqServiceHandler,
 ) : BaseViewModel() {
 
     private val _uiEvent = Channel<UiEvent>()
@@ -52,6 +56,10 @@ class PlaylistDetailsViewModel @Inject constructor(
         } else {
             null
         }
+    }
+
+    fun setMediaItems(musicList: List<MusicEntity>, sortType: SortType) {
+        audioServiceHandler.updateMediaItems(musicList, sortType)
     }
 
 }

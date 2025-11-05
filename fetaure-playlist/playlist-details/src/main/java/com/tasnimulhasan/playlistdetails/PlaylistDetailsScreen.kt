@@ -26,6 +26,7 @@ import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
+import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import com.tasnimulhasan.playlistdetails.component.MusicCard
@@ -129,6 +130,7 @@ internal fun PlaylistDetailsScreen(
                     isPlaying = context.isServiceRunning(MelodiqPlayerService::class.java),
                     isFavourite = false,
                     onMusicClicked = {
+                        viewModel.setMediaItems(musicListForPlay, SortType.DATE_MODIFIED_DESC)
                         navigateToPlayer(item.songId.toString())
                     },
                     onMusicLongClicked = {
