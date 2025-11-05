@@ -42,6 +42,7 @@ import java.text.SimpleDateFormat
 
 @Composable
 internal fun PlaylistsRoute(
+    onPlaylistClicked: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
@@ -93,7 +94,8 @@ internal fun PlaylistsRoute(
                 )
             )
         },
-        snackBarHostState = snackBarHostState
+        snackBarHostState = snackBarHostState,
+        onPlaylistClicked = { id -> onPlaylistClicked.invoke(id) }
     )
 }
 
@@ -104,6 +106,7 @@ internal fun PlaylistsScreen(
     playlists: List<PlaylistEntity>,
     isEmpty: Boolean,
     onCreatePlaylist: (String, String) -> Unit,
+    onPlaylistClicked: (Int) -> Unit,
     snackBarHostState: SnackbarHostState
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -144,7 +147,12 @@ internal fun PlaylistsScreen(
                             .padding(8.dp)
                     ) {
                         items(playlists) { playlist ->
-                            PlaylistCard(playlist)
+                            PlaylistCard(
+                                playlist = playlist,
+                                onPlaylistClicked = {
+                                    onPlaylistClicked.invoke(it)
+                                }
+                            )
                         }
                     }
                 }
@@ -172,6 +180,7 @@ fun PlaylistsScreenPreview() {
         ),
         isEmpty = false,
         onCreatePlaylist = { _, _ -> },
-        snackBarHostState = remember { SnackbarHostState() }
+        snackBarHostState = remember { SnackbarHostState() },
+        onPlaylistClicked = {}
     )
 }

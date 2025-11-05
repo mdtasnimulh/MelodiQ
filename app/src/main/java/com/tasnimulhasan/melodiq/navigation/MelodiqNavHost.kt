@@ -13,6 +13,7 @@ import com.tasnimulhasan.featurequeue.navigation.queueScreen
 import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.home.navigation.homeScreen
 import com.tasnimulhasan.melodiq.ui.MelodiQAppState
+import com.tasnimulhasan.playlistdetails.navigation.playlistDetailsScreen
 import com.tasnimulhasan.playlists.navigation.playlistsScreen
 import com.tasnimulhasan.settings.navigation.settingsScreen
 import com.tasnimulhasan.songs.navigation.songsScreen
@@ -23,6 +24,7 @@ fun MelodiQNavHost(
     modifier: Modifier = Modifier,
     navigateToPlayer: (String) -> Unit,
     navigateToEqualizerScreen: () -> Unit,
+    onPlaylistClicked: (Int) -> Unit,
     navigateBack: () -> Unit,
 ) {
     val navController = appState.navController
@@ -34,7 +36,11 @@ fun MelodiQNavHost(
         homeScreen(navigateToPlayer = navigateToPlayer)
         songsScreen()
         albumScreen()
-        playlistsScreen()
+        playlistsScreen(
+            onPlaylistClicked = { playlistId ->
+                onPlaylistClicked.invoke(playlistId)
+            }
+        )
         settingsScreen()
         playerScreen(
             navigateBack = navigateBack,
@@ -45,5 +51,8 @@ fun MelodiQNavHost(
         aboutScreen()
         feedbackScreen()
         equalizerScreen()
+        playlistDetailsScreen(
+            navigateBack = navigateBack
+        )
     }
 }

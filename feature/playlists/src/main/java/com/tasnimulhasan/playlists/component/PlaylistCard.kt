@@ -1,6 +1,5 @@
 package com.tasnimulhasan.playlists.component
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,13 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import coil.compose.AsyncImage
-import com.tasnimulhasan.designsystem.theme.PeaceOrange
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
 fun PlaylistCard(
     playlist: PlaylistEntity,
+    onPlaylistClicked: (Int) -> Unit,
 ) {
     val cover = remember { mutableStateOf("") }
 
@@ -35,7 +34,10 @@ fun PlaylistCard(
         modifier = Modifier
             .padding(vertical = 8.dp, horizontal = 10.dp)
             .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(4.dp),
+        onClick = {
+            onPlaylistClicked.invoke(playlist.id)
+        }
     ) {
         ConstraintLayout(
             modifier = Modifier

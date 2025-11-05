@@ -9,17 +9,23 @@ import androidx.navigation.compose.composable
 import com.tasnimulhasan.playlists.PlaylistsRoute
 import kotlinx.serialization.Serializable
 
-@Serializable object PlaylistsRoute
+@Serializable
+object PlaylistsRoute
 
-fun NavController.navigateToPlaylists(navOptions: NavOptions) = navigate(route = PlaylistsRoute, navOptions)
+fun NavController.navigateToPlaylists(navOptions: NavOptions) =
+    navigate(route = PlaylistsRoute, navOptions)
 
-fun NavGraphBuilder.playlistsScreen() {
+fun NavGraphBuilder.playlistsScreen(
+    onPlaylistClicked: (Int) -> Unit,
+) {
     composable<PlaylistsRoute>(
-        enterTransition = { slideInHorizontally {it} },
+        enterTransition = { slideInHorizontally { it } },
         exitTransition = { slideOutHorizontally { -it } },
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
     ) {
-        PlaylistsRoute()
+        PlaylistsRoute(
+            onPlaylistClicked = { playlistId -> onPlaylistClicked.invoke(playlistId) }
+        )
     }
 }

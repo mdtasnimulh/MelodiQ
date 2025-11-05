@@ -95,6 +95,7 @@ dependencies {
         implementation(featureTools.featureAbout)
         implementation(featureTools.featureFeedback)
         implementation(featureTools.settings)
+        implementation(fetaurePlaylist.playlistDetails)
     }
     /*** Feature Modules ***/
 

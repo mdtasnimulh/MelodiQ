@@ -22,6 +22,7 @@ import com.tasnimulhasan.featurequeue.navigation.navigateToQueue
 import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.home.navigation.navigateToHome
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
+import com.tasnimulhasan.playlistdetails.navigation.navigateToPlaylistDetails
 import com.tasnimulhasan.playlists.navigation.navigateToPlaylists
 import com.tasnimulhasan.settings.navigation.navigateToSettings
 import com.tasnimulhasan.songs.navigation.SongsRoute
@@ -92,6 +93,8 @@ class MelodiQAppState(
     fun navigateToSettings() = navController.navigateToSettings()
 
     fun navigateToEqualizerScreen() = navController.navigateToEqualizer()
+
+    fun navigateToPlaylistDetails(playlistId: Int) = navController.navigateToPlaylistDetails(playlistId = playlistId)
 
     fun navigateBack() {
         navController.navigateUp()

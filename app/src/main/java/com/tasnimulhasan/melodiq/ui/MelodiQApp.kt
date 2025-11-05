@@ -330,10 +330,13 @@ private fun GetContent(appState: MelodiQAppState) {
         MelodiQNavHost(
             appState = appState,
             navigateToPlayer = { musicId ->
-                appState.navigateToPlayer(musicId)  // Pass the musicId here
+                appState.navigateToPlayer(musicId)
             },
             navigateToEqualizerScreen = {
                 appState.navigateToEqualizerScreen()
+            },
+            onPlaylistClicked = { playlistId ->
+                appState.navigateToPlaylistDetails(playlistId)
             },
             navigateBack = {
                 appState.navigateBack()
