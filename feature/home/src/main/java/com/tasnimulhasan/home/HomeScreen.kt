@@ -168,12 +168,6 @@ internal fun SharedTransitionScope.HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             itemsIndexed(audioList) { index, item ->
-                /*val shouldLoadBitmap = remember(item.songId) { true }
-                if (shouldLoadBitmap) {
-                    LaunchedEffect(item.songId) {
-                        viewModel.loadBitmapIfNeeded(context, index)
-                    }
-                }*/
                 viewModel.loadBitmapIfNeeded(context, index)
                 MusicCard(
                     modifier = modifier,

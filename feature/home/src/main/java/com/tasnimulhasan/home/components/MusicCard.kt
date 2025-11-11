@@ -1,5 +1,6 @@
 package com.tasnimulhasan.home.components
 
+import android.content.ContentUris
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -87,8 +88,12 @@ fun SharedTransitionScope.MusicCard(
             modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val albumArtUri = ContentUris.withAppendedId(
+                Uri.parse("content://media/external/audio/albumart"),
+                albumId ?: 0L
+            )
             AsyncImage(
-                model = bitmap,
+                model = bitmap, // if use bitmap here then image loading and scrolling become laggy, need more optimization if use albumarturi then ok
                 contentDescription = "Cover art",
                 modifier = modifier
                     .sharedBounds(
