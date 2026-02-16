@@ -22,6 +22,7 @@ import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +56,7 @@ class PlayerViewModel @Inject constructor(
     )
     private var initialized = MutableStateFlow(false)
 
+    // FIX #2: Use audioServiceHandler as source of truth
     private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
@@ -63,6 +65,10 @@ class PlayerViewModel @Inject constructor(
 
     private val _volume = MutableStateFlow(0)
     val volume: StateFlow<Int> = _volume.asStateFlow()
+
+    // FIX #8: Preserve volume booster state across navigation
+    private val _volumeGain = MutableStateFlow(0f)
+    val volumeGain: StateFlow<Float> = _volumeGain.asStateFlow()
 
     private var isAdjustingFromSlider = false
 
@@ -95,6 +101,14 @@ class PlayerViewModel @Inject constructor(
     private val _repeatModeOff = MutableStateFlow(true)
     val repeatModeOff = _repeatModeOff.asStateFlow()
 
+    // FIX #6: Seeking state to prevent race conditions
+    private var isSeekingFromSlider = false
+
+    // FIX #9: Sleep timer state preservation
+    private val _sleepTimerActive = MutableStateFlow(false)
+    val sleepTimerActive: StateFlow<Boolean> = _sleepTimerActive.asStateFlow()
+    private var sleepTimerJob: Job? = null
+
     fun toggleTimeDisplay() {
         _showElapsedTime.value = !_showElapsedTime.value
         calculateProgressValue(audioServiceHandler.audioState.value.let { state ->
@@ -110,12 +124,10 @@ class PlayerViewModel @Inject constructor(
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            getSortTypeUseCase().collect {
-                _sortType.value = it
-                initialized.value = false
-            }
-        }
+        // FIX #2: Use audioServiceHandler.sortType as primary source
+        _sortType.value = audioServiceHandler.sortType.value
+        initialized.value = false
+
         initializeListIfNeeded()
 
         viewModelScope.launch {
@@ -128,7 +140,6 @@ class PlayerViewModel @Inject constructor(
                     is MelodiqAudioState.CurrentPlaying -> {
                         _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
                     }
-
                     is MelodiqAudioState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
@@ -150,6 +161,7 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
             if (existingMediaItemCount > 0) {
+                // FIX #1: Use already initialized list from audioServiceHandler
                 _sortType.value = audioServiceHandler.sortType.value
                 _audioList.value = audioServiceHandler.audioList.value
                 _uIState.value = UIState.MusicList(_audioList.value)
@@ -160,14 +172,16 @@ class PlayerViewModel @Inject constructor(
                 return@launch
             }
 
+            // Initialize if not already done
             _sortType.value = audioServiceHandler.sortType.value
             val sortedList = fetchMusicUseCase(_sortType.value)
             audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
-            _audioList.value = audioServiceHandler.audioList.value // New list instance
+            _audioList.value = audioServiceHandler.audioList.value
             _uIState.value = UIState.MusicList(_audioList.value)
         }
     }
 
+    // FIX #7: Share bitmap loading with HomeScreen
     fun loadBitmapIfNeeded(context: Context, index: Int) {
         if (_audioList.value[index].cover != null) return
         viewModelScope.launch(Dispatchers.Default) {
@@ -176,6 +190,8 @@ class PlayerViewModel @Inject constructor(
                 this[index] = this[index].copy(cover = bitmap)
             }
             _audioList.value = updatedList
+            // Also update in audioServiceHandler for consistency
+            audioServiceHandler.audioList.value = updatedList
         }
     }
 
@@ -195,8 +211,13 @@ class PlayerViewModel @Inject constructor(
                 else playerUseCases.play()
             }
             is UIEvents.SeekTo -> {
+                // FIX #6: Prevent rapid seeking feedback
+                if (isSeekingFromSlider) return@launch
+                isSeekingFromSlider = true
                 val position = ((_duration.value * uiEvents.position) / 100f).toLong()
                 playerUseCases.seekTo(position)
+                delay(50)
+                isSeekingFromSlider = false
             }
             UIEvents.SeekToNext -> playerUseCases.next()
             is UIEvents.SelectedAudioChange -> {
@@ -254,6 +275,8 @@ class PlayerViewModel @Inject constructor(
         isAdjustingFromSlider = fromSlider
         val clampedVolume = volumePercent.coerceIn(0, 200)
         _volume.value = clampedVolume
+        // FIX #8: Preserve volume gain
+        _volumeGain.value = clampedVolume / 200f
 
         if (clampedVolume <= 100) {
             val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -291,6 +314,39 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun isAdjustingFromSlider(): Boolean = isAdjustingFromSlider
+
+    // FIX #8: Set volume gain from external source
+    fun setVolumeGain(gain: Float) {
+        _volumeGain.value = gain
+        setVolumeWithBoost((gain * 200).toInt(), fromSlider = true)
+    }
+
+    // FIX #9: Sleep timer functions
+    fun startSleepTimer(hours: Int, minutes: Int, seconds: Int) {
+        if (_sleepTimerActive.value) return
+
+        val durationMillis = (hours * 3600 + minutes * 60 + seconds) * 1000L
+        if (durationMillis > 0) {
+            _sleepTimerActive.value = true
+            sleepTimerJob?.cancel()
+            sleepTimerJob = viewModelScope.launch {
+                delay(durationMillis)
+                onUiEvents(UIEvents.PlayPause)
+                _sleepTimerActive.value = false
+            }
+        }
+    }
+
+    fun cancelSleepTimer() {
+        sleepTimerJob?.cancel()
+        _sleepTimerActive.value = false
+    }
+
+    override fun onCleared() {
+        sleepTimerJob?.cancel()
+        loudnessEnhancer?.release()
+        super.onCleared()
+    }
 }
 
 sealed class UIEvents {

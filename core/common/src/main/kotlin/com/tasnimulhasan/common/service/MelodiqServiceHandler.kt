@@ -68,9 +68,12 @@ class MelodiqServiceHandler @Inject constructor(
         setMediaItemList(mediaItems)
     }
 
+    // FIX #1 & #5: Improved current track preservation
     fun updateMediaItemsWithCurrentTrack(audioList: List<MusicEntity>, sortType: SortType) {
+        // FIX #5: Update audioList FIRST to ensure consistency
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
+
         val mediaItems = audioList.map { audio ->
             MediaItem.Builder()
                 .setUri(audio.contentUri)
@@ -92,9 +95,9 @@ class MelodiqServiceHandler @Inject constructor(
         // Find the new index of the current track
         val newIndex = if (currentUri != null) {
             mediaItems.indexOfFirst { it.localConfiguration?.uri == currentUri }
-                .takeIf { it >= 0 } ?: exoPlayer.currentMediaItemIndex
+                .takeIf { it >= 0 } ?: 0  // Default to 0 if not found
         } else {
-            exoPlayer.currentMediaItemIndex
+            0
         }
 
         // Set media items with the new index and position
@@ -189,7 +192,7 @@ class MelodiqServiceHandler @Inject constructor(
         if (exoPlayer.isPlaying) {
             exoPlayer.pause()
             stopProgressUpdate()
-        }else {
+        } else {
             exoPlayer.play()
             _audioState.value = MelodiqAudioState.Playing(
                 isPlaying = true
@@ -212,7 +215,6 @@ class MelodiqServiceHandler @Inject constructor(
         job?.cancel()
         _audioState.value = MelodiqAudioState.Playing(isPlaying = false)
     }
-
 }
 
 sealed class MelodiqPlayerEvent {

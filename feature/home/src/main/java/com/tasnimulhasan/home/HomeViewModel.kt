@@ -29,6 +29,7 @@ import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,7 +66,8 @@ class HomeViewModel @Inject constructor(
 
     var initializedList = MutableStateFlow(false)
 
-    private val _sortType = MutableStateFlow(audioServiceHandler.sortType.value)
+    // FIX #2: Use audioServiceHandler as source of truth for sort type
+    private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
     private val _duration = MutableStateFlow(0L)
@@ -92,14 +94,18 @@ class HomeViewModel @Inject constructor(
     private val _uiEvent = Channel<UiEvent>()
     val uiEvent get() = _uiEvent.receiveAsFlow()
 
+    // FIX #4: Favorites tracking
+    private val _favorites = MutableStateFlow<Set<Long>>(emptySet())
+    val favorites: StateFlow<Set<Long>> = _favorites.asStateFlow()
+
     val action:(UiAction) -> Unit = {
         when (it) {
             is UiAction.FetchAllPlaylists -> fetchAllPlaylists()
-            // NEW
             is UiAction.AddMusicToPlaylist -> addMusicToPlaylist(
                 playlistId = it.playlistId,
                 music = it.music
             )
+            is UiAction.ToggleFavorite -> toggleFavorite(it.songId)
         }
     }
 
@@ -110,6 +116,7 @@ class HomeViewModel @Inject constructor(
                 _sortType.value = persistedSortType
 
                 val sorted = fetchMusicUseCase(persistedSortType)
+                // FIX #1: Ensure consistent state across both screens
                 audioServiceHandler.updateMediaItemsWithCurrentTrack(sorted, persistedSortType)
                 _audioList.value = audioServiceHandler.audioList.value.toList()
                 _uIState.value = UIState.MusicList(_audioList.value)
@@ -152,13 +159,15 @@ class HomeViewModel @Inject constructor(
             _sortType.value = type
             setSortTypeUseCase(type)
             val sortedList = fetchMusicUseCase(type)
-            audioServiceHandler.updateMediaItemsWithCurrentTrack(sortedList, type) // Updated call
+            // FIX #1: Maintain current track through sort change
+            audioServiceHandler.updateMediaItemsWithCurrentTrack(sortedList, type)
             _audioList.value = audioServiceHandler.audioList.value.toList()
             _uIState.value = UIState.MusicList(_audioList.value)
             initializedList.value = true
         }
     }
 
+    // FIX #7: Centralize bitmap loading
     fun loadBitmapIfNeeded(context: Context, index: Int) {
         if (_audioList.value[index].cover != null) return
         viewModelScope.launch(Dispatchers.Default) {
@@ -167,6 +176,8 @@ class HomeViewModel @Inject constructor(
                 this[index] = this[index].copy(cover = bitmap)
             }
             _audioList.value = updatedList
+            // Share with audioServiceHandler
+            audioServiceHandler.audioList.value = updatedList
         }
     }
 
@@ -252,10 +263,8 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // ── NEW FUNCTION ───────────────────────────────────────────────────────
     private fun addMusicToPlaylist(playlistId: Int, music: MusicEntity) {
         execute {
-            // Convert MusicEntity → PlaylistDetailsEntity
             val details = PlaylistDetailsEntity(
                 playlistId = playlistId,
                 contentUri = music.contentUri.toString(),
@@ -269,12 +278,22 @@ class HomeViewModel @Inject constructor(
             )
 
             insertMusicToPlaylist(
-                params = InsertMusicToPlaylistUseCase.Params(
-                    details
-                )
+                params = InsertMusicToPlaylistUseCase.Params(details)
             )
-            // Optional toast
             _uiEvent.send(UiEvent.ShowToast("Added to playlist"))
+        }
+    }
+
+    // FIX #4: Add favorite toggle functionality
+    fun toggleFavorite(songId: Long) {
+        viewModelScope.launch {
+            val current = _favorites.value
+            _favorites.value = if (current.contains(songId)) {
+                current - songId
+            } else {
+                current + songId
+            }
+            // TODO: Persist to database if needed
         }
     }
 }
@@ -305,9 +324,9 @@ sealed interface UiEvent {
 
 sealed interface UiAction {
     data object FetchAllPlaylists : UiAction
-    // NEW
     data class AddMusicToPlaylist(
         val playlistId: Int,
         val music: MusicEntity
     ) : UiAction
+    data class ToggleFavorite(val songId: Long) : UiAction
 }
