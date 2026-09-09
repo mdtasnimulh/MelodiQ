@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -230,7 +231,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                 android.os.Process.killProcess(android.os.Process.myPid())
             } else {
                 sleepTimerRemainingMillis.longValue = remaining
-                delay(1000.milliseconds)
+                delay(1000L.milliseconds)
             }
         }
     }
@@ -301,356 +302,368 @@ internal fun SharedTransitionScope.PlayerScreen(
                     }
                 }
         ) {
-        Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-        // Drag handle affordance - a small pill reinforcing that the screen can be
-        // swiped down to dismiss.
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .width(36.dp)
-                .height(4.dp)
-                .background(
-                    color = Color(darkPaletteColor).copy(alpha = 0.25f),
-                    shape = RoundedCornerShape(50)
-                )
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        AnimatedVisibility(
-            visible = sleepTimerRunning.value,
-            enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { -it / 2 },
-            exit = fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 2 },
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-            Row(
+            // Drag handle affordance - a small pill reinforcing that the screen can be
+            // swiped down to dismiss.
+            Box(
                 modifier = Modifier
-                    .padding(bottom = 10.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color(darkPaletteColor).copy(alpha = 0.12f))
-                    .clickable { showBottomSheet.value = true }
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .align(Alignment.CenterHorizontally)
+                    .width(36.dp)
+                    .height(4.dp)
+                    .background(
+                        color = Color(darkPaletteColor).copy(alpha = 0.25f),
+                        shape = RoundedCornerShape(50)
+                    )
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            AnimatedVisibility(
+                visible = sleepTimerRunning.value,
+                enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { -it / 2 },
+                exit = fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 2 },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
+                Row(
+                    modifier = Modifier
+                        .padding(bottom = 10.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(darkPaletteColor).copy(alpha = 0.12f))
+                        .clickable { showBottomSheet.value = true }
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Sleeping in " + formatSleepRemaining(sleepTimerRemainingMillis.longValue),
+                        style = TextStyle(
+                            color = Color(darkPaletteColor),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                }
+            }
+
+            // Album art gets first claim on any extra vertical space: fixed-size text/controls
+            // below keep their natural height, and the pager (weight = 1f) expands to fill
+            // whatever room is left. On a tall/large-screen device that means the artwork
+            // scales up to use the available height instead of sitting at a small fixed size
+            // with empty space beneath it; heightIn keeps it from collapsing too far on short
+            // (e.g. landscape phone) screens.
+            HorizontalPager(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .heightIn(min = 220.dp),
+                state = pagerState,
+                contentPadding = PaddingValues(horizontal = 0.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) { page ->
+                val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
+                LaunchedEffect(page) { viewModel.loadBitmapIfNeeded(context, page) }
+                val pageMusic = audioList.getOrNull(page)
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 15.dp)
+                        .graphicsLayer {
+                            val scale =
+                                lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
+                            scaleX = scale
+                            scaleY = scale
+                            alpha =
+                                lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
+                            translationX =
+                                lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
+                        }
+                ) {
+                    AsyncImage(
+                        modifier = Modifier
+                            .sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "image-${pageMusic?.songId}"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                            )
+                            .fillMaxSize(),
+                        model = pageMusic?.cover,
+                        contentDescription = context.getString(Res.string.desc_album_cover_art),
+                        contentScale = ContentScale.FillBounds,
+                        placeholder = painterResource(Res.drawable.default_cover),
+                        error = painterResource(Res.drawable.default_cover)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            currentMusic?.let { currentTrack ->
                 Text(
-                    text = "Sleeping in " + formatSleepRemaining(sleepTimerRemainingMillis.longValue),
+                    modifier = Modifier
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "title-${currentTrack.songId}"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                        )
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .basicMarquee(),
+                    text = currentTrack.songTitle,
+                    maxLines = 1,
                     style = TextStyle(
-                        color = Color(darkPaletteColor),
-                        fontSize = 12.sp,
+                        color = Color.Black,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                    ),
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    text = currentTrack.artist,
+                    maxLines = 1,
+                    style = TextStyle(
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        textAlign = TextAlign.Center,
+                    ),
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            viewModel.toggleTimeDisplay()
+                        },
+                    text = "$progressString / " + viewModel.convertLongToReadableDateTime(
+                        currentTrack.duration.toLong(),
+                        "mm:ss"
+                    ),
+                    textAlign = TextAlign.Center,
+                    style = TextStyle(
+                        color = Color.Gray,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
                 )
-            }
-        }
 
-        HorizontalPager(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(350.dp),
-            state = pagerState,
-            contentPadding = PaddingValues(horizontal = 0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) { page ->
-            val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
-            LaunchedEffect(page) { viewModel.loadBitmapIfNeeded(context, page) }
-            val pageMusic = audioList.getOrNull(page)
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 15.dp)
-                    .graphicsLayer {
-                        val scale =
-                            lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
-                        scaleX = scale
-                        scaleY = scale
-                        alpha =
-                            lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
-                        translationX =
-                            lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
-                    }
-            ) {
-                AsyncImage(
+                Box(
                     modifier = Modifier
-                        .sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = "image-${pageMusic?.songId}"),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                        )
-                        .fillMaxSize(),
-                    model = pageMusic?.cover,
-                    contentDescription = context.getString(Res.string.desc_album_cover_art),
-                    contentScale = ContentScale.FillBounds,
-                    placeholder = painterResource(Res.drawable.default_cover),
-                    error = painterResource(Res.drawable.default_cover)
-                )
-            }
-        }
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val amplitudes = remember { List(60) { Random.nextFloat() } }
+                    val normalizedProgress = progress / 100f
 
-        Spacer(modifier.height(16.dp))
-
-        currentMusic?.let { currentTrack ->
-            Text(
-                modifier = Modifier
-                    .sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = "title-${currentTrack.songId}"),
-                        animatedVisibilityScope = animatedVisibilityScope,
+                    CustomWaveProgressBar(
+                        amplitudes = amplitudes,
+                        currentProgress = normalizedProgress.coerceIn(0f, 1f),
+                        isPlaying = isPlaying,
+                        barColor = Color(darkPaletteColor).copy(alpha = 0.25f),
+                        playedColor = Color(darkPaletteColor),
+                        onSeek = { normalized ->
+                            val seekPosition = normalized * 100f
+                            viewModel.onUiEvents(UIEvents.SeekTo(seekPosition))
+                        }
                     )
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .basicMarquee(),
-                text = currentTrack.songTitle,
-                maxLines = 1,
-                style = TextStyle(
-                    color = Color.Black,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                ),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                text = currentTrack.artist,
-                maxLines = 1,
-                style = TextStyle(
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    textAlign = TextAlign.Center,
-                ),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        viewModel.toggleTimeDisplay()
-                    },
-                text = "$progressString / " + viewModel.convertLongToReadableDateTime(
-                    currentTrack.duration.toLong(),
-                    "mm:ss"
-                ),
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            )
-
-            Spacer(modifier.height(12.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                contentAlignment = Alignment.Center
-            ) {
-                val amplitudes = remember { List(60) { Random.nextFloat() } }
-                val normalizedProgress = progress / 100f
-
-                CustomWaveProgressBar(
-                    amplitudes = amplitudes,
-                    currentProgress = normalizedProgress.coerceIn(0f, 1f),
-                    isPlaying = isPlaying,
-                    barColor = Color(darkPaletteColor).copy(alpha = 0.25f),
-                    playedColor = Color(darkPaletteColor),
-                    onSeek = { normalized ->
-                        val seekPosition = normalized * 100f
-                        viewModel.onUiEvents(UIEvents.SeekTo(seekPosition))
-                    }
-                )
-            }
-
-            Spacer(modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                PlayPauseControlButton(
-                    isPlaying = isPlaying,
-                    playButtonColor = Color(darkPaletteColor),
-                    onPreviousClick = {
-                        scope.launch { if (currentPage > 0) pagerState.animateScrollToPage(currentPage - 1) else pagerState.animateScrollToPage(audioList.size - 1) }
-                        viewModel.onUiEvents(UIEvents.SeekToPrevious)
-                    },
-                    onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
-                    onNextClick = {
-                        scope.launch { if (currentPage == audioList.size - 1) pagerState.animateScrollToPage(0) else pagerState.animateScrollToPage(currentPage + 1) }
-                        viewModel.onUiEvents(UIEvents.SeekToNext)
-                    },
-                    onSeekNextClick = { viewModel.onUiEvents(UIEvents.Forward) },
-                    onSeekPreviousClick = { viewModel.onUiEvents(UIEvents.Backward) }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            CustomButtonGroups(
-                buttonColor = Color(darkPaletteColor).copy(alpha = 0.05f),
-                repeatModeOne = repeatModeOne,
-                repeatModeAll = repeatModeAll,
-                onRepeatButtonClicked = {
-                    if (repeatModeOff && !repeatModeOne && !repeatModeAll) {
-                        viewModel.onUiEvents(UIEvents.RepeatOne)
-                        Toast.makeText(context, Res.string.msg_repeat_one, Toast.LENGTH_SHORT).show()
-                    } else if (!repeatModeOff && repeatModeOne && !repeatModeAll) {
-                        viewModel.onUiEvents(UIEvents.RepeatAll)
-                        Toast.makeText(context, Res.string.msg_repeat_all, Toast.LENGTH_SHORT).show()
-                    } else {
-                        viewModel.onUiEvents(UIEvents.RepeatOff)
-                        Toast.makeText(context, Res.string.msg_repeat_off, Toast.LENGTH_SHORT).show()
-                    }
-                },
-                onEQButtonClicked = { navigateToEqualizerScreen.invoke() },
-                onSleepButtonClicked = { showBottomSheet.value = true },
-                onShareButtonClicked = {
-                    val shareIntent = Intent().also {
-                        it.action = Intent.ACTION_SEND
-                        it.type = "audio/*"
-                        it.putExtra(Intent.EXTRA_STREAM, currentTrack.contentUri)
-                    }
-                    context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
-                },
-                onVolumeBoostClicked = { showVolumeBoostDialog.value = true },
-                sleepTimerActive = sleepTimerRunning.value
-            )
-
-            if (showBottomSheet.value) {
-                SleepTimerBottomSheet(
-                    onDismiss = { showBottomSheet.value = false },
-                    isTimerRunning = sleepTimerRunning.value,
-                    remainingTimeMillis = sleepTimerRemainingMillis.longValue,
-                    accentColor = Color(darkPaletteColor),
-                    onOptionSelected = { option ->
-                        startSleepTimer(resolveSleepTimerMillis(option))
-                    },
-                    onCancelTimer = { cancelSleepTimer() }
-                )
-            }
-
-            if (showVolumeBoostDialog.value) {
-                LaunchedEffect(showVolumeBoostDialog.value, volume) {
-                    volumeGain.floatValue = volume / 200f
                 }
 
-                DisposableEffect(showVolumeBoostDialog.value) {
-                    val handler = Handler(Looper.getMainLooper())
-                    val contentObserver = object : android.database.ContentObserver(handler) {
-                        override fun onChange(selfChange: Boolean) {
-                            super.onChange(selfChange)
-                            if (!viewModel.isAdjustingFromSlider()) {
-                                val currentVolume = viewModel.volume.value
-                                volumeGain.floatValue = (currentVolume / 200f).coerceIn(0f, 1f)
-                                val systemVolumePercent = viewModel.getCurrentVolumePercent()
-                                if (currentVolume <= 100 && kotlin.math.abs(currentVolume - systemVolumePercent) > 2) {
-                                    volumeGain.floatValue = (systemVolumePercent / 200f).coerceIn(0f, 0.5f)
-                                    viewModel.setVolumeWithBoost(systemVolumePercent)
-                                } else if (currentVolume > 100 && systemVolumePercent < 100) {
-                                    volumeGain.floatValue = (systemVolumePercent / 200f).coerceIn(0f, 0.5f)
-                                    viewModel.setVolumeWithBoost(systemVolumePercent)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    PlayPauseControlButton(
+                        isPlaying = isPlaying,
+                        playButtonColor = Color(darkPaletteColor),
+                        onPreviousClick = {
+                            scope.launch { if (currentPage > 0) pagerState.animateScrollToPage(currentPage - 1) else pagerState.animateScrollToPage(audioList.size - 1) }
+                            viewModel.onUiEvents(UIEvents.SeekToPrevious)
+                        },
+                        onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
+                        onNextClick = {
+                            scope.launch { if (currentPage == audioList.size - 1) pagerState.animateScrollToPage(0) else pagerState.animateScrollToPage(currentPage + 1) }
+                            viewModel.onUiEvents(UIEvents.SeekToNext)
+                        },
+                        onSeekNextClick = { viewModel.onUiEvents(UIEvents.Forward) },
+                        onSeekPreviousClick = { viewModel.onUiEvents(UIEvents.Backward) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                CustomButtonGroups(
+                    buttonColor = Color(darkPaletteColor).copy(alpha = 0.05f),
+                    repeatModeOne = repeatModeOne,
+                    repeatModeAll = repeatModeAll,
+                    onRepeatButtonClicked = {
+                        if (repeatModeOff && !repeatModeOne && !repeatModeAll) {
+                            viewModel.onUiEvents(UIEvents.RepeatOne)
+                            Toast.makeText(context, Res.string.msg_repeat_one, Toast.LENGTH_SHORT).show()
+                        } else if (!repeatModeOff && repeatModeOne && !repeatModeAll) {
+                            viewModel.onUiEvents(UIEvents.RepeatAll)
+                            Toast.makeText(context, Res.string.msg_repeat_all, Toast.LENGTH_SHORT).show()
+                        } else {
+                            viewModel.onUiEvents(UIEvents.RepeatOff)
+                            Toast.makeText(context, Res.string.msg_repeat_off, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onEQButtonClicked = { navigateToEqualizerScreen.invoke() },
+                    onSleepButtonClicked = { showBottomSheet.value = true },
+                    onShareButtonClicked = {
+                        val shareIntent = Intent().also {
+                            it.action = Intent.ACTION_SEND
+                            it.type = "audio/*"
+                            it.putExtra(Intent.EXTRA_STREAM, currentTrack.contentUri)
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
+                    },
+                    onVolumeBoostClicked = { showVolumeBoostDialog.value = true },
+                    sleepTimerActive = sleepTimerRunning.value,
+                    sleepTimerRemainingMillis = sleepTimerRemainingMillis.longValue
+                )
+
+                if (showBottomSheet.value) {
+                    SleepTimerBottomSheet(
+                        onDismiss = { showBottomSheet.value = false },
+                        isTimerRunning = sleepTimerRunning.value,
+                        remainingTimeMillis = sleepTimerRemainingMillis.longValue,
+                        accentColor = Color(darkPaletteColor),
+                        onOptionSelected = { option ->
+                            startSleepTimer(resolveSleepTimerMillis(option))
+                        },
+                        onCustomTimeSet = { h, m, s ->
+                            startSleepTimer((h * 3600L + m * 60L + s) * 1000L)
+                        },
+                        onCancelTimer = { cancelSleepTimer() }
+                    )
+                }
+
+                if (showVolumeBoostDialog.value) {
+                    LaunchedEffect(showVolumeBoostDialog.value, volume) {
+                        volumeGain.floatValue = volume / 200f
+                    }
+
+                    DisposableEffect(showVolumeBoostDialog.value) {
+                        val handler = Handler(Looper.getMainLooper())
+                        val contentObserver = object : android.database.ContentObserver(handler) {
+                            override fun onChange(selfChange: Boolean) {
+                                super.onChange(selfChange)
+                                if (!viewModel.isAdjustingFromSlider()) {
+                                    val currentVolume = viewModel.volume.value
+                                    volumeGain.floatValue = (currentVolume / 200f).coerceIn(0f, 1f)
+                                    val systemVolumePercent = viewModel.getCurrentVolumePercent()
+                                    if (currentVolume <= 100 && kotlin.math.abs(currentVolume - systemVolumePercent) > 2) {
+                                        volumeGain.floatValue = (systemVolumePercent / 200f).coerceIn(0f, 0.5f)
+                                        viewModel.setVolumeWithBoost(systemVolumePercent)
+                                    } else if (currentVolume > 100 && systemVolumePercent < 100) {
+                                        volumeGain.floatValue = (systemVolumePercent / 200f).coerceIn(0f, 0.5f)
+                                        viewModel.setVolumeWithBoost(systemVolumePercent)
+                                    }
+                                }
+                            }
+                        }
+
+                        if (showVolumeBoostDialog.value) {
+                            context.contentResolver.registerContentObserver(
+                                Settings.System.CONTENT_URI,
+                                true,
+                                contentObserver
+                            )
+                        }
+
+                        onDispose {
+                            context.contentResolver.unregisterContentObserver(contentObserver)
+                        }
+                    }
+
+                    Dialog(onDismissRequest = {
+                        showVolumeBoostDialog.value = false
+                    }) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Volume Booster",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+
+                                val volumePercent = (volumeGain.floatValue * 200).toInt() // Display 0–200%
+
+                                val sliderColor = when {
+                                    volumePercent > 150 -> CreamRed
+                                    volumePercent > 100 -> PeachYellow
+                                    else -> MaterialTheme.colorScheme.primary
+                                }
+
+                                Text(
+                                    text = "$volumePercent%",
+                                    fontSize = 16.sp,
+                                    color = Color.DarkGray,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+
+                                Slider(
+                                    value = volumeGain.floatValue,
+                                    onValueChange = {
+                                        volumeGain.floatValue = it
+                                        val newPercent = (it * 200).toInt()
+                                        viewModel.setVolumeWithBoost(newPercent, fromSlider = true)
+                                    },
+                                    valueRange = 0f..1f,
+                                    steps = 20,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = sliderColor,
+                                        activeTrackColor = sliderColor,
+                                        inactiveTrackColor = Color.LightGray
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "OK",
+                                        color = MythicGreen,
+                                        modifier = Modifier
+                                            .clickable {
+                                                showVolumeBoostDialog.value = false
+                                            }
+                                            .padding(8.dp)
+                                    )
                                 }
                             }
                         }
                     }
-
-                    if (showVolumeBoostDialog.value) {
-                        context.contentResolver.registerContentObserver(
-                            Settings.System.CONTENT_URI,
-                            true,
-                            contentObserver
-                        )
-                    }
-
-                    onDispose {
-                        context.contentResolver.unregisterContentObserver(contentObserver)
-                    }
-                }
-
-                Dialog(onDismissRequest = {
-                    showVolumeBoostDialog.value = false
-                }) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        shape = RoundedCornerShape(16.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Volume Booster",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-
-                            val volumePercent = (volumeGain.floatValue * 200).toInt() // Display 0–200%
-
-                            val sliderColor = when {
-                                volumePercent > 150 -> CreamRed
-                                volumePercent > 100 -> PeachYellow
-                                else -> MaterialTheme.colorScheme.primary
-                            }
-
-                            Text(
-                                text = "$volumePercent%",
-                                fontSize = 16.sp,
-                                color = Color.DarkGray,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-
-                            Slider(
-                                value = volumeGain.floatValue,
-                                onValueChange = {
-                                    volumeGain.floatValue = it
-                                    val newPercent = (it * 200).toInt()
-                                    viewModel.setVolumeWithBoost(newPercent, fromSlider = true)
-                                },
-                                valueRange = 0f..1f,
-                                steps = 20,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = sliderColor,
-                                    activeTrackColor = sliderColor,
-                                    inactiveTrackColor = Color.LightGray
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            Row(
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "OK",
-                                    color = MythicGreen,
-                                    modifier = Modifier
-                                        .clickable {
-                                            showVolumeBoostDialog.value = false
-                                        }
-                                        .padding(8.dp)
-                                )
-                            }
-                        }
-                    }
                 }
             }
-        }
         }
     }
 }

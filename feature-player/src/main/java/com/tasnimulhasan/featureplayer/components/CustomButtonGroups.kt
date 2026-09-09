@@ -25,13 +25,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AllInclusive
-import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -40,9 +40,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tasnimulhasan.designsystem.theme.LightOrange
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun CustomButtonGroups(
@@ -55,6 +59,7 @@ fun CustomButtonGroups(
     onShareButtonClicked: () -> Unit,
     onVolumeBoostClicked: () -> Unit,
     sleepTimerActive: Boolean = false,
+    sleepTimerRemainingMillis: Long = 0L,
 ) {
     Column(
         modifier = Modifier
@@ -113,14 +118,26 @@ fun CustomButtonGroups(
                 onClick = onSleepButtonClicked,
                 isActive = sleepTimerActive,
             ) { tint ->
-                Icon(
-                    modifier = Modifier
-                        .width(24.dp)
-                        .height(24.dp),
-                    imageVector = if (sleepTimerActive) Icons.Default.Bedtime else Icons.Default.Timer,
-                    tint = tint,
-                    contentDescription = "Sleep Button"
-                )
+                if (sleepTimerActive) {
+                    // Timer running: show the live countdown right on the button itself,
+                    // instead of the icon, so it's visible without opening the sheet.
+                    Text(
+                        text = formatSleepPillTime(sleepTimerRemainingMillis),
+                        color = tint,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                } else {
+                    Icon(
+                        modifier = Modifier
+                            .width(24.dp)
+                            .height(24.dp),
+                        imageVector = Icons.Default.Timer,
+                        tint = tint,
+                        contentDescription = "Sleep Button"
+                    )
+                }
             }
 
             PillActionButton(
@@ -238,4 +255,16 @@ fun PreviewCustomButtonGroups() {
         onShareButtonClicked = {},
         onVolumeBoostClicked = {},
     )
+}
+
+private fun formatSleepPillTime(millis: Long): String {
+    val totalSeconds = (millis / 1000).coerceAtLeast(0)
+    val hours = TimeUnit.SECONDS.toHours(totalSeconds)
+    val minutes = TimeUnit.SECONDS.toMinutes(totalSeconds) % 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
 }
