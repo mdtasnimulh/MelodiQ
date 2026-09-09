@@ -22,7 +22,6 @@ import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +40,7 @@ class PlayerViewModel @Inject constructor(
     private val audioServiceHandler: MelodiqServiceHandler,
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val exoPlayer: ExoPlayer,
+    private val sleepTimerController: SleepTimerController,
     context: Context,
 ) : BaseViewModel() {
 
@@ -104,10 +104,11 @@ class PlayerViewModel @Inject constructor(
     // FIX #6: Seeking state to prevent race conditions
     private var isSeekingFromSlider = false
 
-    // FIX #9: Sleep timer state preservation
-    private val _sleepTimerActive = MutableStateFlow(false)
-    val sleepTimerActive: StateFlow<Boolean> = _sleepTimerActive.asStateFlow()
-    private var sleepTimerJob: Job? = null
+    // FIX #9: Sleep timer state preservation - delegated to SleepTimerController, a
+    // process-lifetime singleton, so the countdown survives this ViewModel being cleared
+    // when the user navigates away from and back to the Player screen (see its doc comment).
+    val sleepTimerActive: StateFlow<Boolean> = sleepTimerController.isRunning
+    val sleepTimerRemainingMillis: StateFlow<Long> = sleepTimerController.remainingMillis
 
     fun toggleTimeDisplay() {
         _showElapsedTime.value = !_showElapsedTime.value
@@ -321,29 +322,24 @@ class PlayerViewModel @Inject constructor(
         setVolumeWithBoost((gain * 200).toInt(), fromSlider = true)
     }
 
-    // FIX #9: Sleep timer functions
-    fun startSleepTimer(hours: Int, minutes: Int, seconds: Int) {
-        if (_sleepTimerActive.value) return
-
-        val durationMillis = (hours * 3600 + minutes * 60 + seconds) * 1000L
-        if (durationMillis > 0) {
-            _sleepTimerActive.value = true
-            sleepTimerJob?.cancel()
-            sleepTimerJob = viewModelScope.launch {
-                delay(durationMillis)
-                onUiEvents(UIEvents.PlayPause)
-                _sleepTimerActive.value = false
-            }
+    // FIX #9: Sleep timer functions - delegate the actual counting to SleepTimerController
+    // (see its doc comment for why); this ViewModel only supplies the "what happens when it
+    // finishes" action, unchanged from before: pause playback, then close the app.
+    fun startSleepTimer(totalDurationMillis: Long) {
+        sleepTimerController.start(totalDurationMillis) {
+            onUiEvents(UIEvents.PlayPause)
+            android.os.Process.killProcess(android.os.Process.myPid())
         }
     }
 
     fun cancelSleepTimer() {
-        sleepTimerJob?.cancel()
-        _sleepTimerActive.value = false
+        sleepTimerController.cancel()
     }
 
     override fun onCleared() {
-        sleepTimerJob?.cancel()
+        // Intentionally NOT cancelling the sleep timer here - it's owned by the
+        // process-lifetime SleepTimerController precisely so it keeps running when this
+        // ViewModel is cleared (e.g. navigating away from the Player screen).
         loudnessEnhancer?.release()
         super.onCleared()
     }

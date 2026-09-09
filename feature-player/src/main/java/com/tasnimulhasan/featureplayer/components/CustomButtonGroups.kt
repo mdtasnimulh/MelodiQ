@@ -118,7 +118,7 @@ fun CustomButtonGroups(
                 onClick = onSleepButtonClicked,
                 isActive = sleepTimerActive,
             ) { tint ->
-                if (sleepTimerActive) {
+                /*if (sleepTimerActive) {
                     // Timer running: show the live countdown right on the button itself,
                     // instead of the icon, so it's visible without opening the sheet.
                     Text(
@@ -137,7 +137,15 @@ fun CustomButtonGroups(
                         tint = tint,
                         contentDescription = "Sleep Button"
                     )
-                }
+                }*/
+                Icon(
+                    modifier = Modifier
+                        .width(24.dp)
+                        .height(24.dp),
+                    imageVector = Icons.Default.Timer,
+                    tint = tint,
+                    contentDescription = "Sleep Button"
+                )
             }
 
             PillActionButton(

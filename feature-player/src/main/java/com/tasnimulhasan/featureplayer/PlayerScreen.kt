@@ -48,7 +48,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -87,13 +86,11 @@ import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
 import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
 import com.tasnimulhasan.featureplayer.components.SleepTimerBottomSheet
 import com.tasnimulhasan.featureplayer.components.SleepTimerOption
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.milliseconds
 import com.tasnimulhasan.designsystem.R as Res
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -142,11 +139,11 @@ internal fun SharedTransitionScope.PlayerScreen(
 
     val showBottomSheet = remember { mutableStateOf(false) }
 
-    // Sleep timer: local UI state so the sheet can show a live countdown and be reopened
-    // to inspect/cancel an already-running timer.
-    val sleepTimerRunning = remember { mutableStateOf(false) }
-    val sleepTimerEndAtMillis = remember { mutableLongStateOf(0L) }
-    val sleepTimerRemainingMillis = remember { mutableLongStateOf(0L) }
+    // Sleep timer: state now lives in the ViewModel (backed by a process-lifetime
+    // singleton), not local `remember` state, so it survives navigating away from and back
+    // to this screen instead of resetting. See SleepTimerController's doc comment.
+    val sleepTimerRunning by viewModel.sleepTimerActive.collectAsStateWithLifecycle()
+    val sleepTimerRemainingMillis by viewModel.sleepTimerRemainingMillis.collectAsStateWithLifecycle()
 
     val initialPageIndex = audioList.indexOfFirst { it.songId.toString() == musicId }
     LaunchedEffect(initialPageIndex) {
@@ -191,19 +188,8 @@ internal fun SharedTransitionScope.PlayerScreen(
         } ?: PeaceOrange.toArgb()
     }
 
-    fun startSleepTimer(totalDurationMillis: Long) {
-        if (sleepTimerRunning.value || totalDurationMillis <= 0L) return
-        sleepTimerRemainingMillis.longValue = totalDurationMillis
-        sleepTimerEndAtMillis.longValue = System.currentTimeMillis() + totalDurationMillis
-        sleepTimerRunning.value = true
-    }
-
-    fun cancelSleepTimer() {
-        sleepTimerRunning.value = false
-        sleepTimerEndAtMillis.longValue = 0L
-        sleepTimerRemainingMillis.longValue = 0L
-    }
-
+    // Pure calculation only - starting/stopping the actual countdown now happens in the
+    // ViewModel (delegated to SleepTimerController) so it survives this screen's lifecycle.
     fun resolveSleepTimerMillis(option: SleepTimerOption): Long = when (option) {
         SleepTimerOption.END_OF_SONG -> {
             val elapsedMillis = (trackDurationMillis * (progress / 100f)).toLong()
@@ -216,24 +202,6 @@ internal fun SharedTransitionScope.PlayerScreen(
         SleepTimerOption.MIN_45 -> TimeUnit.MINUTES.toMillis(45)
         SleepTimerOption.HOUR_1 -> TimeUnit.HOURS.toMillis(1)
         SleepTimerOption.HOUR_2 -> TimeUnit.HOURS.toMillis(2)
-    }
-
-    // Ticks the remaining time once a second while the timer runs, and fires the same
-    // end-of-timer action the original implementation used (pause playback, then close
-    // the app) once it reaches zero.
-    LaunchedEffect(sleepTimerRunning.value) {
-        while (sleepTimerRunning.value) {
-            val remaining = sleepTimerEndAtMillis.longValue - System.currentTimeMillis()
-            if (remaining <= 0L) {
-                sleepTimerRemainingMillis.longValue = 0L
-                viewModel.onUiEvents(UIEvents.PlayPause)
-                sleepTimerRunning.value = false
-                android.os.Process.killProcess(android.os.Process.myPid())
-            } else {
-                sleepTimerRemainingMillis.longValue = remaining
-                delay(1000L.milliseconds)
-            }
-        }
     }
 
     Box(
@@ -320,7 +288,7 @@ internal fun SharedTransitionScope.PlayerScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             AnimatedVisibility(
-                visible = sleepTimerRunning.value,
+                visible = sleepTimerRunning,
                 enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { -it / 2 },
                 exit = fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 2 },
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -335,7 +303,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Sleeping in " + formatSleepRemaining(sleepTimerRemainingMillis.longValue),
+                        text = "Sleeping in " + formatSleepRemaining(sleepTimerRemainingMillis),
                         style = TextStyle(
                             color = Color(darkPaletteColor),
                             fontSize = 12.sp,
@@ -532,23 +500,25 @@ internal fun SharedTransitionScope.PlayerScreen(
                         context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
                     },
                     onVolumeBoostClicked = { showVolumeBoostDialog.value = true },
-                    sleepTimerActive = sleepTimerRunning.value,
-                    sleepTimerRemainingMillis = sleepTimerRemainingMillis.longValue
+                    sleepTimerActive = sleepTimerRunning,
+                    sleepTimerRemainingMillis = sleepTimerRemainingMillis
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 if (showBottomSheet.value) {
                     SleepTimerBottomSheet(
                         onDismiss = { showBottomSheet.value = false },
-                        isTimerRunning = sleepTimerRunning.value,
-                        remainingTimeMillis = sleepTimerRemainingMillis.longValue,
+                        isTimerRunning = sleepTimerRunning,
+                        remainingTimeMillis = sleepTimerRemainingMillis,
                         accentColor = Color(darkPaletteColor),
                         onOptionSelected = { option ->
-                            startSleepTimer(resolveSleepTimerMillis(option))
+                            viewModel.startSleepTimer(resolveSleepTimerMillis(option))
                         },
                         onCustomTimeSet = { h, m, s ->
-                            startSleepTimer((h * 3600L + m * 60L + s) * 1000L)
+                            viewModel.startSleepTimer((h * 3600L + m * 60L + s) * 1000L)
                         },
-                        onCancelTimer = { cancelSleepTimer() }
+                        onCancelTimer = { viewModel.cancelSleepTimer() }
                     )
                 }
 
