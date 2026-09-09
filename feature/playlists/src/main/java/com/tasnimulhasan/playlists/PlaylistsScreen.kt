@@ -31,7 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import com.tasnimulhasan.playlists.component.CreatePlaylistDialog

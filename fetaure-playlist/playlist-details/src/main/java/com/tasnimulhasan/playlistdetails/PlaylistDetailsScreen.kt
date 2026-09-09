@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
 import com.tasnimulhasan.entity.enums.SortType

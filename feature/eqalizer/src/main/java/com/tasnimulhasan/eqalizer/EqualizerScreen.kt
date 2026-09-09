@@ -53,7 +53,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.tasnimulhasan.common.constant.AppConstants.effectType
 import com.tasnimulhasan.designsystem.theme.Blue20
 import com.tasnimulhasan.designsystem.theme.Blue90
@@ -313,7 +313,7 @@ fun EqualizerView(viewModel: EqualizerViewModel) {
     FiveEqualizerItem(
         modifier = Modifier,
         audioEffects = audioEffects,
-        frequencyLabels = if (frequencyLabels.isNotEmpty()) frequencyLabels else listOf("60Hz", "230Hz", "910Hz", "3kHz", "14kHz"),
+        frequencyLabels = frequencyLabels.ifEmpty { listOf("60Hz", "230Hz", "910Hz", "3kHz", "14kHz") },
         onBandValueChange = { index, value -> viewModel.onBandLevelChanged(index, value) }
     )
 }
@@ -324,9 +324,7 @@ fun EqualizerView10Band(viewModel: EqualizerViewModel) {
     val frequencyLabels by viewModel.frequencyLabels.collectAsState()
     val audioEffects by viewModel.audioEffects.collectAsState()
 
-    val xAxisLabels = if (frequencyLabels.isNotEmpty()) {
-        frequencyLabels
-    } else {
+    val xAxisLabels = frequencyLabels.ifEmpty {
         listOf("31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz")
     }
 

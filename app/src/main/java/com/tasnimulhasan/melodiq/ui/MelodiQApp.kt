@@ -53,7 +53,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -208,7 +208,13 @@ internal fun MmApp(
                         navigationIconContentDescription = navigationIconContentDescription,
                         actionIcon = MelodiqIcons.ActionMore,
                         actionIconsContentDescription = stringResource(id = Res.string.title_settings),
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent),
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            scrolledContainerColor = Color.Unspecified,
+                            navigationIconContentColor = Color.Unspecified,
+                            titleContentColor = Color.Unspecified,
+                            actionIconContentColor = Color.Unspecified
+                        ),
                         onActionClick = { onTopAppBarActionClick() },
                         onNavigationClick = {
                             if (!isTopLevelDestination) appState.navigateBack()

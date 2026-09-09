@@ -5,12 +5,19 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -25,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -39,11 +47,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -60,7 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.window.Dialog
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
@@ -73,10 +85,14 @@ import com.tasnimulhasan.featureplayer.components.CustomButtonGroups
 import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
 import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
 import com.tasnimulhasan.featureplayer.components.SleepTimerBottomSheet
+import com.tasnimulhasan.featureplayer.components.SleepTimerOption
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 import com.tasnimulhasan.designsystem.R as Res
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -100,6 +116,7 @@ internal fun SharedTransitionScope.PlayerScreen(
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
+    val trackDurationMillis by viewModel.duration.collectAsStateWithLifecycle()
 
     LaunchedEffect(sortType) {
         viewModel.initializeListIfNeeded()
@@ -114,11 +131,21 @@ internal fun SharedTransitionScope.PlayerScreen(
 
     val density = LocalDensity.current
     val maxDragDistance = with(density) { 500.dp.toPx() }
-    val offsetY = remember { Animatable(0f) }
+    // Plain, non-animatable drag offset: it's mutated directly (no coroutine hop) on every
+    // pointer move, which is what keeps the swipe-to-dismiss gesture smooth. A short-lived
+    // Animatable was previously snapTo()'d from inside a freshly launched coroutine on every
+    // single drag delta, and that per-event coroutine launch + suspend hop is what caused the
+    // dragging lag; settling (spring back / dismiss) below still animates smoothly via `animate {}`.
+    var offsetY by remember { mutableFloatStateOf(0f) }
     val thresholdFraction = 0.6f
 
     val showBottomSheet = remember { mutableStateOf(false) }
+
+    // Sleep timer: local UI state so the sheet can show a live countdown and be reopened
+    // to inspect/cancel an already-running timer.
     val sleepTimerRunning = remember { mutableStateOf(false) }
+    val sleepTimerEndAtMillis = remember { mutableLongStateOf(0L) }
+    val sleepTimerRemainingMillis = remember { mutableLongStateOf(0L) }
 
     val initialPageIndex = audioList.indexOfFirst { it.songId.toString() == musicId }
     LaunchedEffect(initialPageIndex) {
@@ -163,75 +190,159 @@ internal fun SharedTransitionScope.PlayerScreen(
         } ?: PeaceOrange.toArgb()
     }
 
-    fun startSleepTimer(hours: Int, minutes: Int, seconds: Int) {
-        if (sleepTimerRunning.value) return
+    fun startSleepTimer(totalDurationMillis: Long) {
+        if (sleepTimerRunning.value || totalDurationMillis <= 0L) return
+        sleepTimerRemainingMillis.longValue = totalDurationMillis
+        sleepTimerEndAtMillis.longValue = System.currentTimeMillis() + totalDurationMillis
+        sleepTimerRunning.value = true
+    }
 
-        val durationMillis = (hours * 3600 + minutes * 60 + seconds) * 1000L
-        if (durationMillis > 0) {
-            sleepTimerRunning.value = true
-            scope.launch {
-                delay(durationMillis)
+    fun cancelSleepTimer() {
+        sleepTimerRunning.value = false
+        sleepTimerEndAtMillis.longValue = 0L
+        sleepTimerRemainingMillis.longValue = 0L
+    }
+
+    fun resolveSleepTimerMillis(option: SleepTimerOption): Long = when (option) {
+        SleepTimerOption.END_OF_SONG -> {
+            val elapsedMillis = (trackDurationMillis * (progress / 100f)).toLong()
+            (trackDurationMillis - elapsedMillis).coerceAtLeast(0L)
+        }
+        SleepTimerOption.MIN_5 -> TimeUnit.MINUTES.toMillis(5)
+        SleepTimerOption.MIN_10 -> TimeUnit.MINUTES.toMillis(10)
+        SleepTimerOption.MIN_15 -> TimeUnit.MINUTES.toMillis(15)
+        SleepTimerOption.MIN_30 -> TimeUnit.MINUTES.toMillis(30)
+        SleepTimerOption.MIN_45 -> TimeUnit.MINUTES.toMillis(45)
+        SleepTimerOption.HOUR_1 -> TimeUnit.HOURS.toMillis(1)
+        SleepTimerOption.HOUR_2 -> TimeUnit.HOURS.toMillis(2)
+    }
+
+    // Ticks the remaining time once a second while the timer runs, and fires the same
+    // end-of-timer action the original implementation used (pause playback, then close
+    // the app) once it reaches zero.
+    LaunchedEffect(sleepTimerRunning.value) {
+        while (sleepTimerRunning.value) {
+            val remaining = sleepTimerEndAtMillis.longValue - System.currentTimeMillis()
+            if (remaining <= 0L) {
+                sleepTimerRemainingMillis.longValue = 0L
                 viewModel.onUiEvents(UIEvents.PlayPause)
+                sleepTimerRunning.value = false
                 android.os.Process.killProcess(android.os.Process.myPid())
+            } else {
+                sleepTimerRemainingMillis.longValue = remaining
+                delay(1000.milliseconds)
             }
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .offset { IntOffset(0, offsetY.value.toInt()) }
-            .graphicsLayer {
-                val progressVal = (offsetY.value / maxDragDistance).coerceIn(0f, 1f)
-                scaleX = lerp(1f, 0.95f, progressVal)
-                scaleY = lerp(1f, 0.95f, progressVal)
-                alpha = lerp(1f, 0.8f, progressVal)
-            }
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onDragEnd = {
-                        scope.launch {
-                            if (offsetY.value >= maxDragDistance * thresholdFraction) {
-                                offsetY.animateTo(
-                                    maxDragDistance,
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // Soft, palette-derived backdrop behind the whole screen for a more elegant,
+        // "now playing" feel. Purely decorative - no effect on layout or gestures below.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(lightPaletteColor).copy(alpha = 0.35f),
+                            Color(darkPaletteColor).copy(alpha = 0.12f),
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset { IntOffset(0, offsetY.toInt()) }
+                .graphicsLayer {
+                    val progressVal = (offsetY / maxDragDistance).coerceIn(0f, 1f)
+                    scaleX = lerp(1f, 0.95f, progressVal)
+                    scaleY = lerp(1f, 0.95f, progressVal)
+                    alpha = lerp(1f, 0.8f, progressVal)
+                }
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            val shouldDismiss = offsetY >= maxDragDistance * thresholdFraction
+                            scope.launch {
+                                animate(
+                                    initialValue = offsetY,
+                                    targetValue = if (shouldDismiss) maxDragDistance else 0f,
                                     animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        dampingRatio = if (shouldDismiss) Spring.DampingRatioNoBouncy else Spring.DampingRatioMediumBouncy,
                                         stiffness = Spring.StiffnessMedium
                                     )
-                                )
-                                onNavigateUp()
-                            } else {
-                                offsetY.animateTo(
-                                    0f,
+                                ) { value, _ -> offsetY = value }
+                                if (shouldDismiss) onNavigateUp()
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch {
+                                animate(
+                                    initialValue = offsetY,
+                                    targetValue = 0f,
                                     animationSpec = spring(
                                         dampingRatio = Spring.DampingRatioMediumBouncy,
                                         stiffness = Spring.StiffnessMedium
                                     )
-                                )
+                                ) { value, _ -> offsetY = value }
                             }
                         }
-                    },
-                    onDragCancel = {
-                        scope.launch {
-                            offsetY.animateTo(
-                                0f,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessMedium
-                                )
-                            )
-                        }
+                    ) { change, dragAmount ->
+                        // Set the plain state directly - no coroutine launch per drag event.
+                        // This is what removes the lag: previously every single pointer-move
+                        // callback spun up a new coroutine just to call a suspend snapTo().
+                        offsetY = (offsetY + dragAmount).coerceIn(0f, maxDragDistance)
+                        change.consume()
                     }
-                ) { change, dragAmount ->
-                    scope.launch {
-                        val newOffset = (offsetY.value + dragAmount).coerceIn(0f, maxDragDistance)
-                        offsetY.snapTo(newOffset)
-                    }
-                    change.consume()
                 }
+        ) {
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Drag handle affordance - a small pill reinforcing that the screen can be
+        // swiped down to dismiss.
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .width(36.dp)
+                .height(4.dp)
+                .background(
+                    color = Color(darkPaletteColor).copy(alpha = 0.25f),
+                    shape = RoundedCornerShape(50)
+                )
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        AnimatedVisibility(
+            visible = sleepTimerRunning.value,
+            enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { -it / 2 },
+            exit = fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 2 },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(bottom = 10.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(darkPaletteColor).copy(alpha = 0.12f))
+                    .clickable { showBottomSheet.value = true }
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Sleeping in " + formatSleepRemaining(sleepTimerRemainingMillis.longValue),
+                    style = TextStyle(
+                        color = Color(darkPaletteColor),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
             }
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        }
 
         HorizontalPager(
             modifier = Modifier
@@ -411,15 +522,20 @@ internal fun SharedTransitionScope.PlayerScreen(
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
                 },
-                onVolumeBoostClicked = { showVolumeBoostDialog.value = true }
+                onVolumeBoostClicked = { showVolumeBoostDialog.value = true },
+                sleepTimerActive = sleepTimerRunning.value
             )
 
             if (showBottomSheet.value) {
                 SleepTimerBottomSheet(
                     onDismiss = { showBottomSheet.value = false },
-                    onTimeSet = { hours, minutes, seconds ->
-                        startSleepTimer(hours, minutes, seconds)
-                    }
+                    isTimerRunning = sleepTimerRunning.value,
+                    remainingTimeMillis = sleepTimerRemainingMillis.longValue,
+                    accentColor = Color(darkPaletteColor),
+                    onOptionSelected = { option ->
+                        startSleepTimer(resolveSleepTimerMillis(option))
+                    },
+                    onCancelTimer = { cancelSleepTimer() }
                 )
             }
 
@@ -535,5 +651,18 @@ internal fun SharedTransitionScope.PlayerScreen(
                 }
             }
         }
+        }
+    }
+}
+
+private fun formatSleepRemaining(millis: Long): String {
+    val totalSeconds = (millis / 1000).coerceAtLeast(0)
+    val hours = TimeUnit.SECONDS.toHours(totalSeconds)
+    val minutes = TimeUnit.SECONDS.toMinutes(totalSeconds) % 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 }
