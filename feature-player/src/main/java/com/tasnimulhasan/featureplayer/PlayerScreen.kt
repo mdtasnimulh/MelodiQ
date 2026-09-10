@@ -1,6 +1,7 @@
 package com.tasnimulhasan.featureplayer
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -86,6 +87,8 @@ import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
 import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
 import com.tasnimulhasan.featureplayer.components.SleepTimerBottomSheet
 import com.tasnimulhasan.featureplayer.components.SleepTimerOption
+import com.tasnimulhasan.ui.image.AlbumArt
+import com.tasnimulhasan.ui.image.rememberPaletteThumbnail
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -114,10 +117,6 @@ internal fun SharedTransitionScope.PlayerScreen(
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
-
-    LaunchedEffect(sortType) {
-        viewModel.initializeListIfNeeded()
-    }
 
     val pagerState = rememberPagerState { audioList.size }
     val context = LocalContext.current
@@ -168,8 +167,12 @@ internal fun SharedTransitionScope.PlayerScreen(
         }
     }
 
-    val darkPaletteColor = remember(currentMusic?.cover) {
-        currentMusic?.cover?.let {
+    val paletteThumbnail = rememberPaletteThumbnail(
+        songId = currentMusic?.songId ?: 0L,
+        contentUri = currentMusic?.contentUri ?: android.net.Uri.EMPTY,
+    )
+    val darkPaletteColor = remember(paletteThumbnail) {
+        paletteThumbnail?.let {
             val palette = Palette.from(it).generate()
             palette.vibrantSwatch?.rgb
                 ?: palette.mutedSwatch?.rgb
@@ -177,8 +180,8 @@ internal fun SharedTransitionScope.PlayerScreen(
                 ?: LightOrange.toArgb()
         } ?: LightOrange.toArgb()
     }
-    val lightPaletteColor = remember(currentMusic?.cover) {
-        currentMusic?.cover?.let {
+    val lightPaletteColor = remember(paletteThumbnail) {
+        paletteThumbnail?.let {
             val palette = Palette.from(it).generate()
             palette.lightVibrantSwatch?.rgb
                 ?: palette.lightMutedSwatch?.rgb
@@ -323,7 +326,6 @@ internal fun SharedTransitionScope.PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) { page ->
                 val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
-                LaunchedEffect(page) { viewModel.loadBitmapIfNeeded(context, page) }
                 val pageMusic = audioList.getOrNull(page)
 
                 Card(
@@ -348,7 +350,11 @@ internal fun SharedTransitionScope.PlayerScreen(
                                 animatedVisibilityScope = animatedVisibilityScope,
                             )
                             .fillMaxSize(),
-                        model = pageMusic?.cover,
+                        model = AlbumArt(
+                            songId = pageMusic?.songId ?: 0L,
+                            contentUri = pageMusic?.contentUri ?: Uri.EMPTY,
+                            albumId = pageMusic?.albumId ?: 0L,
+                        ),
                         contentDescription = context.getString(Res.string.desc_album_cover_art),
                         contentScale = ContentScale.FillBounds,
                         placeholder = painterResource(Res.drawable.default_cover),

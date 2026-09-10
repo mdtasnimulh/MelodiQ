@@ -1,9 +1,5 @@
 package com.tasnimulhasan.melodiq.ui
 
-import android.app.ActivityManager
-import android.content.Context
-import android.content.Context.ACTIVITY_SERVICE
-import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -35,7 +31,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +43,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
@@ -59,7 +53,6 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.tasnimulhasan.albums.navigation.AlbumRoute
-import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.common.utils.coloredShadow
 import com.tasnimulhasan.designsystem.component.MelodiQNavigationBar
 import com.tasnimulhasan.designsystem.component.MelodiQNavigationBarItem
@@ -111,9 +104,6 @@ internal fun MmApp(
     viewModel: MainViewModel = hiltViewModel(),
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
-    val context = LocalContext.current
-    val sortType by viewModel.sortType.collectAsStateWithLifecycle()
-    val audioList by viewModel.audioList.collectAsStateWithLifecycle()
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
@@ -167,10 +157,6 @@ internal fun MmApp(
     )
     BackHandler(enabled = customDrawerState.isOpened()) {
         customDrawerState = CustomDrawerState.Closed
-    }
-
-    LaunchedEffect(sortType) {
-        viewModel.initializeListIfNeeded()
     }
 
     Box(
@@ -249,21 +235,12 @@ internal fun MmApp(
                     .padding(padding)
                     .consumeWindowInsets(padding)
             ) {
-                var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-                val shouldLoadBitmap = remember(currentSelectedAudio.songId) { true }
-                if (audioList.indexOf(currentSelectedAudio) >= 0 && shouldLoadBitmap) {
-                    /*LaunchedEffect(audioList.indexOf(currentSelectedAudio)) {
-                        bitmap = viewModel.getAlbumArt(context, currentSelectedAudio.contentUri)
-                    }*/
-                    bitmap = viewModel.getAlbumArt(context, currentSelectedAudio.contentUri)
-                }
-
                 GetContent(appState = appState)
 
                 if (currentDestination?.route != PlayerRoute::class.qualifiedName.plus("/{musicId}")) {
                     AnimatedVisibility(
                         modifier = Modifier.align(Alignment.BottomEnd),
-                        visible = context.isServiceRunning(MelodiqPlayerService::class.java) && currentSelectedAudio.songId != 0L && !showPopUpPlayer,
+                        visible = viewModel.isPlaybackServiceRunning() && currentSelectedAudio.songId != 0L && !showPopUpPlayer,
                         enter = scaleIn(
                             animationSpec = tween(durationMillis = 500),
                             transformOrigin = TransformOrigin(
@@ -281,7 +258,9 @@ internal fun MmApp(
                     ) {
                         MiniPlayer(
                             modifier = Modifier,
-                            cover = bitmap,
+                            songId = currentSelectedAudio.songId,
+                            contentUri = currentSelectedAudio.contentUri,
+                            albumId = currentSelectedAudio.albumId,
                             onImageClick = { showPopUpPlayer = !showPopUpPlayer }
                         )
                     }
@@ -306,7 +285,9 @@ internal fun MmApp(
                     ) {
                         PopUpPlayer(
                             modifier = Modifier,
-                            cover = bitmap,
+                            songId = currentSelectedAudio.songId,
+                            contentUri = currentSelectedAudio.contentUri,
+                            albumId = currentSelectedAudio.albumId,
                             songTitle = currentSelectedAudio.songTitle,
                             progress = progress,
                             onProgress = { seekPosition -> viewModel.onUiEvents(UiEvent.SeekTo(seekPosition)) },
@@ -349,13 +330,6 @@ private fun GetContent(appState: MelodiQAppState) {
             }
         )
     }
-}
-
-@Suppress("DEPRECATION")
-fun <T> Context.isServiceRunning(service: Class<T>): Boolean {
-    return (getSystemService(ACTIVITY_SERVICE) as ActivityManager)
-        .getRunningServices(Integer.MAX_VALUE)
-        .any { it -> it.service.className == service.name }
 }
 
 private fun NavDestination?.isRouteInHierarchy(route: KClass<*>) =

@@ -1,6 +1,6 @@
 package com.tasnimulhasan.melodiq.ui.miniplayer
 
-import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,20 +20,26 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.R
 import com.tasnimulhasan.designsystem.theme.LightOrange
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
+import com.tasnimulhasan.ui.image.AlbumArt
+import com.tasnimulhasan.ui.image.rememberPaletteThumbnail
 
 @Composable
 fun MiniPlayer(
     modifier: Modifier,
-    cover: Bitmap?,
+    songId: Long,
+    contentUri: Uri,
+    albumId: Long?,
     onImageClick: () -> Unit,
 ) {
-    val darkPaletteColor = remember(cover) {
-        cover?.let {
+    val paletteThumbnail = rememberPaletteThumbnail(songId, contentUri)
+    val darkPaletteColor = remember(paletteThumbnail) {
+        paletteThumbnail?.let {
             val palette = Palette.from(it).generate()
             palette.vibrantSwatch?.rgb
                 ?: palette.mutedSwatch?.rgb
@@ -57,7 +63,7 @@ fun MiniPlayer(
                 .size(65.dp)
                 .clip(MaterialTheme.shapes.medium)
                 .border(width = 3.dp, shape = MaterialTheme.shapes.medium, color = Color(darkPaletteColor)),
-            model = cover,
+            model = AlbumArt(songId = songId, contentUri = contentUri, albumId = albumId ?: 0L),
             contentDescription = "Cover art",
             contentScale = ContentScale.FillHeight,
             placeholder = painterResource(R.drawable.default_cover),
@@ -73,7 +79,9 @@ fun PreviewMiniPlayer() {
     MelodiqTheme {
         MiniPlayer(
             modifier = Modifier,
-            cover = null,
+            songId = 0L,
+            contentUri = "".toUri(),
+            albumId = 0L,
             onImageClick = {},
         )
     }

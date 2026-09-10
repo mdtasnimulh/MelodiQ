@@ -36,7 +36,7 @@
         </activity>
 
         <service
-            android:name="com.tasnimulhasan.common.service.MelodiqPlayerService"
+            android:name="com.tasnimulhasan.data.player.MelodiqPlayerService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>

@@ -10,8 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
 import com.tasnimulhasan.melodiq.ui.MelodiQApp
 import com.tasnimulhasan.melodiq.ui.rememberMelodiQAppState
@@ -25,16 +24,29 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val appState = rememberMelodiQAppState()
-            val permissionState = rememberPermissionState(
-                permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    Manifest.permission.READ_MEDIA_AUDIO
-                } else Manifest.permission.READ_EXTERNAL_STORAGE
-            )
+
+            val requiredPermissions = buildList {
+                add(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_AUDIO
+                    } else {
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+                )
+                // POST_NOTIFICATIONS is a runtime permission only from API 33+; below that
+                // the notification just shows once POST_NOTIFICATIONS is manifest-declared.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+
+            val permissionsState = rememberMultiplePermissionsState(permissions = requiredPermissions)
+
             MelodiqTheme {
-                if (permissionState.status.isGranted) {
+                if (permissionsState.allPermissionsGranted) {
                     MelodiQApp(appState = appState)
                 } else {
-                    LaunchedEffect(key1 = permissionState) { permissionState.launchPermissionRequest() }
+                    LaunchedEffect(key1 = permissionsState) { permissionsState.launchMultiplePermissionRequest() }
                     PermissionRequestScreen()
                 }
             }
@@ -44,5 +56,5 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PermissionRequestScreen() {
-    Text("Storage permission is required to access music files.")
+    Text("Storage and notification permissions are required to play music and show playback controls.")
 }

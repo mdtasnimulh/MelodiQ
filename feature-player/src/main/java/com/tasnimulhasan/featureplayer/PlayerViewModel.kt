@@ -1,27 +1,20 @@
 package com.tasnimulhasan.featureplayer
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.media.AudioManager
-import android.media.MediaMetadataRetriever
 import android.media.audiofx.LoudnessEnhancer
-import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import com.tasnimulhasan.common.service.MelodiqAudioState
-import com.tasnimulhasan.common.service.MelodiqPlayerEvent.*
-import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
+import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,9 +31,8 @@ import kotlin.time.Duration.Companion.milliseconds
 class PlayerViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
-    private val audioServiceHandler: MelodiqServiceHandler,
     private val getSortTypeUseCase: GetSortTypeUseCase,
-    private val exoPlayer: ExoPlayer,
+    private val exoPlayer: ExoPlayer, // volume-boost only; see setVolumeWithBoost
     private val sleepTimerController: SleepTimerController,
     context: Context,
 ) : BaseViewModel() {
@@ -55,9 +47,7 @@ class PlayerViewModel @Inject constructor(
         albumId = 0L,
         album = ""
     )
-    private var initialized = MutableStateFlow(false)
 
-    // FIX #2: Use audioServiceHandler as source of truth
     private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
@@ -67,7 +57,6 @@ class PlayerViewModel @Inject constructor(
     private val _volume = MutableStateFlow(0)
     val volume: StateFlow<Int> = _volume.asStateFlow()
 
-    // FIX #8: Preserve volume booster state across navigation
     private val _volumeGain = MutableStateFlow(0f)
     val volumeGain: StateFlow<Float> = _volumeGain.asStateFlow()
 
@@ -102,106 +91,62 @@ class PlayerViewModel @Inject constructor(
     private val _repeatModeOff = MutableStateFlow(true)
     val repeatModeOff = _repeatModeOff.asStateFlow()
 
-    // FIX #6: Seeking state to prevent race conditions
     private var isSeekingFromSlider = false
 
-    // FIX #9: Sleep timer state preservation - delegated to SleepTimerController, a
-    // process-lifetime singleton, so the countdown survives this ViewModel being cleared
-    // when the user navigates away from and back to the Player screen (see its doc comment).
     val sleepTimerActive: StateFlow<Boolean> = sleepTimerController.isRunning
     val sleepTimerRemainingMillis: StateFlow<Long> = sleepTimerController.remainingMillis
-
-    fun toggleTimeDisplay() {
-        _showElapsedTime.value = !_showElapsedTime.value
-        calculateProgressValue(audioServiceHandler.audioState.value.let { state ->
-            when (state) {
-                is MelodiqAudioState.Progress -> state.progress
-                is MelodiqAudioState.Buffering -> state.progress
-                else -> 0L
-            }
-        })
-    }
 
     private val _uIState: MutableStateFlow<UIState> = MutableStateFlow(UIState.Initial)
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
     init {
-        // FIX #2: Use audioServiceHandler.sortType as primary source
-        _sortType.value = audioServiceHandler.sortType.value
-        initialized.value = false
-
-        initializeListIfNeeded()
+        viewModelScope.launch {
+            getSortTypeUseCase().collectLatest { persistedSortType ->
+                _sortType.value = persistedSortType
+                val sorted = fetchMusicUseCase(persistedSortType)
+                _audioList.value = sorted
+                _uIState.value = UIState.MusicList(sorted)
+                // Safe to call even if a playlist is already loaded (e.g. from HomeScreen) -
+                // it preserves the currently playing track/position, see
+                // MelodiqServiceHandler.updateMediaItemsWithCurrentTrack.
+                playerUseCases.loadPlaylist(sorted, persistedSortType)
+                restorePlaybackState()
+            }
+        }
 
         viewModelScope.launch {
-            audioServiceHandler.audioState.collectLatest { mediaState ->
+            playerUseCases.observeAudioState().collectLatest { mediaState ->
                 when (mediaState) {
-                    MelodiqAudioState.Initial -> _uIState.value = UIState.Initial
-                    is MelodiqAudioState.Buffering -> calculateProgressValue(mediaState.progress)
-                    is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
-                    is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
-                    is MelodiqAudioState.CurrentPlaying -> {
-                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
+                    PlaybackState.Idle -> _uIState.value = UIState.Initial
+                    is PlaybackState.Buffering -> calculateProgressValue(mediaState.position)
+                    is PlaybackState.Playing -> _isPlaying.value = mediaState.isPlaying
+                    is PlaybackState.Progress -> calculateProgressValue(mediaState.position)
+                    is PlaybackState.TrackChanged -> {
+                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.index) ?: dummyAudio
                     }
-                    is MelodiqAudioState.Ready -> {
+                    is PlaybackState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
-                        calculateProgressValue(audioServiceHandler.getCurrentDuration())
+                        calculateProgressValue(playerUseCases.getPlaybackSnapshot().position)
                     }
                 }
             }
         }
+    }
 
+    private suspend fun restorePlaybackState() {
+        val snapshot = playerUseCases.getPlaybackSnapshot()
+        _currentSelectedAudio.value = _audioList.value.getOrNull(snapshot.currentIndex) ?: dummyAudio
+        _duration.value = snapshot.duration
+        calculateProgressValue(snapshot.position)
+        _isPlaying.value = snapshot.isPlaying
+    }
+
+    fun toggleTimeDisplay() {
+        _showElapsedTime.value = !_showElapsedTime.value
         viewModelScope.launch {
-            val currentSong = playerUseCases.getCurrentSongInfoUseCase()
-            currentSong?.let {/*_currentSelectedAudio.value = it*/ }
+            calculateProgressValue(playerUseCases.getPlaybackSnapshot().position)
         }
-
-        _audioList.value = audioServiceHandler.audioList.value
-    }
-
-    fun initializeListIfNeeded() {
-        viewModelScope.launch {
-            val existingMediaItemCount = audioServiceHandler.getMediaItemCount()
-            if (existingMediaItemCount > 0) {
-                // FIX #1: Use already initialized list from audioServiceHandler
-                _sortType.value = audioServiceHandler.sortType.value
-                _audioList.value = audioServiceHandler.audioList.value
-                _uIState.value = UIState.MusicList(_audioList.value)
-                _currentSelectedAudio.value = _audioList.value.getOrNull(audioServiceHandler.getCurrentMediaItemIndex()) ?: dummyAudio
-                _duration.value = audioServiceHandler.getDuration()
-                calculateProgressValue(audioServiceHandler.getCurrentDuration())
-                _isPlaying.value = audioServiceHandler.isPlaying()
-                return@launch
-            }
-
-            // Initialize if not already done
-            _sortType.value = audioServiceHandler.sortType.value
-            val sortedList = fetchMusicUseCase(_sortType.value)
-            audioServiceHandler.updateMediaItems(sortedList, _sortType.value)
-            _audioList.value = audioServiceHandler.audioList.value
-            _uIState.value = UIState.MusicList(_audioList.value)
-        }
-    }
-
-    // FIX #7: Share bitmap loading with HomeScreen
-    fun loadBitmapIfNeeded(context: Context, index: Int) {
-        if (_audioList.value[index].cover != null) return
-        viewModelScope.launch(Dispatchers.Default) {
-            val bitmap = getAlbumArt(context, _audioList.value[index].contentUri)
-            val updatedList = _audioList.value.toMutableList().apply {
-                this[index] = this[index].copy(cover = bitmap)
-            }
-            _audioList.value = updatedList
-            // Also update in audioServiceHandler for consistency
-            audioServiceHandler.audioList.value = updatedList
-        }
-    }
-
-    private fun getAlbumArt(context: Context, uri: Uri): Bitmap? {
-        val mmr = MediaMetadataRetriever()
-        mmr.setDataSource(context, uri)
-        val data = mmr.embeddedPicture
-        return if (data != null) BitmapFactory.decodeByteArray(data, 0, data.size) else null
     }
 
     fun onUiEvents(uiEvents: UIEvents) = viewModelScope.launch {
@@ -213,7 +158,6 @@ class PlayerViewModel @Inject constructor(
                 else playerUseCases.play()
             }
             is UIEvents.SeekTo -> {
-                // FIX #6: Prevent rapid seeking feedback
                 if (isSeekingFromSlider) return@launch
                 isSeekingFromSlider = true
                 val position = ((_duration.value * uiEvents.position) / 100f).toLong()
@@ -222,17 +166,8 @@ class PlayerViewModel @Inject constructor(
                 isSeekingFromSlider = false
             }
             UIEvents.SeekToNext -> playerUseCases.next()
-            is UIEvents.SelectedAudioChange -> {
-                audioServiceHandler.onPlayerEvents(
-                    SelectAudioChange,
-                    selectedAudionIndex = uiEvents.index
-                )
-            }
-            is UIEvents.UpdateProgress -> {
-                audioServiceHandler.onPlayerEvents(
-                    UpdateProgress(uiEvents.newProgress)
-                )
-            }
+            is UIEvents.SelectedAudioChange -> playerUseCases.selectAudioChange(uiEvents.index)
+            is UIEvents.UpdateProgress -> playerUseCases.updateProgress(uiEvents.newProgress)
             UIEvents.SeekToPrevious -> playerUseCases.previous()
             UIEvents.RepeatOne -> {
                 _repeatModeOff.value = false
@@ -272,12 +207,14 @@ class PlayerViewModel @Inject constructor(
         return df.format(time)
     }
 
+    // Volume boost stays wired directly to ExoPlayer/AudioManager - it's OS audio-routing
+    // control, not playback business logic, so it's a reasonable exception to the
+    // "ViewModels only talk to PlayerUseCases" rule.
     @androidx.annotation.OptIn(UnstableApi::class)
     fun setVolumeWithBoost(volumePercent: Int, fromSlider: Boolean = false) {
         isAdjustingFromSlider = fromSlider
         val clampedVolume = volumePercent.coerceIn(0, 200)
         _volume.value = clampedVolume
-        // FIX #8: Preserve volume gain
         _volumeGain.value = clampedVolume / 200f
 
         if (clampedVolume <= 100) {
@@ -317,15 +254,11 @@ class PlayerViewModel @Inject constructor(
 
     fun isAdjustingFromSlider(): Boolean = isAdjustingFromSlider
 
-    // FIX #8: Set volume gain from external source
     fun setVolumeGain(gain: Float) {
         _volumeGain.value = gain
         setVolumeWithBoost((gain * 200).toInt(), fromSlider = true)
     }
 
-    // FIX #9: Sleep timer functions - delegate the actual counting to SleepTimerController
-    // (see its doc comment for why); this ViewModel only supplies the "what happens when it
-    // finishes" action, unchanged from before: pause playback, then close the app.
     fun startSleepTimer(totalDurationMillis: Long) {
         sleepTimerController.start(totalDurationMillis) {
             onUiEvents(UIEvents.PlayPause)
@@ -333,9 +266,6 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    // "End of song" is tracked live against actual playback (see SleepTimerController) instead
-    // of a duration snapshotted once at selection time, so seeking/skipping the track keeps it
-    // accurate instead of the app closing early/late relative to where the song actually ends.
     fun startEndOfSongSleepTimer() {
         sleepTimerController.startEndOfSong {
             onUiEvents(UIEvents.PlayPause)
@@ -348,9 +278,6 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        // Intentionally NOT cancelling the sleep timer here - it's owned by the
-        // process-lifetime SleepTimerController precisely so it keeps running when this
-        // ViewModel is cleared (e.g. navigating away from the Player screen).
         loudnessEnhancer?.release()
         super.onCleared()
     }

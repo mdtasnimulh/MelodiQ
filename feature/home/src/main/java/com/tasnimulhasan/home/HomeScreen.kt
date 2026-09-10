@@ -3,7 +3,6 @@ package com.tasnimulhasan.home
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Context.ACTIVITY_SERVICE
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -49,10 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.designsystem.theme.BlueDarker
 import com.tasnimulhasan.designsystem.theme.RobotoFontFamily
 import com.tasnimulhasan.entity.enums.SortType
@@ -168,11 +165,9 @@ internal fun SharedTransitionScope.HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             itemsIndexed(audioList) { index, item ->
-                viewModel.loadBitmapIfNeeded(context, index)
                 MusicCard(
                     modifier = modifier,
                     path = item.contentUri,
-                    bitmap = item.cover,
                     title = item.songTitle,
                     artist = item.artist,
                     album = item.album,
@@ -180,13 +175,10 @@ internal fun SharedTransitionScope.HomeScreen(
                     duration = item.duration,
                     songId = item.songId,
                     selectedId = currentSelectedAudio.songId,
-                    isPlaying = context.isServiceRunning(MelodiqPlayerService::class.java),
+                    isPlaying = viewModel.isPlaybackServiceRunning(),
                     isFavourite = isFavourite,
                     onMusicClicked = {
-                        if (!context.isServiceRunning(MelodiqPlayerService::class.java)) {
-                            val intent = Intent(context, MelodiqPlayerService::class.java)
-                            ContextCompat.startForegroundService(context, intent)
-                        }
+                        viewModel.ensurePlaybackServiceStarted()
                         if (currentSelectedAudio.songId != item.songId) {
                             viewModel.onUiEvents(UIEvents.SelectedAudioChange(index))
                         }

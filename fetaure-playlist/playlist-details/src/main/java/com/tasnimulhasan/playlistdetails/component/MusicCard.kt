@@ -1,6 +1,6 @@
 package com.tasnimulhasan.playlistdetails.component
 
-import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.combinedClickable
@@ -32,11 +32,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.theme.BlueDarker
 import com.tasnimulhasan.designsystem.theme.CardBlueMediumTextColor
 import com.tasnimulhasan.designsystem.theme.RobotoFontFamily
 import com.tasnimulhasan.designsystem.theme.WhiteOrange
+import com.tasnimulhasan.ui.image.AlbumArt
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.tasnimulhasan.designsystem.R as Res
@@ -45,7 +47,8 @@ import com.tasnimulhasan.designsystem.R as Res
 @Composable
 fun MusicCard(
     modifier: Modifier = Modifier,
-    bitmap: Bitmap?,
+    contentUri: Uri,
+    albumId: Long?,
     title: String,
     artist: String,
     duration: String,
@@ -81,7 +84,7 @@ fun MusicCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = bitmap,
+                model = AlbumArt(songId = songId, contentUri = contentUri, albumId = albumId ?: 0L),
                 contentDescription = "Cover art",
                 modifier = modifier
                     .width(100.dp)
@@ -164,7 +167,8 @@ fun convertLongToReadableDateTime(time: Long, format: String): String {
 fun MusicCardPreview() {
     SharedTransitionLayout {
         MusicCard(
-            bitmap = null,
+            contentUri = "".toUri(),
+            albumId = 0L,
             title = "Song df afdasdfadsf fasdf asdfasdf dasffsa Title",
             artist = "Artist Name",
             duration = "134654",

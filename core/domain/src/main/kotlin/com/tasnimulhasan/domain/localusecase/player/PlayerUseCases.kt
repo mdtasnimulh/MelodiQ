@@ -1,6 +1,7 @@
 package com.tasnimulhasan.domain.localusecase.player
 
 data class PlayerUseCases(
+    val loadPlaylist: LoadPlaylistUseCase,
     val play: PlayUseCase,
     val pause: PauseUseCase,
     val next: NextTrackUseCase,
@@ -13,6 +14,9 @@ data class PlayerUseCases(
     val updateProgress: UpdateProgressUseCase,
     val observeAudioState: ObserveAudioStateUseCase,
     val getCurrentSongInfoUseCase: GetCurrentSongInfoUseCase,
+    val getPlaybackSnapshot: GetPlaybackSnapshotUseCase,
+    val isPlaybackServiceRunning: IsPlaybackServiceRunningUseCase,
+    val ensurePlaybackServiceStarted: EnsurePlaybackServiceStartedUseCase,
     val repeatTrackOneUseCase: RepeatTrackOneUseCase,
     val repeatTrackAllUseCase: RepeatTrackAllUseCase,
     val repeatTrackOffUseCase: RepeatTrackOffUseCase

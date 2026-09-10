@@ -1,19 +1,13 @@
 package com.tasnimulhasan.playlistdetails
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.media.MediaMetadataRetriever
-import android.net.Uri
 import androidx.lifecycle.viewModelScope
-import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
+import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -21,15 +15,14 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PlaylistDetailsViewModel @Inject constructor(
-    context: Context,
     private val getAllMusicFromPlaylistUseCase: GetAllMusicFromPlaylistUseCase,
-    private val audioServiceHandler: MelodiqServiceHandler,
+    private val playerUseCases: PlayerUseCases,
 ) : BaseViewModel() {
 
     private val _uiEvent = Channel<UiEvent>()
     val uiEvent get() = _uiEvent.receiveAsFlow()
 
-    val action:(UiAction) -> Unit = {
+    val action: (UiAction) -> Unit = {
         when (it) {
             is UiAction.FetchMusicList -> getMusicList(it.params)
         }
@@ -46,22 +39,14 @@ class PlaylistDetailsViewModel @Inject constructor(
         }
     }
 
-    fun getAlbumArt(context: Context, uri: Uri): Bitmap? {
-        val mmr = MediaMetadataRetriever()
-        mmr.setDataSource(context, uri)
-        val data = mmr.embeddedPicture
-
-        return if (data != null) {
-            BitmapFactory.decodeByteArray(data, 0, data.size)
-        } else {
-            null
+    fun setMediaItems(musicList: List<MusicEntity>, sortType: SortType) {
+        viewModelScope.launch {
+            playerUseCases.loadPlaylist(musicList, sortType)
         }
     }
 
-    fun setMediaItems(musicList: List<MusicEntity>, sortType: SortType) {
-        audioServiceHandler.updateMediaItems(musicList, sortType)
-    }
-
+    fun isPlaybackServiceRunning(): Boolean = playerUseCases.isPlaybackServiceRunning()
+    fun ensurePlaybackServiceStarted() = playerUseCases.ensurePlaybackServiceStarted()
 }
 
 sealed interface UiEvent {

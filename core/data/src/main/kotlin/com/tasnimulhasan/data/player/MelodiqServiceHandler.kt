@@ -1,4 +1,4 @@
-package com.tasnimulhasan.common.service
+package com.tasnimulhasan.data.player
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -68,9 +68,7 @@ class MelodiqServiceHandler @Inject constructor(
         setMediaItemList(mediaItems)
     }
 
-    // FIX #1 & #5: Improved current track preservation
     fun updateMediaItemsWithCurrentTrack(audioList: List<MusicEntity>, sortType: SortType) {
-        // FIX #5: Update audioList FIRST to ensure consistency
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
 
@@ -87,20 +85,17 @@ class MelodiqServiceHandler @Inject constructor(
                 .build()
         }
 
-        // Preserve current playback state
         val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
         val currentPosition = exoPlayer.currentPosition
         val isPlaying = exoPlayer.isPlaying
 
-        // Find the new index of the current track
         val newIndex = if (currentUri != null) {
             mediaItems.indexOfFirst { it.localConfiguration?.uri == currentUri }
-                .takeIf { it >= 0 } ?: 0  // Default to 0 if not found
+                .takeIf { it >= 0 } ?: 0
         } else {
             0
         }
 
-        // Set media items with the new index and position
         exoPlayer.setMediaItems(mediaItems, newIndex, if (isPlaying) currentPosition else 0L)
         exoPlayer.prepare()
         if (isPlaying) {
@@ -110,9 +105,7 @@ class MelodiqServiceHandler @Inject constructor(
         _audioState.value = MelodiqAudioState.CurrentPlaying(newIndex)
     }
 
-    fun getCurrentDuration(): Long {
-        return exoPlayer.currentPosition
-    }
+    fun getCurrentDuration(): Long = exoPlayer.currentPosition
 
     fun onPlayerEvents(
         playerEvent: MelodiqPlayerEvent,
@@ -140,28 +133,17 @@ class MelodiqServiceHandler @Inject constructor(
             }
             MelodiqPlayerEvent.Stop -> stopProgressUpdate()
             is MelodiqPlayerEvent.UpdateProgress -> {
-                exoPlayer.seekTo(
-                    (exoPlayer.duration * playerEvent.newProgress).toLong()
-                )
+                exoPlayer.seekTo((exoPlayer.duration * playerEvent.newProgress).toLong())
             }
-            MelodiqPlayerEvent.RepeatTrackOne -> {
-                exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
-            }
-            MelodiqPlayerEvent.RepeatTrackALl -> {
-                exoPlayer.repeatMode = Player.REPEAT_MODE_ALL
-            }
-            MelodiqPlayerEvent.RepeatTrackOff -> {
-                exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
-            }
+            MelodiqPlayerEvent.RepeatTrackOne -> exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
+            MelodiqPlayerEvent.RepeatTrackALl -> exoPlayer.repeatMode = Player.REPEAT_MODE_ALL
+            MelodiqPlayerEvent.RepeatTrackOff -> exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
         }
     }
 
     fun getCurrentMediaItemIndex(): Int = exoPlayer.currentMediaItemIndex
-
     fun getDuration(): Long = exoPlayer.duration
-
     fun isPlaying(): Boolean = exoPlayer.isPlaying
-
     fun getMediaItemCount(): Int = exoPlayer.mediaItemCount
 
     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -176,9 +158,7 @@ class MelodiqServiceHandler @Inject constructor(
         _audioState.value = MelodiqAudioState.Playing(isPlaying = isPlaying)
         _audioState.value = MelodiqAudioState.CurrentPlaying(exoPlayer.currentMediaItemIndex)
         if (isPlaying) {
-            CoroutineScope(Dispatchers.Main).launch {
-                startProgressUpdate()
-            }
+            CoroutineScope(Dispatchers.Main).launch { startProgressUpdate() }
         } else {
             stopProgressUpdate()
         }
@@ -194,9 +174,7 @@ class MelodiqServiceHandler @Inject constructor(
             stopProgressUpdate()
         } else {
             exoPlayer.play()
-            _audioState.value = MelodiqAudioState.Playing(
-                isPlaying = true
-            )
+            _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
             startProgressUpdate()
         }
     }

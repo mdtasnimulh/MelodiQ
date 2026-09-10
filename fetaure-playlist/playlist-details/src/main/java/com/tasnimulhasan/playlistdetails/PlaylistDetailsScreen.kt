@@ -24,7 +24,6 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.tasnimulhasan.common.service.MelodiqPlayerService
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
@@ -76,6 +75,21 @@ internal fun PlaylistDetailsScreen(
         }
     }
 
+    val musicListForPlay = remember(musicList.value) {
+        musicList.value.map { item ->
+            MusicEntity(
+                contentUri = item.contentUri.toUri(),
+                songId = item.songId,
+                cover = null, // not needed for playback, no decode here
+                songTitle = item.songTitle,
+                artist = item.artist ?: "",
+                duration = item.duration,
+                album = item.album ?: "",
+                albumId = item.albumId ?: 0L
+            )
+        }
+    }
+
     ConstraintLayout(
         modifier = modifier
             .fillMaxSize()
@@ -103,33 +117,21 @@ internal fun PlaylistDetailsScreen(
                 .fillMaxSize(),
             state = listState
         ) {
-            val musicListForPlay = mutableListOf<MusicEntity>()
-            musicList.value.forEach { item ->
-                musicListForPlay.add(
-                    MusicEntity(
-                        contentUri = item.contentUri.toUri(),
-                        songId = item.songId,
-                        cover = viewModel.getAlbumArt(context, item.contentUri.toUri()),
-                        songTitle = item.songTitle,
-                        artist = item.artist ?: "",
-                        duration = item.duration,
-                        album = item.album ?: "",
-                        albumId = item.albumId ?: 0L
-                    )
-                )
-            }
+
             itemsIndexed(musicList.value) { index, item ->
                 MusicCard(
                     modifier = modifier,
-                    bitmap = viewModel.getAlbumArt(context, item.contentUri.toUri()),
+                    contentUri = item.contentUri.toUri(),
+                    albumId = item.albumId,
                     title = item.songTitle,
                     artist = item.artist ?: "",
                     duration = item.duration,
                     songId = item.songId,
                     selectedId = 0L,
-                    isPlaying = context.isServiceRunning(MelodiqPlayerService::class.java),
+                    isPlaying = viewModel.isPlaybackServiceRunning(),
                     isFavourite = false,
                     onMusicClicked = {
+                        viewModel.ensurePlaybackServiceStarted()
                         viewModel.setMediaItems(musicListForPlay, SortType.DATE_MODIFIED_DESC)
                         navigateToPlayer(item.songId.toString())
                     },

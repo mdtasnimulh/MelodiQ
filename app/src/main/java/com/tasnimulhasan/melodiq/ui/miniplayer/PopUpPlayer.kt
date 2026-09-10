@@ -1,6 +1,6 @@
 package com.tasnimulhasan.melodiq.ui.miniplayer
 
-import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,19 +35,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.core.net.toUri
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.theme.BlueDarker
 import com.tasnimulhasan.designsystem.theme.LightOrange
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
 import com.tasnimulhasan.melodiq.ui.components.MiniPlayerWaveProgressBar
+import com.tasnimulhasan.ui.image.AlbumArt
+import com.tasnimulhasan.ui.image.rememberPaletteThumbnail
 import kotlin.random.Random
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
 fun PopUpPlayer(
     modifier: Modifier = Modifier,
-    cover: Bitmap?,
+    songId: Long,
+    contentUri: Uri,
+    albumId: Long?,
     songTitle: String,
     progress: Float,
     onProgress: (Float) -> Unit,
@@ -61,8 +66,9 @@ fun PopUpPlayer(
     onSeekNextClick: () -> Unit,
     onImageClick: () -> Unit,
 ) {
-    val darkPaletteColor = remember(cover) {
-        cover?.let {
+    val paletteThumbnail = rememberPaletteThumbnail(songId, contentUri)
+    val darkPaletteColor = remember(paletteThumbnail) {
+        paletteThumbnail?.let {
             val palette = Palette.from(it).generate()
             palette.vibrantSwatch?.rgb
                 ?: palette.mutedSwatch?.rgb
@@ -96,7 +102,7 @@ fun PopUpPlayer(
                         start.linkTo(parent.start)
                     }
                     .clickable(onClick = onImageClick),
-                model = cover,
+                model = AlbumArt(songId = songId, contentUri = contentUri, albumId = albumId ?: 0L),
                 contentDescription = "Album cover",
                 contentScale = ContentScale.Crop,
                 placeholder = painterResource(Res.drawable.default_cover),
@@ -273,7 +279,9 @@ fun PreviewMiniPlayer2() {
     MelodiqTheme {
         PopUpPlayer(
             modifier = Modifier,
-            cover = null,
+            songId = 0L,
+            contentUri = "".toUri(),
+            albumId = 0L,
             songTitle = "Song Title Song Title Song Title Song Title Song Title",
             progress = 50f,
             onProgress = {},

@@ -1,4 +1,4 @@
-package com.tasnimulhasan.common.service
+package com.tasnimulhasan.data.player
 
 import android.content.Intent
 import android.media.audiofx.LoudnessEnhancer
@@ -27,8 +27,7 @@ class MelodiqPlayerService : MediaSessionService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
-        mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
 
     override fun onDestroy() {
         mediaSession.release()

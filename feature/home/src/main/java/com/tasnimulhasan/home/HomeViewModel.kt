@@ -1,15 +1,7 @@
 package com.tasnimulhasan.home
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.media.MediaMetadataRetriever
-import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
-import com.tasnimulhasan.common.service.MelodiqAudioState
-import com.tasnimulhasan.common.service.MelodiqPlayerEvent
-import com.tasnimulhasan.common.service.MelodiqServiceHandler
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
@@ -22,14 +14,13 @@ import com.tasnimulhasan.domain.localusecase.playlists.GetAllPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.SearchPlaylistByNameUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.UpdatePlaylistUseCase
+import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,7 +36,6 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
-    private val audioServiceHandler: MelodiqServiceHandler,
     private val setSortTypeUseCase: SetSortTypeUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val getAllPlaylistUseCase: GetAllPlaylistUseCase,
@@ -66,7 +56,6 @@ class HomeViewModel @Inject constructor(
 
     var initializedList = MutableStateFlow(false)
 
-    // FIX #2: Use audioServiceHandler as source of truth for sort type
     private val _sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
@@ -85,7 +74,7 @@ class HomeViewModel @Inject constructor(
     private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
     val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
 
-    private val _audioList = MutableStateFlow(audioServiceHandler.audioList.value)
+    private val _audioList = MutableStateFlow<List<MusicEntity>>(emptyList())
     val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
 
     private val _uIState: MutableStateFlow<UIState> = MutableStateFlow(UIState.Initial)
@@ -94,17 +83,13 @@ class HomeViewModel @Inject constructor(
     private val _uiEvent = Channel<UiEvent>()
     val uiEvent get() = _uiEvent.receiveAsFlow()
 
-    // FIX #4: Favorites tracking
     private val _favorites = MutableStateFlow<Set<Long>>(emptySet())
     val favorites: StateFlow<Set<Long>> = _favorites.asStateFlow()
 
-    val action:(UiAction) -> Unit = {
+    val action: (UiAction) -> Unit = {
         when (it) {
             is UiAction.FetchAllPlaylists -> fetchAllPlaylists()
-            is UiAction.AddMusicToPlaylist -> addMusicToPlaylist(
-                playlistId = it.playlistId,
-                music = it.music
-            )
+            is UiAction.AddMusicToPlaylist -> addMusicToPlaylist(playlistId = it.playlistId, music = it.music)
             is UiAction.ToggleFavorite -> toggleFavorite(it.songId)
         }
     }
@@ -112,84 +97,54 @@ class HomeViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             getSortTypeUseCase().collectLatest { persistedSortType ->
-                audioServiceHandler.sortType.value = persistedSortType
                 _sortType.value = persistedSortType
 
                 val sorted = fetchMusicUseCase(persistedSortType)
-                // FIX #1: Ensure consistent state across both screens
-                audioServiceHandler.updateMediaItemsWithCurrentTrack(sorted, persistedSortType)
-                _audioList.value = audioServiceHandler.audioList.value.toList()
-                _uIState.value = UIState.MusicList(_audioList.value)
+                _audioList.value = sorted
+                _uIState.value = UIState.MusicList(sorted)
+
+                playerUseCases.loadPlaylist(sorted, persistedSortType)
                 restorePlaybackState()
             }
         }
 
         viewModelScope.launch {
-            audioServiceHandler.audioState.collectLatest { mediaState ->
+            playerUseCases.observeAudioState().collectLatest { mediaState ->
                 when (mediaState) {
-                    MelodiqAudioState.Initial -> _uIState.value = UIState.Initial
-                    is MelodiqAudioState.Buffering -> calculateProgressValue(mediaState.progress)
-                    is MelodiqAudioState.Playing -> _isPlaying.value = mediaState.isPlaying
-                    is MelodiqAudioState.Progress -> calculateProgressValue(mediaState.progress)
-                    is MelodiqAudioState.CurrentPlaying -> {
-                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.mediaItemIndex) ?: dummyAudio
+                    PlaybackState.Idle -> _uIState.value = UIState.Initial
+                    is PlaybackState.Buffering -> calculateProgressValue(mediaState.position)
+                    is PlaybackState.Playing -> _isPlaying.value = mediaState.isPlaying
+                    is PlaybackState.Progress -> calculateProgressValue(mediaState.position)
+                    is PlaybackState.TrackChanged -> {
+                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.index) ?: dummyAudio
                     }
-                    is MelodiqAudioState.Ready -> {
+                    is PlaybackState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
-                        calculateProgressValue(audioServiceHandler.getCurrentDuration())
+                        calculateProgressValue(playerUseCases.getPlaybackSnapshot().position)
                     }
                 }
             }
         }
     }
 
-    private fun restorePlaybackState() {
-        _currentSelectedAudio.value = _audioList.value.getOrNull(
-            audioServiceHandler.getCurrentMediaItemIndex()
-        ) ?: dummyAudio
-        _duration.value = audioServiceHandler.getDuration()
-        calculateProgressValue(audioServiceHandler.getCurrentDuration())
-        _isPlaying.value = audioServiceHandler.isPlaying()
+    private suspend fun restorePlaybackState() {
+        val snapshot = playerUseCases.getPlaybackSnapshot()
+        _currentSelectedAudio.value = _audioList.value.getOrNull(snapshot.currentIndex) ?: dummyAudio
+        _duration.value = snapshot.duration
+        calculateProgressValue(snapshot.position)
+        _isPlaying.value = snapshot.isPlaying
     }
 
     fun setSortType(type: SortType) {
         viewModelScope.launch {
-            audioServiceHandler.sortType.value = type
             _sortType.value = type
             setSortTypeUseCase(type)
             val sortedList = fetchMusicUseCase(type)
-            // FIX #1: Maintain current track through sort change
-            audioServiceHandler.updateMediaItemsWithCurrentTrack(sortedList, type)
-            _audioList.value = audioServiceHandler.audioList.value.toList()
-            _uIState.value = UIState.MusicList(_audioList.value)
+            _audioList.value = sortedList
+            _uIState.value = UIState.MusicList(sortedList)
+            playerUseCases.loadPlaylist(sortedList, type)
             initializedList.value = true
-        }
-    }
-
-    // FIX #7: Centralize bitmap loading
-    fun loadBitmapIfNeeded(context: Context, index: Int) {
-        if (_audioList.value[index].cover != null) return
-        viewModelScope.launch(Dispatchers.Default) {
-            val bitmap = getAlbumArt(context, _audioList.value[index].contentUri)
-            val updatedList = _audioList.value.toMutableList().apply {
-                this[index] = this[index].copy(cover = bitmap)
-            }
-            _audioList.value = updatedList
-            // Share with audioServiceHandler
-            audioServiceHandler.audioList.value = updatedList
-        }
-    }
-
-    private fun getAlbumArt(context: Context, uri: Uri): Bitmap? {
-        val mmr = MediaMetadataRetriever()
-        mmr.setDataSource(context, uri)
-        val data = mmr.embeddedPicture
-
-        return if (data != null) {
-            BitmapFactory.decodeByteArray(data, 0, data.size)
-        } else {
-            null
         }
     }
 
@@ -198,25 +153,15 @@ class HomeViewModel @Inject constructor(
             is UIEvents.Backward -> playerUseCases.backwardTrackUseCase()
             is UIEvents.Forward -> playerUseCases.forwardTrackUseCase()
             is UIEvents.PlayPause -> {
-                if (_isPlaying.value) playerUseCases.pause()
-                else playerUseCases.play()
+                if (_isPlaying.value) playerUseCases.pause() else playerUseCases.play()
             }
             is UIEvents.SeekTo -> {
                 val position = ((_duration.value * uiEvents.position) / 100f).toLong()
                 playerUseCases.seekTo(position)
             }
             UIEvents.SeekToNext -> playerUseCases.next()
-            is UIEvents.SelectedAudioChange -> {
-                audioServiceHandler.onPlayerEvents(
-                    MelodiqPlayerEvent.SelectAudioChange,
-                    selectedAudionIndex = uiEvents.index
-                )
-            }
-            is UIEvents.UpdateProgress -> {
-                audioServiceHandler.onPlayerEvents(
-                    MelodiqPlayerEvent.UpdateProgress(uiEvents.newProgress)
-                )
-            }
+            is UIEvents.SelectedAudioChange -> playerUseCases.selectAudioChange(uiEvents.index)
+            is UIEvents.UpdateProgress -> playerUseCases.updateProgress(uiEvents.newProgress)
             UIEvents.SeekToPrevious -> playerUseCases.previous()
         }
     }
@@ -239,17 +184,15 @@ class HomeViewModel @Inject constructor(
         return df.format(time)
     }
 
-    fun sortTypeToDisplayString(sortType: SortType): String {
-        return when (sortType) {
-            SortType.DATE_MODIFIED_ASC -> "Date Modified (ASC)"
-            SortType.DATE_MODIFIED_DESC -> "Date Modified (DESC)"
-            SortType.NAME_ASC -> "Name (ASC)"
-            SortType.NAME_DESC -> "Name (DESC)"
-            SortType.ARTIST_ASC -> "Artist (ASC)"
-            SortType.ARTIST_DESC -> "Artist (DESC)"
-            SortType.DURATION_ASC -> "Duration (ASC)"
-            SortType.DURATION_DESC -> "Duration (DESC)"
-        }
+    fun sortTypeToDisplayString(sortType: SortType): String = when (sortType) {
+        SortType.DATE_MODIFIED_ASC -> "Date Modified (ASC)"
+        SortType.DATE_MODIFIED_DESC -> "Date Modified (DESC)"
+        SortType.NAME_ASC -> "Name (ASC)"
+        SortType.NAME_DESC -> "Name (DESC)"
+        SortType.ARTIST_ASC -> "Artist (ASC)"
+        SortType.ARTIST_DESC -> "Artist (DESC)"
+        SortType.DURATION_ASC -> "Duration (ASC)"
+        SortType.DURATION_DESC -> "Duration (DESC)"
     }
 
     private fun fetchAllPlaylists() {
@@ -276,26 +219,19 @@ class HomeViewModel @Inject constructor(
                 album = music.album,
                 albumId = music.albumId
             )
-
-            insertMusicToPlaylist(
-                params = InsertMusicToPlaylistUseCase.Params(details)
-            )
+            insertMusicToPlaylist(params = InsertMusicToPlaylistUseCase.Params(details))
             _uiEvent.send(UiEvent.ShowToast("Added to playlist"))
         }
     }
 
-    // FIX #4: Add favorite toggle functionality
     fun toggleFavorite(songId: Long) {
         viewModelScope.launch {
             val current = _favorites.value
-            _favorites.value = if (current.contains(songId)) {
-                current - songId
-            } else {
-                current + songId
-            }
-            // TODO: Persist to database if needed
+            _favorites.value = if (current.contains(songId)) current - songId else current + songId
         }
     }
+    fun isPlaybackServiceRunning(): Boolean = playerUseCases.isPlaybackServiceRunning()
+    fun ensurePlaybackServiceStarted() = playerUseCases.ensurePlaybackServiceStarted()
 }
 
 sealed class UIEvents {
@@ -324,9 +260,6 @@ sealed interface UiEvent {
 
 sealed interface UiAction {
     data object FetchAllPlaylists : UiAction
-    data class AddMusicToPlaylist(
-        val playlistId: Int,
-        val music: MusicEntity
-    ) : UiAction
+    data class AddMusicToPlaylist(val playlistId: Int, val music: MusicEntity) : UiAction
     data class ToggleFavorite(val songId: Long) : UiAction
 }

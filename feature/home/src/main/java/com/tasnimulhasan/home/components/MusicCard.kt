@@ -44,13 +44,14 @@ import com.tasnimulhasan.designsystem.theme.WhiteOrange
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.tasnimulhasan.designsystem.R as Res
+import androidx.core.net.toUri
+import com.tasnimulhasan.ui.image.AlbumArt
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun SharedTransitionScope.MusicCard(
     modifier: Modifier = Modifier,
     path: Uri,
-    bitmap: Bitmap?,
     title: String,
     artist: String,
     album: String?,
@@ -89,11 +90,15 @@ fun SharedTransitionScope.MusicCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val albumArtUri = ContentUris.withAppendedId(
-                Uri.parse("content://media/external/audio/albumart"),
+                "content://media/external/audio/albumart".toUri(),
                 albumId ?: 0L
             )
             AsyncImage(
-                model = bitmap, // if use bitmap here then image loading and scrolling become laggy, need more optimization if use albumarturi then ok
+                model = AlbumArt(
+                    songId = songId,
+                    contentUri = path,
+                    albumId = albumId ?: 0L,
+                ),
                 contentDescription = "Cover art",
                 modifier = modifier
                     .sharedBounds(
@@ -184,7 +189,6 @@ fun convertLongToReadableDateTime(time: Long, format: String): String {
 fun MusicCardPreview() {
     SharedTransitionLayout {
         MusicCard(
-            bitmap = null,
             title = "Song df afdasdfadsf fasdf asdfasdf dasffsa Title",
             artist = "Artist Name",
             duration = "134654",
