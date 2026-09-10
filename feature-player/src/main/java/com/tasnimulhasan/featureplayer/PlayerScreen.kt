@@ -114,7 +114,6 @@ internal fun SharedTransitionScope.PlayerScreen(
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
-    val trackDurationMillis by viewModel.duration.collectAsStateWithLifecycle()
 
     LaunchedEffect(sortType) {
         viewModel.initializeListIfNeeded()
@@ -188,13 +187,8 @@ internal fun SharedTransitionScope.PlayerScreen(
         } ?: PeaceOrange.toArgb()
     }
 
-    // Pure calculation only - starting/stopping the actual countdown now happens in the
-    // ViewModel (delegated to SleepTimerController) so it survives this screen's lifecycle.
     fun resolveSleepTimerMillis(option: SleepTimerOption): Long = when (option) {
-        SleepTimerOption.END_OF_SONG -> {
-            val elapsedMillis = (trackDurationMillis * (progress / 100f)).toLong()
-            (trackDurationMillis - elapsedMillis).coerceAtLeast(0L)
-        }
+        SleepTimerOption.END_OF_SONG -> 0L
         SleepTimerOption.MIN_5 -> TimeUnit.MINUTES.toMillis(5)
         SleepTimerOption.MIN_10 -> TimeUnit.MINUTES.toMillis(10)
         SleepTimerOption.MIN_15 -> TimeUnit.MINUTES.toMillis(15)
@@ -504,8 +498,6 @@ internal fun SharedTransitionScope.PlayerScreen(
                     sleepTimerRemainingMillis = sleepTimerRemainingMillis
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
                 if (showBottomSheet.value) {
                     SleepTimerBottomSheet(
                         onDismiss = { showBottomSheet.value = false },
@@ -513,7 +505,11 @@ internal fun SharedTransitionScope.PlayerScreen(
                         remainingTimeMillis = sleepTimerRemainingMillis,
                         accentColor = Color(darkPaletteColor),
                         onOptionSelected = { option ->
-                            viewModel.startSleepTimer(resolveSleepTimerMillis(option))
+                            if (option == SleepTimerOption.END_OF_SONG) {
+                                viewModel.startEndOfSongSleepTimer()
+                            } else {
+                                viewModel.startSleepTimer(resolveSleepTimerMillis(option))
+                            }
                         },
                         onCustomTimeSet = { h, m, s ->
                             viewModel.startSleepTimer((h * 3600L + m * 60L + s) * 1000L)

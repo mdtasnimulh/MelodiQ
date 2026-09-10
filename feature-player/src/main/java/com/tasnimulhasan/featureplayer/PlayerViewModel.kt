@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -217,7 +218,7 @@ class PlayerViewModel @Inject constructor(
                 isSeekingFromSlider = true
                 val position = ((_duration.value * uiEvents.position) / 100f).toLong()
                 playerUseCases.seekTo(position)
-                delay(50)
+                delay(50.milliseconds)
                 isSeekingFromSlider = false
             }
             UIEvents.SeekToNext -> playerUseCases.next()
@@ -302,7 +303,7 @@ class PlayerViewModel @Inject constructor(
 
         if (fromSlider) {
             viewModelScope.launch {
-                delay(200)
+                delay(200.milliseconds)
                 isAdjustingFromSlider = false
             }
         }
@@ -327,6 +328,16 @@ class PlayerViewModel @Inject constructor(
     // finishes" action, unchanged from before: pause playback, then close the app.
     fun startSleepTimer(totalDurationMillis: Long) {
         sleepTimerController.start(totalDurationMillis) {
+            onUiEvents(UIEvents.PlayPause)
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
+    }
+
+    // "End of song" is tracked live against actual playback (see SleepTimerController) instead
+    // of a duration snapshotted once at selection time, so seeking/skipping the track keeps it
+    // accurate instead of the app closing early/late relative to where the song actually ends.
+    fun startEndOfSongSleepTimer() {
+        sleepTimerController.startEndOfSong {
             onUiEvents(UIEvents.PlayPause)
             android.os.Process.killProcess(android.os.Process.myPid())
         }
