@@ -7,23 +7,22 @@ import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.kotlin.dsl.assign
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.provideDelegate
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinBaseExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
-import org.jetbrains.kotlin.gradle.dsl.KotlinTopLevelExtension
 
 internal fun Project.configureKotlinAndroid(
-    commonExtension: CommonExtension<*, *, *, *, *, *>,
+    commonExtension: CommonExtension,
 ) {
     commonExtension.apply {
-        compileSdk = 36
+        compileSdk = 37
 
-        defaultConfig {
+        defaultConfig.apply {
             minSdk = 30
         }
 
-        compileOptions {
+        compileOptions.apply {
             sourceCompatibility = JavaVersion.VERSION_11
             targetCompatibility = JavaVersion.VERSION_11
             isCoreLibraryDesugaringEnabled = true
@@ -33,7 +32,7 @@ internal fun Project.configureKotlinAndroid(
     configureKotlin<KotlinAndroidProjectExtension>()
 
     dependencies {
-        add("coreLibraryDesugaring", libs.findLibrary("android.desugarJdkLibs").get())
+        "coreLibraryDesugaring"(libs.findLibrary("android.desugarJdkLibs").get())
     }
 }
 
@@ -46,17 +45,22 @@ internal fun Project.configureKotlinJvm() {
     configureKotlin<KotlinJvmProjectExtension>()
 }
 
-private inline fun <reified T : KotlinTopLevelExtension> Project.configureKotlin() = configure<T> {
-    val warningsAsErrors: String? by project
+private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() = configure<T> {
+    val warningsAsErrors = providers.gradleProperty("warningsAsErrors").map {
+        it.toBoolean()
+    }.orElse(false)
     when (this) {
         is KotlinAndroidProjectExtension -> compilerOptions
         is KotlinJvmProjectExtension -> compilerOptions
         else -> TODO("Unsupported project extension $this ${T::class}")
     }.apply {
         jvmTarget = JvmTarget.JVM_11
-        allWarningsAsErrors = warningsAsErrors.toBoolean()
+        allWarningsAsErrors = warningsAsErrors
         freeCompilerArgs.add(
             "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+        )
+        freeCompilerArgs.add(
+            "-Xconsistent-data-class-copy-visibility",
         )
     }
 }

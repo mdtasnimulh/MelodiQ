@@ -16,6 +16,8 @@ object AppConstants {
     const val ACTION_NEXT = "next"
     const val PLAYLISTS_TABLE_NAME = "melodiq_playlist_table"
 
+    const val EXTRA_OPEN_PLAYER = "com.tasnimulhasan.melodiq.EXTRA_OPEN_PLAYER"
+
     const val PRESET_CUSTOM = 0
     const val PRESET_FLAT = 1
     const val PRESET_ACOUSTIC = 2

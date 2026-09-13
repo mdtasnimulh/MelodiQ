@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.preferencesOf
+import androidx.datastore.preferences.core.longPreferencesKey
+import com.tasnimulhasan.entity.player.LastPlayedTrack
+import kotlinx.coroutines.flow.first
 import com.google.gson.Gson
 import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
 import com.tasnimulhasan.entity.AppConfiguration
@@ -86,9 +88,32 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
         }
     }
 
+    override suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long) {
+        tryIt {
+            dataStorePreferences.edit { preferences ->
+                preferences[PreferencesKeys.lastPlayedSongId] = songId
+                preferences[PreferencesKeys.lastPlayedPositionMs] = positionMs
+            }
+        }
+    }
+
+    override suspend fun getLastPlayedTrack(): LastPlayedTrack? {
+        return try {
+            val preferences = dataStorePreferences.data.first()
+            val songId = preferences[PreferencesKeys.lastPlayedSongId] ?: return null
+            val position = preferences[PreferencesKeys.lastPlayedPositionMs] ?: 0L
+            LastPlayedTrack(songId = songId, positionMs = position)
+        } catch (exception: Exception) {
+            exception.localizedMessage?.let { Log.e(tag, it) }
+            null
+        }
+    }
+
     private object PreferencesKeys {
         val eqType = stringPreferencesKey(name = "eq_type")
         val enableEqualizer = booleanPreferencesKey(name = "enable_equalizer")
         val sortType = stringPreferencesKey("sort_type")
+        val lastPlayedSongId = longPreferencesKey("last_played_song_id")
+        val lastPlayedPositionMs = longPreferencesKey("last_played_position_ms")
     }
 }

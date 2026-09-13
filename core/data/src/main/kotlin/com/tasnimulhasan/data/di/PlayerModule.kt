@@ -1,6 +1,8 @@
 package com.tasnimulhasan.data.di
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -8,6 +10,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaSession
+import com.tasnimulhasan.common.constant.AppConstants
 import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.data.player.MelodiqServiceHandler
 import dagger.Module
@@ -45,7 +48,25 @@ object PlayerModule {
     fun provideMediaSession(
         @ApplicationContext context: Context,
         player: ExoPlayer,
-    ): MediaSession = MediaSession.Builder(context, player).build()
+    ): MediaSession {
+        val sessionActivityIntent = context.packageManager
+            .getLaunchIntentForPackage(context.packageName)
+            ?.apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(AppConstants.EXTRA_OPEN_PLAYER, true)
+            }
+        val sessionActivityPendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            sessionActivityIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return MediaSession.Builder(context, player)
+            .setSessionActivity(sessionActivityPendingIntent)
+            .build()
+    }
 
     @Provides
     @Singleton

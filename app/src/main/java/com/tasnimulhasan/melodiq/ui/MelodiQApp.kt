@@ -30,7 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,6 +85,8 @@ import com.tasnimulhasan.designsystem.R as Res
 fun MelodiQApp(
     appState: MelodiQAppState,
     modifier: Modifier = Modifier,
+    openPlayerRequested: Boolean = false,
+    onOpenPlayerHandled: () -> Unit = {},
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
@@ -91,6 +95,8 @@ fun MelodiQApp(
         appState = appState,
         modifier = modifier,
         onTopAppBarActionClick = { showSettingsDialog = true },
+        openPlayerRequested = openPlayerRequested,
+        onOpenPlayerHandled = onOpenPlayerHandled,
         windowAdaptiveInfo = windowAdaptiveInfo,
     )
 }
@@ -101,8 +107,10 @@ internal fun MmApp(
     appState: MelodiQAppState,
     modifier: Modifier = Modifier,
     onTopAppBarActionClick: () -> Unit,
+    openPlayerRequested: Boolean = false,
+    onOpenPlayerHandled: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel(),
-    windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
+    windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfoV2(),
 ) {
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
@@ -157,6 +165,13 @@ internal fun MmApp(
     )
     BackHandler(enabled = customDrawerState.isOpened()) {
         customDrawerState = CustomDrawerState.Closed
+    }
+
+    LaunchedEffect(openPlayerRequested, currentSelectedAudio.songId) {
+        if (openPlayerRequested && currentSelectedAudio.songId != 0L) {
+            appState.navigateToPlayer(currentSelectedAudio.songId.toString())
+            onOpenPlayerHandled()
+        }
     }
 
     Box(

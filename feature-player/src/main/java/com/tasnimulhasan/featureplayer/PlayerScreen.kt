@@ -147,8 +147,9 @@ internal fun SharedTransitionScope.PlayerScreen(
     LaunchedEffect(initialPageIndex) {
         if (initialPageIndex >= 0) {
             pagerState.scrollToPage(initialPageIndex)
-            viewModel.onUiEvents(UIEvents.SelectedAudioChange(initialPageIndex))
-            viewModel.onUiEvents(UIEvents.PlayPause)
+            if (currentSelectedAudio.songId.toString() != musicId) {
+                viewModel.onUiEvents(UIEvents.SelectedAudioChange(initialPageIndex))
+            }
         }
     }
 

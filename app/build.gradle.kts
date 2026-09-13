@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.melodiq.android.hilt)
     alias(libs.plugins.kotlin.serialization)
     id("kotlin-parcelize")
+    alias(libs.plugins.compose)
 }
 
 android {
@@ -41,6 +42,7 @@ android {
         }
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             applicationIdSuffix = MelodiqBuildType.RELEASE.applicationIdSuffix
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.named("debug").get()
@@ -54,9 +56,6 @@ android {
         getByName("main") {
             java.srcDir("src/main/kotlin")
         }
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
     }
     packaging {
         resources {
@@ -127,7 +126,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.coil.kt.compose)
     implementation(libs.androidx.constraintlayout.compose)
-    implementation(libs.glide.compose)
     implementation(libs.androidx.palette.compose)
 
     ksp(libs.hilt.compiler)

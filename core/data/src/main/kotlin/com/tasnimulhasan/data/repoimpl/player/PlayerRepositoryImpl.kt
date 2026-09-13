@@ -8,11 +8,11 @@ import com.tasnimulhasan.data.player.MelodiqAudioState
 import com.tasnimulhasan.data.player.MelodiqPlayerEvent
 import com.tasnimulhasan.data.player.MelodiqPlayerService
 import com.tasnimulhasan.data.player.MelodiqServiceHandler
-import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.player.PlaybackSnapshot
 import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.domain.repository.PlayerRepository
+import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,26 +30,57 @@ import javax.inject.Singleton
 class PlayerRepositoryImpl @Inject constructor(
     private val serviceHandler: MelodiqServiceHandler,
     private val fetchMusicUseCase: FetchMusicUseCase,
-    private val getSortTypeUseCase: GetSortTypeUseCase,
+    private val preferencesDataStoreRepository: PreferencesDataStoreRepository,
     @ApplicationContext private val context: Context,
 ) : PlayerRepository {
 
-    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val _playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
     private val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    private var progressTickCount = 0
+
     init {
         repositoryScope.launch {
-            serviceHandler.audioState.collect { _playbackState.value = it.toDomain() }
+            serviceHandler.audioState.collect { state ->
+                _playbackState.value = state.toDomain()
+                when (state) {
+                    is MelodiqAudioState.Progress -> {
+                        // Throttle disk writes to ~every 5s while playing (10 ticks * 500ms),
+                        // so a hard process kill mid-song still resumes close to where it left off.
+                        progressTickCount++
+                        if (progressTickCount % 10 == 0) persistCurrentPlaybackPosition()
+                    }
+                    is MelodiqAudioState.Playing -> if (!state.isPlaying) persistCurrentPlaybackPosition()
+                    is MelodiqAudioState.CurrentPlaying -> persistCurrentPlaybackPosition()
+                    else -> Unit
+                }
+            }
         }
     }
 
+    private suspend fun persistCurrentPlaybackPosition() {
+        val songId = serviceHandler.audioList.value
+            .getOrNull(serviceHandler.getCurrentMediaItemIndex())?.songId ?: return
+        preferencesDataStoreRepository.saveLastPlayedTrack(songId, serviceHandler.getCurrentDuration())
+    }
+
     override suspend fun loadPlaylist(musicList: List<MusicEntity>, sortType: SortType, keepCurrentTrack: Boolean) {
-        if (keepCurrentTrack) {
-            serviceHandler.updateMediaItemsWithCurrentTrack(musicList, sortType)
-        } else {
+        if (!keepCurrentTrack) {
             serviceHandler.updateMediaItems(musicList, sortType)
+            return
+        }
+        if (serviceHandler.getMediaItemCount() == 0) {
+            val lastPlayed = preferencesDataStoreRepository.getLastPlayedTrack()
+            serviceHandler.updateMediaItemsWithCurrentTrack(
+                audioList = musicList,
+                sortType = sortType,
+                restoreSongId = lastPlayed?.songId,
+                restorePositionMs = lastPlayed?.positionMs ?: 0L,
+            )
+        } else {
+            serviceHandler.updateMediaItemsWithCurrentTrack(musicList, sortType)
         }
     }
 

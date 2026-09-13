@@ -68,7 +68,12 @@ class MelodiqServiceHandler @Inject constructor(
         setMediaItemList(mediaItems)
     }
 
-    fun updateMediaItemsWithCurrentTrack(audioList: List<MusicEntity>, sortType: SortType) {
+    fun updateMediaItemsWithCurrentTrack(
+        audioList: List<MusicEntity>,
+        sortType: SortType,
+        restoreSongId: Long? = null,
+        restorePositionMs: Long = 0L,
+    ) {
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
 
@@ -89,14 +94,30 @@ class MelodiqServiceHandler @Inject constructor(
         val currentPosition = exoPlayer.currentPosition
         val isPlaying = exoPlayer.isPlaying
 
-        val newIndex = if (currentUri != null) {
-            mediaItems.indexOfFirst { it.localConfiguration?.uri == currentUri }
-                .takeIf { it >= 0 } ?: 0
-        } else {
-            0
+        val newIndex: Int
+        val seekPositionMs: Long
+        when {
+            currentUri != null -> {
+                // Already have something loaded (navigating between screens) - keep it
+                // exactly where it is. Unchanged from before.
+                newIndex = mediaItems.indexOfFirst { it.localConfiguration?.uri == currentUri }
+                    .takeIf { it >= 0 } ?: 0
+                seekPositionMs = currentPosition
+            }
+            restoreSongId != null -> {
+                // True cold start (fresh ExoPlayer, nothing loaded this process) - resume
+                // from the last persisted track/position instead of defaulting to 0/0.
+                val restoreIndex = audioList.indexOfFirst { it.songId == restoreSongId }
+                newIndex = restoreIndex.takeIf { it >= 0 } ?: 0
+                seekPositionMs = if (restoreIndex >= 0) restorePositionMs else 0L
+            }
+            else -> {
+                newIndex = 0
+                seekPositionMs = 0L
+            }
         }
 
-        exoPlayer.setMediaItems(mediaItems, newIndex, if (isPlaying) currentPosition else 0L)
+        exoPlayer.setMediaItems(mediaItems, newIndex, seekPositionMs)
         exoPlayer.prepare()
         if (isPlaying) {
             exoPlayer.playWhenReady = true
