@@ -38,7 +38,6 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.core.net.toUri
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
-import com.tasnimulhasan.designsystem.theme.BlueDarker
 import com.tasnimulhasan.designsystem.theme.LightOrange
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
 import com.tasnimulhasan.melodiq.ui.components.MiniPlayerWaveProgressBar
@@ -121,7 +120,7 @@ fun PopUpPlayer(
                     .basicMarquee(),
                 text = songTitle,
                 style = TextStyle(
-                    color = BlueDarker,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium,
                     fontSize = 14.sp,
                     platformStyle = PlatformTextStyle(
@@ -142,7 +141,7 @@ fun PopUpPlayer(
                     },
                 text = progressString,
                 style = TextStyle(
-                    color = BlueDarker,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium,
                     fontSize = 12.sp,
                     platformStyle = PlatformTextStyle(

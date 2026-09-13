@@ -21,6 +21,7 @@ import javax.inject.Inject
 import com.tasnimulhasan.common.constant.AppConstants.FLAT
 import com.tasnimulhasan.common.constant.AppConstants.PRESET_FLAT
 import com.tasnimulhasan.entity.enums.SortType
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class PreferencesDataStoreRepoImpl @Inject constructor(
     private val gson: Gson,
@@ -72,6 +73,7 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
             val enableEqualizer = preferences[PreferencesKeys.enableEqualizer] ?: false
             AppConfiguration(audioEffects = audioEffects, enableEqualizer = enableEqualizer)
         }
+        .distinctUntilChanged()
 
     override suspend fun saveSortType(type: SortType) {
         tryIt {
@@ -82,11 +84,14 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
     }
 
     override fun getSortType(): Flow<SortType> {
-        return dataStorePreferences.data.map { preferences ->
-            val sortTypeName = preferences[PreferencesKeys.sortType]
-            SortType.entries.find { it.name == sortTypeName } ?: SortType.DATE_MODIFIED_DESC
-        }
+        return dataStorePreferences.data
+            .map { preferences ->
+                val sortTypeName = preferences[PreferencesKeys.sortType]
+                SortType.entries.find { it.name == sortTypeName } ?: SortType.DATE_MODIFIED_DESC
+            }
+            .distinctUntilChanged()
     }
+
 
     override suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long) {
         tryIt {

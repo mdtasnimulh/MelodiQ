@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import androidx.core.net.toUri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -32,10 +33,20 @@ class PlayerViewModel @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val getSortTypeUseCase: GetSortTypeUseCase,
-    private val exoPlayer: ExoPlayer, // volume-boost only; see setVolumeWithBoost
+    private val exoPlayer: ExoPlayer, // volume-boost only
     private val sleepTimerController: SleepTimerController,
+    savedStateHandle: SavedStateHandle,
     context: Context,
 ) : BaseViewModel() {
+
+    // The song this screen was navigated to for. Read once from the nav arg via
+    // SavedStateHandle (Navigation Compose populates this automatically for a type-safe
+    // route) - NOT from any Compose-observed ViewModel state, which is what made the old
+    // "is this already the current song" check in PlayerScreen racy: currentSelectedAudio
+    // starts as a dummy and only resolves asynchronously, so a Compose LaunchedEffect
+    // comparing against it could fire a real track-change for what was actually already
+    // the current, playing track.
+    private val targetSongId: Long = savedStateHandle.get<String>("musicId")?.toLongOrNull() ?: -1L
 
     private val dummyAudio = MusicEntity(
         contentUri = "".toUri(),
@@ -106,10 +117,23 @@ class PlayerViewModel @Inject constructor(
                 val sorted = fetchMusicUseCase(persistedSortType)
                 _audioList.value = sorted
                 _uIState.value = UIState.MusicList(sorted)
+
                 // Safe to call even if a playlist is already loaded (e.g. from HomeScreen) -
-                // it preserves the currently playing track/position, see
-                // MelodiqServiceHandler.updateMediaItemsWithCurrentTrack.
+                // it preserves the currently playing track/position.
                 playerUseCases.loadPlaylist(sorted, persistedSortType)
+
+                // Decide, against the LIVE player snapshot (not a Compose StateFlow that
+                // might still be a placeholder), whether the song this screen was opened
+                // for is something other than what's already loaded. Only switch tracks
+                // when it genuinely is a different song - never re-select the one already
+                // playing, which is what was causing the restart-from-0.
+                val snapshot = playerUseCases.getPlaybackSnapshot()
+                val targetIndex = sorted.indexOfFirst { it.songId == targetSongId }
+                val isAlreadyCurrent = targetIndex >= 0 && targetIndex == snapshot.currentIndex
+                if (targetIndex >= 0 && !isAlreadyCurrent) {
+                    playerUseCases.selectAudioChange(targetIndex)
+                }
+
                 restorePlaybackState()
             }
         }
@@ -207,9 +231,6 @@ class PlayerViewModel @Inject constructor(
         return df.format(time)
     }
 
-    // Volume boost stays wired directly to ExoPlayer/AudioManager - it's OS audio-routing
-    // control, not playback business logic, so it's a reasonable exception to the
-    // "ViewModels only talk to PlayerUseCases" rule.
     @androidx.annotation.OptIn(UnstableApi::class)
     fun setVolumeWithBoost(volumePercent: Int, fromSlider: Boolean = false) {
         isAdjustingFromSlider = fromSlider

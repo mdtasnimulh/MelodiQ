@@ -140,7 +140,7 @@ internal fun SharedTransitionScope.HomeScreen(
                         text = "Sort Type",
                         style = TextStyle(
                             fontSize = 11.sp,
-                            color = BlueDarker,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Normal,
                             fontFamily = RobotoFontFamily
                         )

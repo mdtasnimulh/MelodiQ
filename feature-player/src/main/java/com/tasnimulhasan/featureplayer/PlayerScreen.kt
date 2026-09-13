@@ -95,6 +95,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 import com.tasnimulhasan.designsystem.R as Res
+import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -127,48 +128,46 @@ internal fun SharedTransitionScope.PlayerScreen(
 
     val density = LocalDensity.current
     val maxDragDistance = with(density) { 500.dp.toPx() }
-    // Plain, non-animatable drag offset: it's mutated directly (no coroutine hop) on every
-    // pointer move, which is what keeps the swipe-to-dismiss gesture smooth. A short-lived
-    // Animatable was previously snapTo()'d from inside a freshly launched coroutine on every
-    // single drag delta, and that per-event coroutine launch + suspend hop is what caused the
-    // dragging lag; settling (spring back / dismiss) below still animates smoothly via `animate {}`.
     var offsetY by remember { mutableFloatStateOf(0f) }
     val thresholdFraction = 0.6f
 
     val showBottomSheet = remember { mutableStateOf(false) }
 
-    // Sleep timer: state now lives in the ViewModel (backed by a process-lifetime
-    // singleton), not local `remember` state, so it survives navigating away from and back
-    // to this screen instead of resetting. See SleepTimerController's doc comment.
     val sleepTimerRunning by viewModel.sleepTimerActive.collectAsStateWithLifecycle()
     val sleepTimerRemainingMillis by viewModel.sleepTimerRemainingMillis.collectAsStateWithLifecycle()
 
-    val initialPageIndex = audioList.indexOfFirst { it.songId.toString() == musicId }
-    LaunchedEffect(initialPageIndex) {
-        if (initialPageIndex >= 0) {
-            pagerState.scrollToPage(initialPageIndex)
-            if (currentSelectedAudio.songId.toString() != musicId) {
-                viewModel.onUiEvents(UIEvents.SelectedAudioChange(initialPageIndex))
-            }
+    // One-way sync, ViewModel -> Pager, guarded so the programmatic scroll it performs
+    // doesn't get misread by the effect below as a user swipe. The ViewModel is the single
+    // source of truth for "what track is current" - it already decided that atomically in
+    // its init (including for the initial navigation into this screen), so Compose's only
+    // job here is to reflect that position visually.
+    var isSyncingFromPlayer by remember { mutableStateOf(false) }
+
+    LaunchedEffect(currentSelectedAudio.songId, audioList) {
+        val targetIndex = audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
+        if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
+            isSyncingFromPlayer = true
+            pagerState.scrollToPage(targetIndex)
+            isSyncingFromPlayer = false
         }
     }
 
+    // Pager -> ViewModel, the other direction: only for an actual user swipe. Skipped
+    // entirely while isSyncingFromPlayer is true (i.e. the page change above caused this),
+    // and only fires when the settled page's song genuinely differs from what's already
+    // current - never re-announces the song that's already playing.
     LaunchedEffect(pagerState.currentPage) {
-        val currentPageIndex = pagerState.currentPage
-        viewModel.onUiEvents(UIEvents.SelectedAudioChange(currentPageIndex))
+        if (isSyncingFromPlayer) return@LaunchedEffect
+        val settledSongId = audioList.getOrNull(pagerState.currentPage)?.songId
+        if (settledSongId != null && settledSongId != currentSelectedAudio.songId) {
+            viewModel.onUiEvents(UIEvents.SelectedAudioChange(pagerState.currentPage))
+        }
     }
 
     val currentPage = pagerState.currentPage
     val currentMusic = audioList.getOrNull(currentPage)
 
-    LaunchedEffect(currentSelectedAudio) {
-        val currentIndex = audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
-        if (currentIndex >= 0 && currentIndex != pagerState.currentPage) {
-            pagerState.scrollToPage(currentIndex)
-        }
-    }
-
-    val paletteThumbnail = rememberPaletteThumbnail(
+    val paletteThumbnail = com.tasnimulhasan.ui.image.rememberPaletteThumbnail(
         songId = currentMusic?.songId ?: 0L,
         contentUri = currentMusic?.contentUri ?: android.net.Uri.EMPTY,
     )
@@ -353,10 +352,10 @@ internal fun SharedTransitionScope.PlayerScreen(
                             .fillMaxSize(),
                         model = AlbumArt(
                             songId = pageMusic?.songId ?: 0L,
-                            contentUri = pageMusic?.contentUri ?: Uri.EMPTY,
+                            contentUri = pageMusic?.contentUri ?: android.net.Uri.EMPTY,
                             albumId = pageMusic?.albumId ?: 0L,
                         ),
-                        contentDescription = context.getString(Res.string.desc_album_cover_art),
+                        contentDescription = stringResource(Res.string.desc_album_cover_art),
                         contentScale = ContentScale.FillBounds,
                         placeholder = painterResource(Res.drawable.default_cover),
                         error = painterResource(Res.drawable.default_cover)
@@ -379,7 +378,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                     text = currentTrack.songTitle,
                     maxLines = 1,
                     style = TextStyle(
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center,
@@ -395,7 +394,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                     text = currentTrack.artist,
                     maxLines = 1,
                     style = TextStyle(
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Normal,
                         textAlign = TextAlign.Center,
@@ -416,7 +415,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                     ),
                     textAlign = TextAlign.Center,
                     style = TextStyle(
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -580,7 +579,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                                     text = "Volume Booster",
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.Black,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.padding(bottom = 16.dp)
                                 )
 
@@ -595,7 +594,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                                 Text(
                                     text = "$volumePercent%",
                                     fontSize = 16.sp,
-                                    color = Color.DarkGray,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(bottom = 16.dp)
                                 )
 

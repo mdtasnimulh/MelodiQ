@@ -131,7 +131,7 @@ fun SharedTransitionScope.MusicCard(
                     text = title,
                     style = TextStyle(
                         fontSize = 14.sp,
-                        color = if (isSelected) WhiteOrange else BlueDarker,
+                        color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium,
                         fontFamily = RobotoFontFamily
                     ),
@@ -143,7 +143,7 @@ fun SharedTransitionScope.MusicCard(
                     text = artist,
                     style = TextStyle(
                         fontSize = 11.sp,
-                        color = if (isSelected) WhiteOrange else BlueDarker,
+                        color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Normal,
                         fontFamily = RobotoFontFamily
                     )
@@ -153,7 +153,7 @@ fun SharedTransitionScope.MusicCard(
                     text = convertLongToReadableDateTime(duration.toLong(), "mm:ss"),
                     style = TextStyle(
                         fontSize = 11.sp,
-                        color = if (isSelected) WhiteOrange else BlueDarker,
+                        color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Normal,
                         fontFamily = RobotoFontFamily
                     )
@@ -171,7 +171,7 @@ fun SharedTransitionScope.MusicCard(
                     modifier = Modifier,
                     imageVector = if (isFavourite) Icons.Default.Favorite else Icons.Filled.HeartBroken,
                     contentDescription = "Favourite Icon",
-                    tint = if (isFavourite) Color.Red else Color.Gray
+                    tint = if (isFavourite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
