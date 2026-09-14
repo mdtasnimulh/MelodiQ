@@ -14,6 +14,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,6 +25,7 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
@@ -48,6 +50,8 @@ internal fun PlaylistDetailsScreen(
     val isLoading = remember { mutableStateOf(false) }
     val isEmpty = remember { mutableStateOf(false) }
     val snackBarHostState = remember { SnackbarHostState() }
+    val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
@@ -118,7 +122,10 @@ internal fun PlaylistDetailsScreen(
             state = listState
         ) {
 
-            itemsIndexed(musicList.value) { index, item ->
+            itemsIndexed(
+                items = musicList.value,
+                key = { _, item -> item.songId }
+            ) { index, item ->
                 MusicCard(
                     modifier = modifier,
                     contentUri = item.contentUri.toUri(),
@@ -127,8 +134,8 @@ internal fun PlaylistDetailsScreen(
                     artist = item.artist ?: "",
                     duration = item.duration,
                     songId = item.songId,
-                    selectedId = 0L,
-                    isPlaying = viewModel.isPlaybackServiceRunning(),
+                    selectedId = currentSelectedAudio?.songId ?: 0L,
+                    isPlaying = isPlaying,
                     isFavourite = false,
                     onMusicClicked = {
                         viewModel.ensurePlaybackServiceStarted()

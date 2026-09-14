@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
-import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicListToPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
@@ -22,10 +21,13 @@ import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -34,7 +36,6 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val setSortTypeUseCase: SetSortTypeUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
@@ -71,11 +72,14 @@ class HomeViewModel @Inject constructor(
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying = _isPlaying.asStateFlow()
 
-    private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
-    val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
+    // Pass-throughs onto the repository's single shared StateFlow - see PlayerRepositoryImpl.
+    // The home list must read exactly the same song identity the mini player and full
+    // player do, or the "now playing" highlight on a row can point at the wrong song.
+    val audioList: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList()
 
-    private val _audioList = MutableStateFlow<List<MusicEntity>>(emptyList())
-    val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
+    val currentSelectedAudio: StateFlow<MusicEntity> = playerUseCases.observeCurrentSelectedAudio()
+        .map { it ?: dummyAudio }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dummyAudio)
 
     private val _uIState: MutableStateFlow<UIState> = MutableStateFlow(UIState.Initial)
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
@@ -98,13 +102,6 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             getSortTypeUseCase().collectLatest { persistedSortType ->
                 _sortType.value = persistedSortType
-
-                val sorted = fetchMusicUseCase(persistedSortType)
-                _audioList.value = sorted
-                _uIState.value = UIState.MusicList(sorted)
-
-                playerUseCases.loadPlaylist(sorted, persistedSortType)
-                restorePlaybackState()
             }
         }
 
@@ -115,9 +112,7 @@ class HomeViewModel @Inject constructor(
                     is PlaybackState.Buffering -> calculateProgressValue(mediaState.position)
                     is PlaybackState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is PlaybackState.Progress -> calculateProgressValue(mediaState.position)
-                    is PlaybackState.TrackChanged -> {
-                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.index) ?: dummyAudio
-                    }
+                    is PlaybackState.TrackChanged -> Unit
                     is PlaybackState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
@@ -126,11 +121,12 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
+
+        restorePlaybackState()
     }
 
-    private suspend fun restorePlaybackState() {
+    private fun restorePlaybackState() = viewModelScope.launch {
         val snapshot = playerUseCases.getPlaybackSnapshot()
-        _currentSelectedAudio.value = _audioList.value.getOrNull(snapshot.currentIndex) ?: dummyAudio
         _duration.value = snapshot.duration
         calculateProgressValue(snapshot.position)
         _isPlaying.value = snapshot.isPlaying
@@ -139,11 +135,10 @@ class HomeViewModel @Inject constructor(
     fun setSortType(type: SortType) {
         viewModelScope.launch {
             _sortType.value = type
+            // Just persist the preference - the repository's own reactive pipeline picks
+            // this up, re-fetches the library once, and reloads the queue. Doing it again
+            // here too would race the same fetch against itself.
             setSortTypeUseCase(type)
-            val sortedList = fetchMusicUseCase(type)
-            _audioList.value = sortedList
-            _uIState.value = UIState.MusicList(sortedList)
-            playerUseCases.loadPlaylist(sortedList, type)
             initializedList.value = true
         }
     }

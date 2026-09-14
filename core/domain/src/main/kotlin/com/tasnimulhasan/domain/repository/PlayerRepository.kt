@@ -7,6 +7,10 @@ import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.flow.StateFlow
 
 interface PlayerRepository {
+    val audioList: StateFlow<List<MusicEntity>>
+    val currentSelectedAudio: StateFlow<MusicEntity?>
+    val isPlaying: StateFlow<Boolean>
+
     suspend fun loadPlaylist(musicList: List<MusicEntity>, sortType: SortType, keepCurrentTrack: Boolean = true)
     suspend fun play()
     suspend fun pause()

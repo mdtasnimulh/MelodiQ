@@ -4,16 +4,18 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
-import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -22,7 +24,6 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val getSortTypeUseCase: GetSortTypeUseCase,
 ) : BaseViewModel() {
@@ -52,11 +53,14 @@ class MainViewModel @Inject constructor(
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying = _isPlaying.asStateFlow()
 
-    private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
-    val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
+    // Both of these are pass-throughs onto the repository's single shared StateFlow -
+    // never re-fetched or re-derived here, so this screen can never disagree with the
+    // full player or the song list about what's currently loaded/playing.
+    val audioList: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList()
 
-    private val _audioList = MutableStateFlow(listOf<MusicEntity>())
-    val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
+    val currentSelectedAudio: StateFlow<MusicEntity> = playerUseCases.observeCurrentSelectedAudio()
+        .map { it ?: dummyAudio }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dummyAudio)
 
     private val _uIState: MutableStateFlow<UiState> = MutableStateFlow(UiState.Initial)
     val uIState: StateFlow<UiState> = _uIState.asStateFlow()
@@ -65,11 +69,6 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             getSortTypeUseCase().collectLatest { persistedSortType ->
                 _sortType.value = persistedSortType
-                val sorted = fetchMusicUseCase(persistedSortType)
-                _audioList.value = sorted
-                _uIState.value = UiState.MusicList(sorted)
-                playerUseCases.loadPlaylist(sorted, persistedSortType)
-                restorePlaybackState()
             }
         }
 
@@ -80,9 +79,7 @@ class MainViewModel @Inject constructor(
                     is PlaybackState.Buffering -> calculateProgressValue(mediaState.position)
                     is PlaybackState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is PlaybackState.Progress -> calculateProgressValue(mediaState.position)
-                    is PlaybackState.TrackChanged -> {
-                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.index) ?: dummyAudio
-                    }
+                    is PlaybackState.TrackChanged -> Unit
                     is PlaybackState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UiState.Ready
@@ -91,11 +88,12 @@ class MainViewModel @Inject constructor(
                 }
             }
         }
+
+        restorePlaybackState()
     }
 
-    private suspend fun restorePlaybackState() {
+    private fun restorePlaybackState() = viewModelScope.launch {
         val snapshot = playerUseCases.getPlaybackSnapshot()
-        _currentSelectedAudio.value = _audioList.value.getOrNull(snapshot.currentIndex) ?: dummyAudio
         _duration.value = snapshot.duration
         calculateProgressValue(snapshot.position)
         _isPlaying.value = snapshot.isPlaying

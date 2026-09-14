@@ -20,8 +20,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,6 +43,18 @@ class PlayerRepositoryImpl @Inject constructor(
     private val _playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
     private val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    private val _audioList = MutableStateFlow<List<MusicEntity>>(emptyList())
+    override val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
+
+    private val _currentIndex = MutableStateFlow(-1)
+
+    override val currentSelectedAudio: StateFlow<MusicEntity?> =
+        combine(_audioList, _currentIndex) { list, index -> list.getOrNull(index) }
+            .stateIn(repositoryScope, SharingStarted.Eagerly, null)
+
+    private val _isPlaying = MutableStateFlow(false)
+    override val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+
     private var progressTickCount = 0
 
     init {
@@ -52,10 +68,23 @@ class PlayerRepositoryImpl @Inject constructor(
                         progressTickCount++
                         if (progressTickCount % 10 == 0) persistCurrentPlaybackPosition()
                     }
-                    is MelodiqAudioState.Playing -> if (!state.isPlaying) persistCurrentPlaybackPosition()
-                    is MelodiqAudioState.CurrentPlaying -> persistCurrentPlaybackPosition()
+                    is MelodiqAudioState.Playing -> {
+                        _isPlaying.value = state.isPlaying
+                        if (!state.isPlaying) persistCurrentPlaybackPosition()
+                    }
+                    is MelodiqAudioState.CurrentPlaying -> {
+                        _currentIndex.value = state.mediaItemIndex
+                        persistCurrentPlaybackPosition()
+                    }
                     else -> Unit
                 }
+            }
+        }
+
+        repositoryScope.launch {
+            preferencesDataStoreRepository.getSortType().collectLatest { sortType ->
+                val sorted = fetchMusicUseCase(sortType)
+                loadPlaylist(sorted, sortType)
             }
         }
     }
@@ -67,8 +96,10 @@ class PlayerRepositoryImpl @Inject constructor(
     }
 
     override suspend fun loadPlaylist(musicList: List<MusicEntity>, sortType: SortType, keepCurrentTrack: Boolean) {
+        _audioList.value = musicList
         if (!keepCurrentTrack) {
             serviceHandler.updateMediaItems(musicList, sortType)
+            _currentIndex.value = serviceHandler.getCurrentMediaItemIndex()
             return
         }
         if (serviceHandler.getMediaItemCount() == 0) {
@@ -124,16 +155,7 @@ class PlayerRepositoryImpl @Inject constructor(
 
     override suspend fun observeAudioState(): StateFlow<PlaybackState> = playbackState
 
-    override suspend fun getCurrentSongInfo(): MusicEntity? {
-        val currentIndex = serviceHandler.audioState.value.let { state ->
-            if (state is MelodiqAudioState.CurrentPlaying) state.mediaItemIndex else -1
-        }
-        return if (currentIndex >= 0) {
-            fetchMusicUseCase(SortType.DATE_MODIFIED_DESC).getOrNull(currentIndex)
-        } else {
-            null
-        }
-    }
+    override suspend fun getCurrentSongInfo(): MusicEntity? = currentSelectedAudio.value
 
     override suspend fun getPlaybackSnapshot(): PlaybackSnapshot = PlaybackSnapshot(
         currentIndex = serviceHandler.getCurrentMediaItemIndex(),

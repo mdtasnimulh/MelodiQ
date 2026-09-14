@@ -22,7 +22,10 @@ import com.tasnimulhasan.domain.localusecase.player.GetPlaybackSnapshotUseCase
 import com.tasnimulhasan.domain.localusecase.player.IsPlaybackServiceRunningUseCase
 import com.tasnimulhasan.domain.localusecase.player.LoadPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.player.NextTrackUseCase
+import com.tasnimulhasan.domain.localusecase.player.ObserveAudioListUseCase
 import com.tasnimulhasan.domain.localusecase.player.ObserveAudioStateUseCase
+import com.tasnimulhasan.domain.localusecase.player.ObserveCurrentSelectedAudioUseCase
+import com.tasnimulhasan.domain.localusecase.player.ObserveIsPlayingUseCase
 import com.tasnimulhasan.domain.localusecase.player.PauseUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
@@ -85,6 +88,9 @@ object ApplicationModule {
         selectAudioChange: SelectAudioChangeUseCase,
         updateProgress: UpdateProgressUseCase,
         observeAudioState: ObserveAudioStateUseCase,
+        observeAudioList: ObserveAudioListUseCase,
+        observeCurrentSelectedAudio: ObserveCurrentSelectedAudioUseCase,
+        observeIsPlaying: ObserveIsPlayingUseCase,
         getCurrentSongInfoUseCase: GetCurrentSongInfoUseCase,
         getPlaybackSnapshot: GetPlaybackSnapshotUseCase,
         isPlaybackServiceRunning: IsPlaybackServiceRunningUseCase,
@@ -103,6 +109,9 @@ object ApplicationModule {
         selectAudioChange = selectAudioChange,
         updateProgress = updateProgress,
         observeAudioState = observeAudioState,
+        observeAudioList = observeAudioList,
+        observeCurrentSelectedAudio = observeCurrentSelectedAudio,
+        observeIsPlaying = observeIsPlaying,
         getCurrentSongInfoUseCase = getCurrentSongInfoUseCase,
         getPlaybackSnapshot = getPlaybackSnapshot,
         isPlaybackServiceRunning = isPlaybackServiceRunning,

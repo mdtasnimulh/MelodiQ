@@ -10,7 +10,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
-import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.entity.enums.SortType
@@ -18,9 +17,12 @@ import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -30,7 +32,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    private val fetchMusicUseCase: FetchMusicUseCase,
     private val playerUseCases: PlayerUseCases,
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val exoPlayer: ExoPlayer, // volume-boost only
@@ -76,11 +77,13 @@ class PlayerViewModel @Inject constructor(
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
-    private val _audioList = MutableStateFlow(listOf<MusicEntity>())
-    val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
+    // Pass-throughs onto the repository's single shared StateFlow - see MainViewModel for
+    // why this must not be independently fetched/derived here.
+    val audioList: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList()
 
-    private val _currentSelectedAudio = MutableStateFlow(dummyAudio)
-    val currentSelectedAudio = _currentSelectedAudio.asStateFlow()
+    val currentSelectedAudio: StateFlow<MusicEntity> = playerUseCases.observeCurrentSelectedAudio()
+        .map { it ?: dummyAudio }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dummyAudio)
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying = _isPlaying.asStateFlow()
@@ -114,27 +117,22 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             getSortTypeUseCase().collectLatest { persistedSortType ->
                 _sortType.value = persistedSortType
-                val sorted = fetchMusicUseCase(persistedSortType)
-                _audioList.value = sorted
-                _uIState.value = UIState.MusicList(sorted)
+            }
+        }
 
-                // Safe to call even if a playlist is already loaded (e.g. from HomeScreen) -
-                // it preserves the currently playing track/position.
-                playerUseCases.loadPlaylist(sorted, persistedSortType)
-
-                // Decide, against the LIVE player snapshot (not a Compose StateFlow that
-                // might still be a placeholder), whether the song this screen was opened
-                // for is something other than what's already loaded. Only switch tracks
-                // when it genuinely is a different song - never re-select the one already
-                // playing, which is what was causing the restart-from-0.
+        // Switch to the song this screen was opened for, if it isn't already the one
+        // playing. Waits for the shared audio list to actually contain songs (it's
+        // populated by the repository's own reactive pipeline) rather than fetching its
+        // own copy of the library.
+        viewModelScope.launch {
+            audioList.collectLatest { sorted ->
+                if (sorted.isEmpty()) return@collectLatest
                 val snapshot = playerUseCases.getPlaybackSnapshot()
                 val targetIndex = sorted.indexOfFirst { it.songId == targetSongId }
                 val isAlreadyCurrent = targetIndex >= 0 && targetIndex == snapshot.currentIndex
                 if (targetIndex >= 0 && !isAlreadyCurrent) {
                     playerUseCases.selectAudioChange(targetIndex)
                 }
-
-                restorePlaybackState()
             }
         }
 
@@ -145,9 +143,7 @@ class PlayerViewModel @Inject constructor(
                     is PlaybackState.Buffering -> calculateProgressValue(mediaState.position)
                     is PlaybackState.Playing -> _isPlaying.value = mediaState.isPlaying
                     is PlaybackState.Progress -> calculateProgressValue(mediaState.position)
-                    is PlaybackState.TrackChanged -> {
-                        _currentSelectedAudio.value = _audioList.value.getOrNull(mediaState.index) ?: dummyAudio
-                    }
+                    is PlaybackState.TrackChanged -> Unit
                     is PlaybackState.Ready -> {
                         _duration.value = mediaState.duration
                         _uIState.value = UIState.Ready
@@ -156,11 +152,12 @@ class PlayerViewModel @Inject constructor(
                 }
             }
         }
+
+        restorePlaybackState()
     }
 
-    private suspend fun restorePlaybackState() {
+    private fun restorePlaybackState() = viewModelScope.launch {
         val snapshot = playerUseCases.getPlaybackSnapshot()
-        _currentSelectedAudio.value = _audioList.value.getOrNull(snapshot.currentIndex) ?: dummyAudio
         _duration.value = snapshot.duration
         calculateProgressValue(snapshot.position)
         _isPlaying.value = snapshot.isPlaying

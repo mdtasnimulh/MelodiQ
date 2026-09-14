@@ -9,6 +9,7 @@ import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,6 +22,12 @@ class PlaylistDetailsViewModel @Inject constructor(
 
     private val _uiEvent = Channel<UiEvent>()
     val uiEvent get() = _uiEvent.receiveAsFlow()
+
+    // Same shared state the mini player / full player / home list read, so this screen's
+    // "now playing" row highlight can never point at a different song than what's actually
+    // playing.
+    val currentSelectedAudio: StateFlow<MusicEntity?> = playerUseCases.observeCurrentSelectedAudio()
+    val isPlaying: StateFlow<Boolean> = playerUseCases.observeIsPlaying()
 
     val action: (UiAction) -> Unit = {
         when (it) {

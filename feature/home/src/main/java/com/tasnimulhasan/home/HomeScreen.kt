@@ -72,8 +72,8 @@ internal fun SharedTransitionScope.HomeScreen(
     val audioList by viewModel.audioList.collectAsStateWithLifecycle()
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var isFavourite by remember { mutableStateOf(false) }
     val selectedSortOption = remember { mutableStateOf(viewModel.sortTypeToDisplayString(viewModel.sortType.value)) }
     val showSortDialog = remember { mutableStateOf(false) }
 
@@ -164,7 +164,10 @@ internal fun SharedTransitionScope.HomeScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
-            itemsIndexed(audioList) { index, item ->
+            itemsIndexed(
+                items = audioList,
+                key = { _, item -> item.songId }
+            ) { index, item ->
                 MusicCard(
                     modifier = modifier,
                     path = item.contentUri,
@@ -175,8 +178,8 @@ internal fun SharedTransitionScope.HomeScreen(
                     duration = item.duration,
                     songId = item.songId,
                     selectedId = currentSelectedAudio.songId,
-                    isPlaying = viewModel.isPlaybackServiceRunning(),
-                    isFavourite = isFavourite,
+                    isPlaying = isPlaying,
+                    isFavourite = favorites.contains(item.songId),
                     onMusicClicked = {
                         viewModel.ensurePlaybackServiceStarted()
                         if (currentSelectedAudio.songId != item.songId) {
@@ -189,7 +192,7 @@ internal fun SharedTransitionScope.HomeScreen(
                         showAddToPlaylistDialog.value = true
                     },
                     onFavouriteIconClicked = {
-                        isFavourite = !isFavourite
+                        viewModel.action(UiAction.ToggleFavorite(item.songId))
                     },
                     animatedVisibilityScope = animatedVisibilityScope,
                 )

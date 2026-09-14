@@ -146,7 +146,7 @@ internal fun PlaylistsScreen(
                             .fillMaxSize()
                             .padding(8.dp)
                     ) {
-                        items(playlists) { playlist ->
+                        items(playlists, key = { it.id }) { playlist ->
                             PlaylistCard(
                                 playlist = playlist,
                                 onPlaylistClicked = {

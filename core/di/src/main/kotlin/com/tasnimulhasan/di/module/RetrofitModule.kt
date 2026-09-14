@@ -1,4 +1,4 @@
-/*
+package com.tasnimulhasan.di.module/*
 package com.jerp.di.module
 
 import com.google.gson.Gson
