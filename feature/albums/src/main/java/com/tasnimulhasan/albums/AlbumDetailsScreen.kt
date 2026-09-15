@@ -1,4 +1,4 @@
-package com.tasnimulhasan.songs
+package com.tasnimulhasan.albums
 
 import android.net.Uri
 import androidx.compose.foundation.combinedClickable
@@ -33,8 +33,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -43,25 +41,26 @@ import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.theme.CardBlueMediumTextColor
 import com.tasnimulhasan.designsystem.theme.RobotoFontFamily
 import com.tasnimulhasan.designsystem.theme.WhiteOrange
+import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.ui.image.AlbumArt
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
-internal fun SongsRoute(
+internal fun AlbumDetailsScreen(
     modifier: Modifier = Modifier,
     navigateToPlayer: (musicId: String) -> Unit,
-    viewModel: SongsViewModel = hiltViewModel()
+    viewModel: AlbumDetailsViewModel = hiltViewModel(),
 ) {
-    val audioList by viewModel.audioList.collectAsStateWithLifecycle()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
 
-    SongsScreen(
+    AlbumDetailsList(
         modifier = modifier,
-        audioList = audioList,
+        songs = songs,
         selectedId = currentSelectedAudio.songId,
         isPlaying = isPlaying,
         favorites = favorites,
@@ -75,16 +74,16 @@ internal fun SongsRoute(
 }
 
 @Composable
-internal fun SongsScreen(
+internal fun AlbumDetailsList(
     modifier: Modifier = Modifier,
-    audioList: List<com.tasnimulhasan.entity.home.MusicEntity>,
+    songs: List<MusicEntity>,
     selectedId: Long,
     isPlaying: Boolean,
     favorites: Set<Long>,
     onSongClicked: (Long) -> Unit,
     onFavouriteClicked: (Long) -> Unit,
 ) {
-    if (audioList.isEmpty()) {
+    if (songs.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -92,11 +91,8 @@ internal fun SongsScreen(
     }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        itemsIndexed(
-            items = audioList,
-            key = { _, item -> item.songId }
-        ) { _, item ->
-            SongCard(
+        itemsIndexed(items = songs, key = { _, item -> item.songId }) { _, item ->
+            AlbumSongRow(
                 path = item.contentUri,
                 title = item.songTitle,
                 artist = item.artist,
@@ -114,7 +110,7 @@ internal fun SongsScreen(
 }
 
 @Composable
-private fun SongCard(
+private fun AlbumSongRow(
     modifier: Modifier = Modifier,
     path: Uri,
     title: String,
@@ -135,7 +131,7 @@ private fun SongCard(
         ),
         modifier = modifier
             .fillMaxWidth()
-            .height(88.dp)
+            .height(80.dp)
             .padding(vertical = 6.dp, horizontal = 16.dp)
             .combinedClickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(2.dp),
@@ -145,7 +141,7 @@ private fun SongCard(
                 model = AlbumArt(songId = songId, contentUri = path, albumId = albumId),
                 contentDescription = "Cover art",
                 modifier = Modifier
-                    .width(80.dp)
+                    .width(70.dp)
                     .fillMaxHeight(),
                 contentScale = ContentScale.Crop,
                 placeholder = painterResource(Res.drawable.default_cover),
@@ -178,14 +174,6 @@ private fun SongCard(
                     ),
                     maxLines = 1
                 )
-                Text(
-                    text = formatDuration(duration.toLongOrNull() ?: 0L),
-                    style = TextStyle(
-                        fontSize = 11.sp,
-                        color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = RobotoFontFamily
-                    )
-                )
             }
 
             IconButton(onClick = onFavouriteClick, modifier = Modifier.padding(end = 8.dp)) {
@@ -197,22 +185,4 @@ private fun SongCard(
             }
         }
     }
-}
-
-private fun formatDuration(durationMs: Long): String {
-    val df = SimpleDateFormat("mm:ss", Locale.US)
-    return df.format(durationMs)
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SongsScreenPreview() {
-    SongsScreen(
-        audioList = emptyList(),
-        selectedId = 0L,
-        isPlaying = false,
-        favorites = emptySet(),
-        onSongClicked = {},
-        onFavouriteClicked = {},
-    )
 }

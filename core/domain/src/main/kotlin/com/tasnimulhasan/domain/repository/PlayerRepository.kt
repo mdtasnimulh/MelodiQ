@@ -7,6 +7,11 @@ import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.flow.StateFlow
 
 interface PlayerRepository {
+    // Single source of truth for "what queue is loaded" and "what song is currently
+    // selected". Every screen (mini player, full player, home list) reads these SAME
+    // StateFlow instances instead of independently fetching the library and indexing
+    // into its own copy - that duplication was the root cause of the mini/full player
+    // showing different songs after a sort change or library update.
     val audioList: StateFlow<List<MusicEntity>>
     val currentSelectedAudio: StateFlow<MusicEntity?>
     val isPlaying: StateFlow<Boolean>

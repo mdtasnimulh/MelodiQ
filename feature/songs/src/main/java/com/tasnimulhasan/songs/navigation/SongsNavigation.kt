@@ -13,13 +13,15 @@ import kotlinx.serialization.Serializable
 
 fun NavController.navigateToSongs(navOptions: NavOptions) = navigate(route = SongsRoute, navOptions)
 
-fun NavGraphBuilder.songsScreen() {
+fun NavGraphBuilder.songsScreen(
+    navigateToPlayer: (musicId: String) -> Unit,
+) {
     composable<SongsRoute>(
         enterTransition = { slideInHorizontally {it} },
         exitTransition = { slideOutHorizontally { -it } },
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
     ) {
-        SongsRoute()
+        SongsRoute(navigateToPlayer = navigateToPlayer)
     }
 }

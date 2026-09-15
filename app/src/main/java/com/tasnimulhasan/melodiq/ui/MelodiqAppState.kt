@@ -12,6 +12,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
 import com.tasnimulhasan.albums.navigation.AlbumRoute
+import com.tasnimulhasan.albums.navigation.navigateToAlbumDetails
 import com.tasnimulhasan.albums.navigation.navigateToAlbums
 import com.tasnimulhasan.eqalizer.navigation.navigateToEqualizer
 import com.tasnimulhasan.featureabout.navigation.navigateToAbout
@@ -95,6 +96,8 @@ class MelodiQAppState(
     fun navigateToEqualizerScreen() = navController.navigateToEqualizer()
 
     fun navigateToPlaylistDetails(playlistId: Int) = navController.navigateToPlaylistDetails(playlistId = playlistId)
+
+    fun navigateToAlbumDetails(albumId: Long) = navController.navigateToAlbumDetails(albumId = albumId)
 
     fun navigateBack() {
         navController.navigateUp()

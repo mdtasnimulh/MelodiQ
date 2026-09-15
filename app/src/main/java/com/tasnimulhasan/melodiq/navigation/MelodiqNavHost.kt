@@ -3,6 +3,7 @@ package com.tasnimulhasan.melodiq.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
+import com.tasnimulhasan.albums.navigation.albumDetailsScreen
 import com.tasnimulhasan.albums.navigation.albumScreen
 import com.tasnimulhasan.eqalizer.navigation.equalizerScreen
 import com.tasnimulhasan.featureabout.navigation.aboutScreen
@@ -25,6 +26,7 @@ fun MelodiQNavHost(
     navigateToPlayer: (String) -> Unit,
     navigateToEqualizerScreen: () -> Unit,
     onPlaylistClicked: (Int) -> Unit,
+    navigateToAlbumDetails: (Long) -> Unit,
     navigateBack: () -> Unit,
 ) {
     val navController = appState.navController
@@ -34,8 +36,14 @@ fun MelodiQNavHost(
         modifier = modifier,
     ) {
         homeScreen(navigateToPlayer = navigateToPlayer)
-        songsScreen()
-        albumScreen()
+        songsScreen(navigateToPlayer = navigateToPlayer)
+        albumScreen(
+            navigateToAlbumDetails = { albumId -> navigateToAlbumDetails(albumId) },
+        )
+        albumDetailsScreen(
+            navigateBack = navigateBack,
+            navigateToPlayer = navigateToPlayer,
+        )
         playlistsScreen(
             onPlaylistClicked = { playlistId ->
                 onPlaylistClicked.invoke(playlistId)

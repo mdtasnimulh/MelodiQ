@@ -8,16 +8,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.tasnimulhasan.common.constant.AppConstants
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
+import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.melodiq.ui.MelodiQApp
 import com.tasnimulhasan.melodiq.ui.rememberMelodiQAppState
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,6 +30,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val openPlayerRequested = mutableStateOf(false)
+    private val mainActivityViewModel: MainActivityViewModel by viewModels()
 
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,7 +56,14 @@ class MainActivity : ComponentActivity() {
 
             val permissionsState = rememberMultiplePermissionsState(permissions = requiredPermissions)
 
-            MelodiqTheme {
+            val themeConfig by mainActivityViewModel.themeConfig.collectAsStateWithLifecycle()
+            val darkTheme = when (themeConfig) {
+                DarkThemeConfig.LIGHT -> false
+                DarkThemeConfig.DARK -> true
+                DarkThemeConfig.FOLLOW_SYSTEM -> isSystemInDarkTheme()
+            }
+
+            MelodiqTheme(darkTheme = darkTheme) {
                 if (permissionsState.allPermissionsGranted) {
                     val shouldOpenPlayer by openPlayerRequested
                     MelodiQApp(

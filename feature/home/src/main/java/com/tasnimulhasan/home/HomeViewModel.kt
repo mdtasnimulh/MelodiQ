@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
+import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
+import com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicListToPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
@@ -42,6 +44,8 @@ class HomeViewModel @Inject constructor(
     private val getAllPlaylistUseCase: GetAllPlaylistUseCase,
     private val insertMusicToPlaylist: InsertMusicToPlaylistUseCase,
     private val insertMusicListToPlaylistUseCase: InsertMusicListToPlaylistUseCase,
+    private val observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
+    private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
 ) : BaseViewModel() {
 
     private val dummyAudio = MusicEntity(
@@ -87,8 +91,8 @@ class HomeViewModel @Inject constructor(
     private val _uiEvent = Channel<UiEvent>()
     val uiEvent get() = _uiEvent.receiveAsFlow()
 
-    private val _favorites = MutableStateFlow<Set<Long>>(emptySet())
-    val favorites: StateFlow<Set<Long>> = _favorites.asStateFlow()
+    val favorites: StateFlow<Set<Long>> = observeFavouriteIdsUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     val action: (UiAction) -> Unit = {
         when (it) {
@@ -221,8 +225,7 @@ class HomeViewModel @Inject constructor(
 
     fun toggleFavorite(songId: Long) {
         viewModelScope.launch {
-            val current = _favorites.value
-            _favorites.value = if (current.contains(songId)) current - songId else current + songId
+            toggleFavouriteUseCase(songId)
         }
     }
     fun isPlaybackServiceRunning(): Boolean = playerUseCases.isPlaybackServiceRunning()

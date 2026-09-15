@@ -43,6 +43,9 @@ class PlayerRepositoryImpl @Inject constructor(
     private val _playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
     private val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    // Authoritative queue + current-track identity. `_audioList` is written in exactly one
+    // place (loadPlaylist, below), which is also the only thing that ever changes what's
+    // loaded into ExoPlayer - so an index coming from the player always matches this list.
     private val _audioList = MutableStateFlow<List<MusicEntity>>(emptyList())
     override val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
 
@@ -81,6 +84,15 @@ class PlayerRepositoryImpl @Inject constructor(
             }
         }
 
+        // Single reactive pipeline for "load the whole library into the queue". This used
+        // to be duplicated in every screen's ViewModel (Home, Player, Main), each doing its
+        // own fetch and its own indexing into its own private copy of the list - if two of
+        // those fetches ever returned subtly different orderings (a library change between
+        // calls, a non-deterministic tie-break in the MediaStore query, etc.) the mini
+        // player and the full player would end up pointing the same numeric index at two
+        // different songs. Running it once, here, removes that class of bug entirely and
+        // also cuts three redundant MediaStore queries + three redundant queue loads down
+        // to one.
         repositoryScope.launch {
             preferencesDataStoreRepository.getSortType().collectLatest { sortType ->
                 val sorted = fetchMusicUseCase(sortType)
@@ -96,6 +108,10 @@ class PlayerRepositoryImpl @Inject constructor(
     }
 
     override suspend fun loadPlaylist(musicList: List<MusicEntity>, sortType: SortType, keepCurrentTrack: Boolean) {
+        // Whatever list is loaded here becomes the authoritative queue that every screen's
+        // "current song" lookup is based on - keep it in sync with what's actually handed
+        // to ExoPlayer below, regardless of which caller (library pipeline, a specific
+        // playlist screen, etc.) triggered this load.
         _audioList.value = musicList
         if (!keepCurrentTrack) {
             serviceHandler.updateMediaItems(musicList, sortType)
@@ -155,6 +171,9 @@ class PlayerRepositoryImpl @Inject constructor(
 
     override suspend fun observeAudioState(): StateFlow<PlaybackState> = playbackState
 
+    // Delegates to the shared, always-in-sync state instead of re-fetching the library
+    // (which previously ignored the actual current sort type and could return a song
+    // that didn't match the real current index).
     override suspend fun getCurrentSongInfo(): MusicEntity? = currentSelectedAudio.value
 
     override suspend fun getPlaybackSnapshot(): PlaybackSnapshot = PlaybackSnapshot(

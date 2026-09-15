@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import coil.memory.MemoryCache
 import com.tasnimulhasan.common.constant.AppConstants.CHANNEL_ID
 import com.tasnimulhasan.common.constant.AppConstants.CHANNEL_NAME
 import com.tasnimulhasan.melodiq.BuildConfig
@@ -29,6 +30,16 @@ class MelodiQApplication : Application(), ImageLoaderFactory {
                 add(AlbumArtKeyer())
             }
             .crossfade(true)
+            // Album art is small and re-shown constantly (list scrolling, mini player, full
+            // player, album grid all request the same songId/albumId keys) - give the
+            // in-memory cache more headroom than Coil's default so scrolling back up or
+            // switching screens doesn't have to re-decode art that was already loaded once
+            // this session.
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.35)
+                    .build()
+            }
             .build()
 
     private fun setupNotification() {

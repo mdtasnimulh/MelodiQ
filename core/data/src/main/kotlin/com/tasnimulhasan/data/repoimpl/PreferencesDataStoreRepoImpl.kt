@@ -22,6 +22,7 @@ import com.tasnimulhasan.common.constant.AppConstants.FLAT
 import com.tasnimulhasan.common.constant.AppConstants.PRESET_FLAT
 import com.tasnimulhasan.entity.enums.SortType
 import kotlinx.coroutines.flow.distinctUntilChanged
+import com.tasnimulhasan.entity.enums.DarkThemeConfig
 
 class PreferencesDataStoreRepoImpl @Inject constructor(
     private val gson: Gson,
@@ -93,6 +94,23 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
     }
 
 
+    override suspend fun saveThemeConfig(config: DarkThemeConfig) {
+        tryIt {
+            dataStorePreferences.edit { preferences ->
+                preferences[PreferencesKeys.themeConfig] = config.name
+            }
+        }
+    }
+
+    override fun getThemeConfig(): Flow<DarkThemeConfig> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                val name = preferences[PreferencesKeys.themeConfig]
+                DarkThemeConfig.entries.find { it.name == name } ?: DarkThemeConfig.FOLLOW_SYSTEM
+            }
+            .distinctUntilChanged()
+    }
+
     override suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long) {
         tryIt {
             dataStorePreferences.edit { preferences ->
@@ -118,6 +136,7 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
         val eqType = stringPreferencesKey(name = "eq_type")
         val enableEqualizer = booleanPreferencesKey(name = "enable_equalizer")
         val sortType = stringPreferencesKey("sort_type")
+        val themeConfig = stringPreferencesKey("theme_config")
         val lastPlayedSongId = longPreferencesKey("last_played_song_id")
         val lastPlayedPositionMs = longPreferencesKey("last_played_position_ms")
     }

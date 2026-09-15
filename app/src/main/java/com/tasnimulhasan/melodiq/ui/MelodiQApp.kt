@@ -340,6 +340,9 @@ private fun GetContent(appState: MelodiQAppState) {
             onPlaylistClicked = { playlistId ->
                 appState.navigateToPlaylistDetails(playlistId)
             },
+            navigateToAlbumDetails = { albumId ->
+                appState.navigateToAlbumDetails(albumId)
+            },
             navigateBack = {
                 appState.navigateBack()
             }

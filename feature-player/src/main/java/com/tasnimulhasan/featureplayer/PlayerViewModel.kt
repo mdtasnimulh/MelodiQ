@@ -64,6 +64,7 @@ class PlayerViewModel @Inject constructor(
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var loudnessEnhancerSessionId: Int? = null
     private val audioManager: AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     private val _volume = MutableStateFlow(0)
@@ -236,24 +237,43 @@ class PlayerViewModel @Inject constructor(
         _volumeGain.value = clampedVolume / 200f
 
         if (clampedVolume <= 100) {
+            // Only touch the system stream when the target actually changes - calling
+            // setStreamVolume on every slider tick (many times a second while dragging)
+            // causes audible pops and UI jank for no benefit once we're already there.
             val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val newVolume = (clampedVolume * maxVolume / 100f).toInt()
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
+            if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) != newVolume) {
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
+            }
             exoPlayer.volume = clampedVolume / 100f
-            loudnessEnhancer?.release()
-            loudnessEnhancer = null
+            // Leave boost mode - release the enhancer once, not on every tick below 100.
+            if (loudnessEnhancer != null) {
+                loudnessEnhancer?.release()
+                loudnessEnhancer = null
+                loudnessEnhancerSessionId = null
+            }
         } else {
             val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, 0)
+            if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) != maxVolume) {
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, 0)
+            }
             exoPlayer.volume = 1.0f
             val boostLevel = ((clampedVolume - 100) / 100f * 1000).toInt()
-            loudnessEnhancer?.release()
-            loudnessEnhancer = try {
-                LoudnessEnhancer(exoPlayer.audioSessionId).apply {
-                    setTargetGain(boostLevel)
-                    enabled = true
+            // Reuse the existing enhancer and just move its target gain - creating a fresh
+            // LoudnessEnhancer (native AudioEffect JNI calls) on every drag tick is what was
+            // causing the boost slider to feel laggy/stuttery.
+            val sessionId = exoPlayer.audioSessionId
+            val enhancer = loudnessEnhancer
+            if (enhancer != null && loudnessEnhancerSessionId == sessionId) {
+                try {
+                    enhancer.setTargetGain(boostLevel)
+                } catch (_: Exception) {
+                    // Fall through and recreate below if the existing instance is unusable.
+                    recreateLoudnessEnhancer(sessionId, boostLevel)
                 }
-            } catch (_: Exception) { null }
+            } else {
+                recreateLoudnessEnhancer(sessionId, boostLevel)
+            }
         }
 
         if (fromSlider) {
@@ -261,6 +281,19 @@ class PlayerViewModel @Inject constructor(
                 delay(200.milliseconds)
                 isAdjustingFromSlider = false
             }
+        }
+    }
+
+    private fun recreateLoudnessEnhancer(sessionId: Int, boostLevel: Int) {
+        loudnessEnhancer?.release()
+        loudnessEnhancer = try {
+            LoudnessEnhancer(sessionId).apply {
+                setTargetGain(boostLevel)
+                enabled = true
+            }.also { loudnessEnhancerSessionId = sessionId }
+        } catch (_: Exception) {
+            loudnessEnhancerSessionId = null
+            null
         }
     }
 

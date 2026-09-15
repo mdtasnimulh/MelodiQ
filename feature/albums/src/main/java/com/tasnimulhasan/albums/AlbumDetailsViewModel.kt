@@ -1,6 +1,7 @@
-package com.tasnimulhasan.songs
+package com.tasnimulhasan.albums
 
 import androidx.core.net.toUri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
@@ -16,11 +17,14 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SongsViewModel @Inject constructor(
+class AlbumDetailsViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
     private val observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
     private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
+    savedStateHandle: SavedStateHandle,
 ) : BaseViewModel() {
+
+    private val albumId: Long = savedStateHandle.get<Long>("albumId") ?: -1L
 
     private val dummyAudio = MusicEntity(
         contentUri = "".toUri(),
@@ -33,9 +37,13 @@ class SongsViewModel @Inject constructor(
         album = ""
     )
 
-    // Same shared, single-source-of-truth state everything else reads - this list is
-    // guaranteed to be identical to what Home/the mini player/the full player show.
-    val audioList: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList()
+    // Filtered from the SAME shared list everything else uses - never a second query.
+    val songs: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList()
+        .map { all -> all.filter { it.albumId == albumId } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val albumName: StateFlow<String> = songs.map { it.firstOrNull()?.album ?: "" }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
     val currentSelectedAudio: StateFlow<MusicEntity> = playerUseCases.observeCurrentSelectedAudio()
         .map { it ?: dummyAudio }
@@ -47,8 +55,11 @@ class SongsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     fun playSong(songId: Long) {
-        val index = audioList.value.indexOfFirst { it.songId == songId }
-        if (index >= 0) viewModelScope.launch { playerUseCases.selectAudioChange(index) }
+        // Important: select against the index in the FULL shared library, not the index
+        // within this filtered album sub-list - the player's queue is the full library,
+        // so an index only means the right thing there.
+        val globalIndex = playerUseCases.observeAudioList().value.indexOfFirst { it.songId == songId }
+        if (globalIndex >= 0) viewModelScope.launch { playerUseCases.selectAudioChange(globalIndex) }
     }
 
     fun toggleFavorite(songId: Long) {

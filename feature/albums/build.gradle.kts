@@ -9,4 +9,5 @@ android {
 
 dependencies {
     implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.coil.kt.compose)
 }

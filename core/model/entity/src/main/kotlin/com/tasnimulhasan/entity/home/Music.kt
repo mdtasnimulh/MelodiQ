@@ -14,5 +14,8 @@ data class MusicEntity (
     val artist: String,
     val duration: String,
     val album: String,
-    val albumId: Long
+    val albumId: Long,
+    // MediaStore's DATE_ADDED (epoch seconds), cached alongside everything else so the
+    // library can be re-sorted in memory without a second MediaStore query.
+    val dateAdded: Long = 0L,
 ): Parcelable
