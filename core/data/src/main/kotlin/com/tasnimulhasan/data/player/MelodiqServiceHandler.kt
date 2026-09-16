@@ -46,12 +46,18 @@ class MelodiqServiceHandler @Inject constructor(
 
     private var job: Job? = null
 
+    /** How far the skip-forward/skip-back buttons jump. User configurable (10/15/30s). */
+    @Volatile
+    var seekStepMs: Long = 10_000L
+
+    fun currentPlaybackSpeed(): Float = exoPlayer.playbackParameters.speed
+
     init {
         exoPlayer.addListener(this)
         if (exoPlayer.playbackState == ExoPlayer.STATE_READY) {
             _audioState.value = MelodiqAudioState.Ready(exoPlayer.duration)
             _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
-            _isPlayingState.value = exoPlayer.isPlaying
+            _isPlayingState.value = exoPlayer.playWhenReady
             _currentIndex.value = exoPlayer.currentMediaItemIndex
         }
     }
@@ -104,7 +110,7 @@ class MelodiqServiceHandler @Inject constructor(
 
         val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
         val currentPosition = exoPlayer.currentPosition
-        val isPlaying = exoPlayer.isPlaying
+        val isPlaying = exoPlayer.playWhenReady
 
         val newIndex: Int
         val seekPositionMs: Long
@@ -146,18 +152,27 @@ class MelodiqServiceHandler @Inject constructor(
         seekPosition: Long = 0
     ) {
         when (playerEvent) {
-            MelodiqPlayerEvent.BackwardTrack5Sec -> exoPlayer.seekTo(exoPlayer.currentPosition - 5_000)
-            MelodiqPlayerEvent.ForwardTrack5Sec -> exoPlayer.seekTo(exoPlayer.currentPosition + 5_000)
+            MelodiqPlayerEvent.BackwardTrack5Sec ->
+                exoPlayer.seekTo((exoPlayer.currentPosition - seekStepMs).coerceAtLeast(0L))
+            MelodiqPlayerEvent.ForwardTrack5Sec -> {
+                // Clamp to duration so a forward skip near the end doesn't overshoot into an
+                // invalid position (which ExoPlayer would treat as "track finished").
+                val end = exoPlayer.duration
+                val target = exoPlayer.currentPosition + seekStepMs
+                exoPlayer.seekTo(if (end > 0) target.coerceAtMost(end) else target)
+            }
+            is MelodiqPlayerEvent.SetPlaybackSpeed ->
+                exoPlayer.setPlaybackSpeed(playerEvent.speed.coerceIn(0.25f, 3.0f))
             MelodiqPlayerEvent.PlayPause -> playOrPause()
             MelodiqPlayerEvent.Play -> {
-                if (!exoPlayer.isPlaying) {
+                if (!exoPlayer.playWhenReady) {
                     exoPlayer.play()
                     _isPlayingState.value = true
                     startProgressUpdate()
                 }
             }
             MelodiqPlayerEvent.Pause -> {
-                if (exoPlayer.isPlaying) {
+                if (exoPlayer.playWhenReady) {
                     exoPlayer.pause()
                     stopProgressUpdate()
                 }
@@ -178,7 +193,7 @@ class MelodiqServiceHandler @Inject constructor(
 
     fun getCurrentMediaItemIndex(): Int = exoPlayer.currentMediaItemIndex
     fun getDuration(): Long = exoPlayer.duration
-    fun isPlaying(): Boolean = exoPlayer.isPlaying
+    fun isPlaying(): Boolean = exoPlayer.playWhenReady
     fun getMediaItemCount(): Int = exoPlayer.mediaItemCount
 
     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -190,12 +205,29 @@ class MelodiqServiceHandler @Inject constructor(
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
-        _isPlayingState.value = isPlaying
         _currentIndex.value = exoPlayer.currentMediaItemIndex
         if (isPlaying) {
             CoroutineScope(Dispatchers.Main).launch { startProgressUpdate() }
         } else {
-            stopProgressUpdate()
+            job?.cancel()
+        }
+    }
+
+    /**
+     * The play/pause icon is driven from playWhenReady, NOT isPlaying.
+     *
+     * isPlaying momentarily goes false whenever the engine stalls - most visibly while
+     * seeking, when it re-buffers at the new position. Binding the icon to it made the
+     * button flip to "play" mid-drag even though the user never paused, and left the icon
+     * disagreeing with the actual transport state afterwards. playWhenReady reflects
+     * intent ("should this be playing?"), which is what the button is actually showing.
+     */
+    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+        _isPlayingState.value = playWhenReady
+        if (playWhenReady) {
+            CoroutineScope(Dispatchers.Main).launch { startProgressUpdate() }
+        } else {
+            job?.cancel()
         }
     }
 
@@ -250,8 +282,62 @@ class MelodiqServiceHandler @Inject constructor(
             .build()
     }
 
+    /**
+     * Inserts [song] directly after the currently playing item, so it plays next without
+     * disturbing the rest of the queue or what's currently playing.
+     */
+    fun playNext(song: MusicEntity) {
+        val insertAt = (exoPlayer.currentMediaItemIndex + 1).coerceIn(0, exoPlayer.mediaItemCount)
+        exoPlayer.addMediaItem(insertAt, buildMediaItems(listOf(song)).first())
+        audioList.value = audioList.value.toMutableList().apply { add(insertAt, song) }
+        if (exoPlayer.mediaItemCount == 1) exoPlayer.prepare()
+    }
+
+    /** Appends [song] to the end of the queue. */
+    fun playLater(song: MusicEntity) {
+        exoPlayer.addMediaItem(buildMediaItems(listOf(song)).first())
+        audioList.value = audioList.value + song
+        if (exoPlayer.mediaItemCount == 1) exoPlayer.prepare()
+    }
+
+    /** Appends several songs to the end of the queue in order. */
+    fun addToQueue(songs: List<MusicEntity>) {
+        if (songs.isEmpty()) return
+        exoPlayer.addMediaItems(buildMediaItems(songs))
+        audioList.value = audioList.value + songs
+        if (exoPlayer.mediaItemCount == songs.size) exoPlayer.prepare()
+    }
+
+    /**
+     * Removes the queue entry at [index]. Removing the item that's currently playing makes
+     * ExoPlayer advance to the next one on its own, which is the behaviour users expect.
+     */
+    fun removeFromQueue(index: Int) {
+        if (index !in 0 until exoPlayer.mediaItemCount) return
+        exoPlayer.removeMediaItem(index)
+        audioList.value = audioList.value.toMutableList().apply { removeAt(index) }
+        _currentIndex.value = exoPlayer.currentMediaItemIndex
+    }
+
+    /** Moves a queue entry, e.g. for drag-to-reorder in the queue screen. */
+    fun moveQueueItem(from: Int, to: Int) {
+        val count = exoPlayer.mediaItemCount
+        if (from !in 0 until count || to !in 0 until count || from == to) return
+        exoPlayer.moveMediaItem(from, to)
+        audioList.value = audioList.value.toMutableList().apply { add(to, removeAt(from)) }
+        _currentIndex.value = exoPlayer.currentMediaItemIndex
+    }
+
+    fun clearQueue() {
+        exoPlayer.clearMediaItems()
+        audioList.value = emptyList()
+        _currentIndex.value = -1
+    }
+
     private fun playOrPause() {
-        if (exoPlayer.isPlaying) {
+        // Toggle against playWhenReady (intent), not isPlaying (engine state) - otherwise
+        // tapping during a seek/buffer stall reads as "currently paused" and no-ops.
+        if (exoPlayer.playWhenReady) {
             exoPlayer.pause()
             stopProgressUpdate()
         } else {
@@ -283,6 +369,7 @@ sealed class MelodiqPlayerEvent {
     data object Pause : MelodiqPlayerEvent()
     data object SelectAudioChange : MelodiqPlayerEvent()
     data object BackwardTrack5Sec : MelodiqPlayerEvent()
+    data class SetPlaybackSpeed(val speed: Float) : MelodiqPlayerEvent()
     data object SkipNext : MelodiqPlayerEvent()
     data object SkipPrevious : MelodiqPlayerEvent()
     data object ForwardTrack5Sec : MelodiqPlayerEvent()

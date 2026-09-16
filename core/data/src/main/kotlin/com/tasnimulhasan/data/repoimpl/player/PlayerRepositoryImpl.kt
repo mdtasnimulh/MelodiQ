@@ -163,6 +163,46 @@ class PlayerRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun playNext(song: MusicEntity) {
+        serviceHandler.playNext(song)
+        _activeQueue.value = serviceHandler.audioList.value
+    }
+
+    override suspend fun playLater(song: MusicEntity) {
+        serviceHandler.playLater(song)
+        _activeQueue.value = serviceHandler.audioList.value
+    }
+
+    override suspend fun addToQueue(songs: List<MusicEntity>) {
+        serviceHandler.addToQueue(songs)
+        _activeQueue.value = serviceHandler.audioList.value
+    }
+
+    override suspend fun removeFromQueue(index: Int) {
+        serviceHandler.removeFromQueue(index)
+        _activeQueue.value = serviceHandler.audioList.value
+    }
+
+    override suspend fun moveQueueItem(from: Int, to: Int) {
+        serviceHandler.moveQueueItem(from, to)
+        _activeQueue.value = serviceHandler.audioList.value
+    }
+
+    override suspend fun clearQueue() {
+        serviceHandler.clearQueue()
+        _activeQueue.value = emptyList()
+    }
+
+    override suspend fun setPlaybackSpeed(speed: Float) {
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SetPlaybackSpeed(speed))
+    }
+
+    override fun getPlaybackSpeed(): Float = serviceHandler.currentPlaybackSpeed()
+
+    override fun setSeekStepMs(stepMs: Long) { serviceHandler.seekStepMs = stepMs }
+
+    override fun getSeekStepMs(): Long = serviceHandler.seekStepMs
+
     override suspend fun play() {
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.Play)
     }

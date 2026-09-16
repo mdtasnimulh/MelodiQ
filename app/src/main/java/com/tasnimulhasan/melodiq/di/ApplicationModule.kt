@@ -21,7 +21,15 @@ import com.tasnimulhasan.domain.localusecase.player.GetCurrentSongInfoUseCase
 import com.tasnimulhasan.domain.localusecase.player.GetPlaybackSnapshotUseCase
 import com.tasnimulhasan.domain.localusecase.player.IsPlaybackServiceRunningUseCase
 import com.tasnimulhasan.domain.localusecase.player.LoadPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.player.AddToQueueUseCase
+import com.tasnimulhasan.domain.localusecase.player.ClearQueueUseCase
+import com.tasnimulhasan.domain.localusecase.player.MoveQueueItemUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayCuratedQueueUseCase
+import com.tasnimulhasan.domain.localusecase.player.PlayLaterUseCase
+import com.tasnimulhasan.domain.localusecase.player.PlayNextUseCase
+import com.tasnimulhasan.domain.localusecase.player.RemoveFromQueueUseCase
+import com.tasnimulhasan.domain.localusecase.player.SeekStepUseCase
+import com.tasnimulhasan.domain.localusecase.player.SetPlaybackSpeedUseCase
 import com.tasnimulhasan.domain.localusecase.player.NextTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.ObserveAudioListUseCase
 import com.tasnimulhasan.domain.localusecase.player.ObserveAudioStateUseCase
@@ -79,6 +87,14 @@ object ApplicationModule {
     fun providePlayerUseCases(
         loadPlaylist: LoadPlaylistUseCase,
         playCuratedQueue: PlayCuratedQueueUseCase,
+        playNext: PlayNextUseCase,
+        playLater: PlayLaterUseCase,
+        addToQueue: AddToQueueUseCase,
+        removeFromQueue: RemoveFromQueueUseCase,
+        moveQueueItem: MoveQueueItemUseCase,
+        clearQueue: ClearQueueUseCase,
+        setPlaybackSpeed: SetPlaybackSpeedUseCase,
+        seekStep: SeekStepUseCase,
         play: PlayUseCase,
         pause: PauseUseCase,
         seekTo: SeekToUseCase,
@@ -103,6 +119,14 @@ object ApplicationModule {
     ): PlayerUseCases = PlayerUseCases(
         loadPlaylist = loadPlaylist,
         playCuratedQueue = playCuratedQueue,
+        playNext = playNext,
+        playLater = playLater,
+        addToQueue = addToQueue,
+        removeFromQueue = removeFromQueue,
+        moveQueueItem = moveQueueItem,
+        clearQueue = clearQueue,
+        setPlaybackSpeed = setPlaybackSpeed,
+        seekStep = seekStep,
         play = play,
         pause = pause,
         seekTo = seekTo,

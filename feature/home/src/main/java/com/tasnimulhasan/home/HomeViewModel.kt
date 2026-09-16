@@ -224,6 +224,16 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun playNext(song: MusicEntity) = viewModelScope.launch {
+        playerUseCases.playNext(song)
+        _uiEvent.send(UiEvent.ShowToast("Playing next"))
+    }
+
+    fun playLater(song: MusicEntity) = viewModelScope.launch {
+        playerUseCases.playLater(song)
+        _uiEvent.send(UiEvent.ShowToast("Added to queue"))
+    }
+
     fun playAll() {
         if (audioList.value.isEmpty()) return
         viewModelScope.launch { playerUseCases.selectAudioChange(0) }

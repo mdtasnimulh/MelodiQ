@@ -8,5 +8,6 @@ android {
 }
 
 dependencies {
+    implementation(libs.coil.kt.compose)
 
 }

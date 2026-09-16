@@ -1,5 +1,10 @@
 package com.tasnimulhasan.home
 
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.QueuePlayNext
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.filled.PlayArrow
@@ -85,6 +90,7 @@ internal fun SharedTransitionScope.HomeScreen(
 
     // NEW STATE FOR THE DIALOG
     val showAddToPlaylistDialog = remember { mutableStateOf(false) }
+    val showSongActionsSheet = remember { mutableStateOf(false) }
     val selectedSongForPlaylist = remember { mutableStateOf<MusicEntity?>(null) }
 
     val snackBarHostState = remember { SnackbarHostState() }
@@ -229,7 +235,7 @@ internal fun SharedTransitionScope.HomeScreen(
                     },
                     onMusicLongClicked = {
                         selectedSongForPlaylist.value = item
-                        showAddToPlaylistDialog.value = true
+                        showSongActionsSheet.value = true
                     },
                     onFavouriteIconClicked = {
                         viewModel.action(UiAction.ToggleFavorite(item.songId))
@@ -279,6 +285,70 @@ internal fun SharedTransitionScope.HomeScreen(
             },
             onDismiss = { showAddToPlaylistDialog.value = false }
         )
+
+        SongActionsSheet(
+            show = showSongActionsSheet,
+            song = selectedSongForPlaylist.value,
+            onPlayNext = { song ->
+                viewModel.playNext(song)
+                showSongActionsSheet.value = false
+            },
+            onPlayLater = { song ->
+                viewModel.playLater(song)
+                showSongActionsSheet.value = false
+            },
+            onAddToPlaylist = {
+                showSongActionsSheet.value = false
+                showAddToPlaylistDialog.value = true
+            },
+            onDismiss = { showSongActionsSheet.value = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SongActionsSheet(
+    show: MutableState<Boolean>,
+    song: MusicEntity?,
+    onPlayNext: (MusicEntity) -> Unit,
+    onPlayLater: (MusicEntity) -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (!show.value || song == null) return
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            Text(
+                text = song.songTitle,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+            )
+            SheetAction(Icons.Filled.QueuePlayNext, "Play next") { onPlayNext(song) }
+            SheetAction(Icons.AutoMirrored.Filled.QueueMusic, "Add to queue") { onPlayLater(song) }
+            SheetAction(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist") { onAddToPlaylist() }
+        }
+    }
+}
+
+@Composable
+private fun SheetAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(imageVector = icon, contentDescription = null)
+        Spacer(modifier = Modifier.width(20.dp))
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

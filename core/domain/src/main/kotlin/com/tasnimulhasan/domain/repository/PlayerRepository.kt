@@ -25,6 +25,20 @@ interface PlayerRepository {
      * those screens would start showing the wrong songs after the user leaves this queue.
      */
     suspend fun playCuratedQueue(musicList: List<MusicEntity>, startIndex: Int)
+    // --- Queue management ---
+    suspend fun playNext(song: MusicEntity)
+    suspend fun playLater(song: MusicEntity)
+    suspend fun addToQueue(songs: List<MusicEntity>)
+    suspend fun removeFromQueue(index: Int)
+    suspend fun moveQueueItem(from: Int, to: Int)
+    suspend fun clearQueue()
+
+    // --- Playback tuning ---
+    suspend fun setPlaybackSpeed(speed: Float)
+    fun getPlaybackSpeed(): Float
+    fun setSeekStepMs(stepMs: Long)
+    fun getSeekStepMs(): Long
+
     suspend fun play()
     suspend fun pause()
     suspend fun seekTo(position: Long)
