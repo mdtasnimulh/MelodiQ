@@ -46,9 +46,9 @@ class PlaylistDetailsViewModel @Inject constructor(
         }
     }
 
-    fun setMediaItems(musicList: List<MusicEntity>, sortType: SortType) {
+    fun playFromPlaylist(musicList: List<MusicEntity>, startIndex: Int) {
         viewModelScope.launch {
-            playerUseCases.loadPlaylist(musicList, sortType)
+            playerUseCases.playCuratedQueue(musicList, startIndex)
         }
     }
 

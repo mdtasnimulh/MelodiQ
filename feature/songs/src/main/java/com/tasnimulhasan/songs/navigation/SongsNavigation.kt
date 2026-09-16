@@ -6,7 +6,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
-import com.tasnimulhasan.songs.SongsRoute
+import com.tasnimulhasan.songs.SongsRouteScreen
 import kotlinx.serialization.Serializable
 
 @Serializable object SongsRoute
@@ -22,6 +22,6 @@ fun NavGraphBuilder.songsScreen(
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
     ) {
-        SongsRoute(navigateToPlayer = navigateToPlayer)
+        SongsRouteScreen(navigateToPlayer = navigateToPlayer)
     }
 }

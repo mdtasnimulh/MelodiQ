@@ -49,7 +49,7 @@ import java.util.Locale
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
-internal fun SongsRoute(
+internal fun SongsRouteScreen(
     modifier: Modifier = Modifier,
     navigateToPlayer: (musicId: String) -> Unit,
     viewModel: SongsViewModel = hiltViewModel()

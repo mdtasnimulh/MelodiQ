@@ -26,6 +26,13 @@ class MelodiqNotificationManager @Inject constructor(
     private val notificationManager: NotificationManagerCompat =
         NotificationManagerCompat.from(context)
 
+    // Built once and reused - previously a brand new PlayerNotificationManager was created
+    // (and never released) every time the service's onStartCommand ran, which can happen
+    // more than once per process. Each extra instance keeps its own internal update loop
+    // attached to the same ExoPlayer, competing to draw the same notification ID, which
+    // showed up as a stuck or inconsistent notification (wrong title, no progress).
+    private var playerNotificationManager: PlayerNotificationManager? = null
+
     init {
         createNotificationChannel()
     }
@@ -34,8 +41,15 @@ class MelodiqNotificationManager @Inject constructor(
         mediaSessionService: MediaSessionService,
         mediaSession: MediaSession
     ) {
-        buildNotification(mediaSession)
+        if (playerNotificationManager == null) {
+            playerNotificationManager = buildNotification(mediaSession)
+        }
         startForegroundNotificationService(mediaSessionService)
+    }
+
+    fun release() {
+        playerNotificationManager?.setPlayer(null)
+        playerNotificationManager = null
     }
 
     private fun startForegroundNotificationService(mediaSessionService: MediaSessionService) {
@@ -46,7 +60,7 @@ class MelodiqNotificationManager @Inject constructor(
     }
 
     @OptIn(UnstableApi::class)
-    private fun buildNotification(mediaSession: MediaSession) {
+    private fun buildNotification(mediaSession: MediaSession): PlayerNotificationManager =
         PlayerNotificationManager.Builder(
             context,
             NOTIFICATION_ID,
@@ -68,7 +82,6 @@ class MelodiqNotificationManager @Inject constructor(
                 it.setPriority(NotificationCompat.PRIORITY_LOW)
                 it.setPlayer(exoPlayer)
             }
-    }
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(

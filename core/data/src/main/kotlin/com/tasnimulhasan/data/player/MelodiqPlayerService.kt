@@ -30,6 +30,7 @@ class MelodiqPlayerService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
 
     override fun onDestroy() {
+        notificationManager.release()
         mediaSession.release()
         releaseVolumeBoost()
         super.onDestroy()

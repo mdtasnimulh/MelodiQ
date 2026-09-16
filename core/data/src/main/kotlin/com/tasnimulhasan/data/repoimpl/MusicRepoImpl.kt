@@ -67,7 +67,7 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
 
         val selection = MediaStore.Audio.Media.IS_MUSIC + "!= 0"
 
-        // Order doesn't matter here - we sort in memory afterward - but requesting it
+        // Order doesn't matter here - we sort in memory afterwards - but requesting it
         // pre-sorted by the DB's own index avoids a separate in-DB sort step.
         val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC"
 

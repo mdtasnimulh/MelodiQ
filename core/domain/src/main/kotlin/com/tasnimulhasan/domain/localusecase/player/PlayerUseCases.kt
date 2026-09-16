@@ -2,6 +2,7 @@ package com.tasnimulhasan.domain.localusecase.player
 
 data class PlayerUseCases(
     val loadPlaylist: LoadPlaylistUseCase,
+    val playCuratedQueue: PlayCuratedQueueUseCase,
     val play: PlayUseCase,
     val pause: PauseUseCase,
     val next: NextTrackUseCase,

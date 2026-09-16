@@ -139,7 +139,7 @@ internal fun PlaylistDetailsScreen(
                     isFavourite = false,
                     onMusicClicked = {
                         viewModel.ensurePlaybackServiceStarted()
-                        viewModel.setMediaItems(musicListForPlay, SortType.DATE_MODIFIED_DESC)
+                        viewModel.playFromPlaylist(musicListForPlay, index)
                         navigateToPlayer(item.songId.toString())
                     },
                     onMusicLongClicked = {

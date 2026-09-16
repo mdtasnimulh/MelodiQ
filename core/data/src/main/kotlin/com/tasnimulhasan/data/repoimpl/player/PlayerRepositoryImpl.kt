@@ -43,16 +43,22 @@ class PlayerRepositoryImpl @Inject constructor(
     private val _playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
     private val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
-    // Authoritative queue + current-track identity. `_audioList` is written in exactly one
-    // place (loadPlaylist, below), which is also the only thing that ever changes what's
-    // loaded into ExoPlayer - so an index coming from the player always matches this list.
+    // "Browsable library" - what Home/Songs/Albums render as "all songs". Written only by
+    // the library-loading pipeline below, never by playCuratedQueue.
     private val _audioList = MutableStateFlow<List<MusicEntity>>(emptyList())
     override val audioList: StateFlow<List<MusicEntity>> = _audioList.asStateFlow()
+
+    // Whatever list is ACTUALLY loaded into ExoPlayer right now - the full library most of
+    // the time, but a smaller curated list (e.g. a playlist) when playCuratedQueue was used
+    // last. currentSelectedAudio must always resolve against this, not _audioList, or
+    // playing a playlist track would look up the wrong song using an index that's only
+    // valid within that smaller queue.
+    private val _activeQueue = MutableStateFlow<List<MusicEntity>>(emptyList())
 
     private val _currentIndex = MutableStateFlow(-1)
 
     override val currentSelectedAudio: StateFlow<MusicEntity?> =
-        combine(_audioList, _currentIndex) { list, index -> list.getOrNull(index) }
+        combine(_activeQueue, _currentIndex) { list, index -> list.getOrNull(index) }
             .stateIn(repositoryScope, SharingStarted.Eagerly, null)
 
     private val _isPlaying = MutableStateFlow(false)
@@ -110,9 +116,10 @@ class PlayerRepositoryImpl @Inject constructor(
     override suspend fun loadPlaylist(musicList: List<MusicEntity>, sortType: SortType, keepCurrentTrack: Boolean) {
         // Whatever list is loaded here becomes the authoritative queue that every screen's
         // "current song" lookup is based on - keep it in sync with what's actually handed
-        // to ExoPlayer below, regardless of which caller (library pipeline, a specific
-        // playlist screen, etc.) triggered this load.
+        // to ExoPlayer below.
         _audioList.value = musicList
+        _activeQueue.value = musicList
+        curatedQueueActive = false
         if (!keepCurrentTrack) {
             serviceHandler.updateMediaItems(musicList, sortType)
             _currentIndex.value = serviceHandler.getCurrentMediaItemIndex()
@@ -131,12 +138,31 @@ class PlayerRepositoryImpl @Inject constructor(
         }
     }
 
+    // True when a curated list (e.g. a playlist) is loaded into the player instead of the
+    // full library. Tracked explicitly rather than inferred by comparing list contents or
+    // references, so the meaning stays obvious and can't silently break if either list is
+    // ever copied rather than shared.
+    private var curatedQueueActive = false
+
+    override suspend fun playCuratedQueue(musicList: List<MusicEntity>, startIndex: Int) {
+        // Deliberately does NOT touch _audioList - that's the browsable full library that
+        // Home/Songs render, and must stay intact while a playlist (a smaller subset) is
+        // what's actually loaded into the player.
+        _activeQueue.value = musicList
+        curatedQueueActive = true
+        serviceHandler.playCuratedQueue(
+            audioList = musicList,
+            sortType = serviceHandler.sortType.value,
+            startIndex = startIndex,
+        )
+    }
+
     override suspend fun play() {
-        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.PlayPause)
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.Play)
     }
 
     override suspend fun pause() {
-        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.PlayPause)
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.Pause)
     }
 
     override suspend fun seekTo(position: Long) {
@@ -162,6 +188,15 @@ class PlayerRepositoryImpl @Inject constructor(
     override suspend fun getCurrentDuration(): Long = serviceHandler.getCurrentDuration()
 
     override suspend fun selectAudio(index: Int) {
+        // If a curated queue (e.g. a playlist) is currently loaded instead of the full
+        // library, an index from Home/Songs (which is always relative to the full library)
+        // would be meaningless - or out of bounds - against that smaller queue. Restore the
+        // library as the active queue first so the index means what the caller expects.
+        if (curatedQueueActive) {
+            serviceHandler.updateMediaItems(_audioList.value, serviceHandler.sortType.value)
+            _activeQueue.value = _audioList.value
+            curatedQueueActive = false
+        }
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SelectAudioChange, selectedAudionIndex = index)
     }
 

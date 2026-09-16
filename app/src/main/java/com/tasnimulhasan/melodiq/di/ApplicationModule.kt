@@ -21,6 +21,7 @@ import com.tasnimulhasan.domain.localusecase.player.GetCurrentSongInfoUseCase
 import com.tasnimulhasan.domain.localusecase.player.GetPlaybackSnapshotUseCase
 import com.tasnimulhasan.domain.localusecase.player.IsPlaybackServiceRunningUseCase
 import com.tasnimulhasan.domain.localusecase.player.LoadPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.player.PlayCuratedQueueUseCase
 import com.tasnimulhasan.domain.localusecase.player.NextTrackUseCase
 import com.tasnimulhasan.domain.localusecase.player.ObserveAudioListUseCase
 import com.tasnimulhasan.domain.localusecase.player.ObserveAudioStateUseCase
@@ -77,6 +78,7 @@ object ApplicationModule {
     @Singleton
     fun providePlayerUseCases(
         loadPlaylist: LoadPlaylistUseCase,
+        playCuratedQueue: PlayCuratedQueueUseCase,
         play: PlayUseCase,
         pause: PauseUseCase,
         seekTo: SeekToUseCase,
@@ -100,6 +102,7 @@ object ApplicationModule {
         repeatTrackOffUseCase: RepeatTrackOffUseCase
     ): PlayerUseCases = PlayerUseCases(
         loadPlaylist = loadPlaylist,
+        playCuratedQueue = playCuratedQueue,
         play = play,
         pause = pause,
         seekTo = seekTo,

@@ -8,7 +8,7 @@ import androidx.navigation.NavOptions
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navDeepLink
-import com.tasnimulhasan.featurefavourite.FavouriteRoute
+import com.tasnimulhasan.featurefavourite.FavouriteRouteScreen
 import kotlinx.serialization.Serializable
 
 @Serializable object FavouriteRoute
@@ -19,13 +19,15 @@ fun NavController.navigateToFavourite(navOptions: NavOptionsBuilder.() -> Unit =
     }
 }
 
-fun NavGraphBuilder.favouriteScreen() {
+fun NavGraphBuilder.favouriteScreen(
+    navigateToPlayer: (musicId: String) -> Unit,
+) {
     composable<FavouriteRoute>(
         enterTransition = { slideInHorizontally {it} },
         exitTransition = { slideOutHorizontally { -it } },
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
     ) {
-        FavouriteRoute()
+        FavouriteRouteScreen(navigateToPlayer = navigateToPlayer)
     }
 }

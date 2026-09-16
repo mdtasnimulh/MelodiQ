@@ -55,7 +55,7 @@ fun MelodiQNavHost(
             navigateToEqualizerScreen = navigateToEqualizerScreen
         )
         queueScreen()
-        favouriteScreen()
+        favouriteScreen(navigateToPlayer = navigateToPlayer)
         aboutScreen()
         feedbackScreen()
         equalizerScreen()

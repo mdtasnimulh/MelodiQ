@@ -121,21 +121,14 @@ class PlayerViewModel @Inject constructor(
             }
         }
 
-        // Switch to the song this screen was opened for, if it isn't already the one
-        // playing. Waits for the shared audio list to actually contain songs (it's
-        // populated by the repository's own reactive pipeline) rather than fetching its
-        // own copy of the library.
-        viewModelScope.launch {
-            audioList.collectLatest { sorted ->
-                if (sorted.isEmpty()) return@collectLatest
-                val snapshot = playerUseCases.getPlaybackSnapshot()
-                val targetIndex = sorted.indexOfFirst { it.songId == targetSongId }
-                val isAlreadyCurrent = targetIndex >= 0 && targetIndex == snapshot.currentIndex
-                if (targetIndex >= 0 && !isAlreadyCurrent) {
-                    playerUseCases.selectAudioChange(targetIndex)
-                }
-            }
-        }
+        // NOTE: Home/Songs/AlbumDetails already call selectAudioChange themselves before
+        // navigating here, only when the tapped song is actually different from what's
+        // currently loaded. Re-deriving and re-applying "the right song" again here raced
+        // against that first call and could misfire - e.g. opening the player for the
+        // already-selected-but-paused song would sometimes force it back to playing,
+        // because this block ran before the original selection had taken effect and
+        // concluded (incorrectly) that a re-selection was needed. The player screen should
+        // only ever reflect state, never decide on its own to change what's playing.
 
         viewModelScope.launch {
             playerUseCases.observeAudioState().collectLatest { mediaState ->

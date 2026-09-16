@@ -68,6 +68,34 @@ class MelodiqServiceHandler @Inject constructor(
         setMediaItemList(mediaItems)
     }
 
+    /** Replaces the queue with a specific curated list (e.g. a playlist) and starts playing
+     * it immediately at [startIndex] - distinct from [updateMediaItems], which is used for
+     * loading/refreshing the full library and preserves whatever was already playing. */
+    fun playCuratedQueue(audioList: List<MusicEntity>, sortType: SortType, startIndex: Int) {
+        this.sortType.value = sortType
+        this.audioList.value = audioList.toList()
+        val mediaItems = audioList.map { audio ->
+            MediaItem.Builder()
+                .setUri(audio.contentUri)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setAlbumArtist(audio.artist)
+                        .setDisplayTitle(audio.songTitle)
+                        .setSubtitle(audio.album)
+                        .build()
+                )
+                .build()
+        }
+        val clampedIndex = startIndex.coerceIn(0, (mediaItems.size - 1).coerceAtLeast(0))
+        exoPlayer.setMediaItems(mediaItems, clampedIndex, 0L)
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = true
+        exoPlayer.play()
+        _audioState.value = MelodiqAudioState.CurrentPlaying(clampedIndex)
+        _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+        startProgressUpdate()
+    }
+
     fun updateMediaItemsWithCurrentTrack(
         audioList: List<MusicEntity>,
         sortType: SortType,
@@ -137,17 +165,40 @@ class MelodiqServiceHandler @Inject constructor(
             MelodiqPlayerEvent.BackwardTrack5Sec -> exoPlayer.seekTo(exoPlayer.currentPosition - 5_000)
             MelodiqPlayerEvent.ForwardTrack5Sec -> exoPlayer.seekTo(exoPlayer.currentPosition + 5_000)
             MelodiqPlayerEvent.PlayPause -> playOrPause()
+            MelodiqPlayerEvent.Play -> {
+                // Explicit, idempotent "make sure this is playing" - unlike the toggle
+                // above, calling this twice in a row (or when the caller's cached belief
+                // about play state is a frame stale) can never invert into a pause.
+                if (!exoPlayer.isPlaying) {
+                    exoPlayer.play()
+                    _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+                    startProgressUpdate()
+                }
+            }
+            MelodiqPlayerEvent.Pause -> {
+                if (exoPlayer.isPlaying) {
+                    exoPlayer.pause()
+                    stopProgressUpdate()
+                }
+            }
             MelodiqPlayerEvent.SeekTo -> exoPlayer.seekTo(seekPosition)
             MelodiqPlayerEvent.SkipNext -> exoPlayer.seekToNextMediaItem()
             MelodiqPlayerEvent.SkipPrevious -> exoPlayer.seekToPreviousMediaItem()
             MelodiqPlayerEvent.SelectAudioChange -> {
                 if (exoPlayer.currentMediaItemIndex != selectedAudionIndex) {
                     exoPlayer.seekToDefaultPosition(selectedAudionIndex)
-                    _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
                     exoPlayer.playWhenReady = true
+                    // Stamp the new index immediately instead of waiting for
+                    // onMediaItemTransition to fire - that callback is reliable but async,
+                    // and every screen's "current song" state is driven off this event, so
+                    // any lag here was directly visible as a stale/wrong song momentarily
+                    // showing as selected right after a tap.
+                    _audioState.value = MelodiqAudioState.CurrentPlaying(selectedAudionIndex)
+                    _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+                    exoPlayer.play()
                     startProgressUpdate()
                 } else if (!exoPlayer.isPlaying) {
-                    exoPlayer.playWhenReady = true
+                    exoPlayer.play()
                     _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
                     startProgressUpdate()
                 }
@@ -218,6 +269,8 @@ class MelodiqServiceHandler @Inject constructor(
 
 sealed class MelodiqPlayerEvent {
     data object PlayPause : MelodiqPlayerEvent()
+    data object Play : MelodiqPlayerEvent()
+    data object Pause : MelodiqPlayerEvent()
     data object SelectAudioChange : MelodiqPlayerEvent()
     data object BackwardTrack5Sec : MelodiqPlayerEvent()
     data object SkipNext : MelodiqPlayerEvent()

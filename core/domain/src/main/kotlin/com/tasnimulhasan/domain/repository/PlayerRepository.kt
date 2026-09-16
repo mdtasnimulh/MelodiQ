@@ -17,6 +17,14 @@ interface PlayerRepository {
     val isPlaying: StateFlow<Boolean>
 
     suspend fun loadPlaylist(musicList: List<MusicEntity>, sortType: SortType, keepCurrentTrack: Boolean = true)
+
+    /**
+     * Plays a specific, self-contained list of tracks (e.g. a user playlist) starting at
+     * [startIndex], WITHOUT touching [audioList] - that StateFlow is the full library that
+     * Home/Songs render from, and must never be overwritten by a smaller curated list or
+     * those screens would start showing the wrong songs after the user leaves this queue.
+     */
+    suspend fun playCuratedQueue(musicList: List<MusicEntity>, startIndex: Int)
     suspend fun play()
     suspend fun pause()
     suspend fun seekTo(position: Long)
