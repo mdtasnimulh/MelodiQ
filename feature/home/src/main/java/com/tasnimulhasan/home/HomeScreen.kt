@@ -1,5 +1,11 @@
 package com.tasnimulhasan.home
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Context.ACTIVITY_SERVICE
@@ -163,6 +169,40 @@ internal fun SharedTransitionScope.HomeScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.playAll() },
+                        modifier = Modifier.weight(1f),
+                        enabled = audioList.isNotEmpty(),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Play all")
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.shuffleAll() },
+                        modifier = Modifier.weight(1f),
+                        enabled = audioList.isNotEmpty(),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Shuffle,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Shuffle")
+                    }
+                }
             }
             itemsIndexed(
                 items = audioList,

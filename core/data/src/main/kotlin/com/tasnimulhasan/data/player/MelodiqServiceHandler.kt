@@ -24,6 +24,23 @@ class MelodiqServiceHandler @Inject constructor(
     private val _audioState: MutableStateFlow<MelodiqAudioState> = MutableStateFlow(MelodiqAudioState.Initial)
     val audioState: StateFlow<MelodiqAudioState> = _audioState.asStateFlow()
 
+    // Dedicated state holders.
+    //
+    // These used to be multiplexed through `audioState` alone, which is a StateFlow and
+    // therefore CONFLATED: it only guarantees the collector observes the latest value. Any
+    // time two different kinds of state were published back-to-back (e.g. CurrentPlaying
+    // immediately followed by Playing, or CurrentPlaying followed 500ms later by a stream
+    // of Progress ticks), the earlier one was silently dropped before any collector ran.
+    // That's why the "currently selected song" went stale or never appeared at all.
+    //
+    // Distinct concerns now get distinct StateFlows, so an update to one can never erase an
+    // update to another. audioState is kept for progress/buffering/ready signalling only.
+    private val _currentIndex = MutableStateFlow(-1)
+    val currentIndex: StateFlow<Int> = _currentIndex.asStateFlow()
+
+    private val _isPlayingState = MutableStateFlow(false)
+    val isPlayingState: StateFlow<Boolean> = _isPlayingState.asStateFlow()
+
     val audioList = MutableStateFlow<List<MusicEntity>>(emptyList())
     val sortType = MutableStateFlow(SortType.DATE_MODIFIED_DESC)
 
@@ -34,8 +51,8 @@ class MelodiqServiceHandler @Inject constructor(
         if (exoPlayer.playbackState == ExoPlayer.STATE_READY) {
             _audioState.value = MelodiqAudioState.Ready(exoPlayer.duration)
             _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
-            _audioState.value = MelodiqAudioState.Playing(exoPlayer.isPlaying)
-            _audioState.value = MelodiqAudioState.CurrentPlaying(exoPlayer.currentMediaItemIndex)
+            _isPlayingState.value = exoPlayer.isPlaying
+            _currentIndex.value = exoPlayer.currentMediaItemIndex
         }
     }
 
@@ -53,18 +70,7 @@ class MelodiqServiceHandler @Inject constructor(
     fun updateMediaItems(audioList: List<MusicEntity>, sortType: SortType) {
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
-        val mediaItems = audioList.map { audio ->
-            MediaItem.Builder()
-                .setUri(audio.contentUri)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setAlbumArtist(audio.artist)
-                        .setDisplayTitle(audio.songTitle)
-                        .setSubtitle(audio.album)
-                        .build()
-                )
-                .build()
-        }
+        val mediaItems = buildMediaItems(audioList)
         setMediaItemList(mediaItems)
     }
 
@@ -74,25 +80,14 @@ class MelodiqServiceHandler @Inject constructor(
     fun playCuratedQueue(audioList: List<MusicEntity>, sortType: SortType, startIndex: Int) {
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
-        val mediaItems = audioList.map { audio ->
-            MediaItem.Builder()
-                .setUri(audio.contentUri)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setAlbumArtist(audio.artist)
-                        .setDisplayTitle(audio.songTitle)
-                        .setSubtitle(audio.album)
-                        .build()
-                )
-                .build()
-        }
+        val mediaItems = buildMediaItems(audioList)
         val clampedIndex = startIndex.coerceIn(0, (mediaItems.size - 1).coerceAtLeast(0))
         exoPlayer.setMediaItems(mediaItems, clampedIndex, 0L)
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
         exoPlayer.play()
-        _audioState.value = MelodiqAudioState.CurrentPlaying(clampedIndex)
-        _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+        _currentIndex.value = clampedIndex
+        _isPlayingState.value = true
         startProgressUpdate()
     }
 
@@ -105,18 +100,7 @@ class MelodiqServiceHandler @Inject constructor(
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
 
-        val mediaItems = audioList.map { audio ->
-            MediaItem.Builder()
-                .setUri(audio.contentUri)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setAlbumArtist(audio.artist)
-                        .setDisplayTitle(audio.songTitle)
-                        .setSubtitle(audio.album)
-                        .build()
-                )
-                .build()
-        }
+        val mediaItems = buildMediaItems(audioList)
 
         val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
         val currentPosition = exoPlayer.currentPosition
@@ -151,7 +135,7 @@ class MelodiqServiceHandler @Inject constructor(
             exoPlayer.playWhenReady = true
             startProgressUpdate()
         }
-        _audioState.value = MelodiqAudioState.CurrentPlaying(newIndex)
+        _currentIndex.value = newIndex
     }
 
     fun getCurrentDuration(): Long = exoPlayer.currentPosition
@@ -166,12 +150,9 @@ class MelodiqServiceHandler @Inject constructor(
             MelodiqPlayerEvent.ForwardTrack5Sec -> exoPlayer.seekTo(exoPlayer.currentPosition + 5_000)
             MelodiqPlayerEvent.PlayPause -> playOrPause()
             MelodiqPlayerEvent.Play -> {
-                // Explicit, idempotent "make sure this is playing" - unlike the toggle
-                // above, calling this twice in a row (or when the caller's cached belief
-                // about play state is a frame stale) can never invert into a pause.
                 if (!exoPlayer.isPlaying) {
                     exoPlayer.play()
-                    _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+                    _isPlayingState.value = true
                     startProgressUpdate()
                 }
             }
@@ -184,25 +165,7 @@ class MelodiqServiceHandler @Inject constructor(
             MelodiqPlayerEvent.SeekTo -> exoPlayer.seekTo(seekPosition)
             MelodiqPlayerEvent.SkipNext -> exoPlayer.seekToNextMediaItem()
             MelodiqPlayerEvent.SkipPrevious -> exoPlayer.seekToPreviousMediaItem()
-            MelodiqPlayerEvent.SelectAudioChange -> {
-                if (exoPlayer.currentMediaItemIndex != selectedAudionIndex) {
-                    exoPlayer.seekToDefaultPosition(selectedAudionIndex)
-                    exoPlayer.playWhenReady = true
-                    // Stamp the new index immediately instead of waiting for
-                    // onMediaItemTransition to fire - that callback is reliable but async,
-                    // and every screen's "current song" state is driven off this event, so
-                    // any lag here was directly visible as a stale/wrong song momentarily
-                    // showing as selected right after a tap.
-                    _audioState.value = MelodiqAudioState.CurrentPlaying(selectedAudionIndex)
-                    _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
-                    exoPlayer.play()
-                    startProgressUpdate()
-                } else if (!exoPlayer.isPlaying) {
-                    exoPlayer.play()
-                    _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
-                    startProgressUpdate()
-                }
-            }
+            MelodiqPlayerEvent.SelectAudioChange -> selectTrack(selectedAudionIndex)
             MelodiqPlayerEvent.Stop -> stopProgressUpdate()
             is MelodiqPlayerEvent.UpdateProgress -> {
                 exoPlayer.seekTo((exoPlayer.duration * playerEvent.newProgress).toLong())
@@ -227,8 +190,8 @@ class MelodiqServiceHandler @Inject constructor(
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
-        _audioState.value = MelodiqAudioState.Playing(isPlaying = isPlaying)
-        _audioState.value = MelodiqAudioState.CurrentPlaying(exoPlayer.currentMediaItemIndex)
+        _isPlayingState.value = isPlaying
+        _currentIndex.value = exoPlayer.currentMediaItemIndex
         if (isPlaying) {
             CoroutineScope(Dispatchers.Main).launch { startProgressUpdate() }
         } else {
@@ -237,7 +200,54 @@ class MelodiqServiceHandler @Inject constructor(
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        _audioState.value = MelodiqAudioState.CurrentPlaying(exoPlayer.currentMediaItemIndex)
+        // Fires on auto-advance to the next track too - this is what keeps every screen's
+        // "now playing" highlight correct without the user touching anything.
+        _currentIndex.value = exoPlayer.currentMediaItemIndex
+    }
+
+    /**
+     * Jumps to [index] within the currently loaded queue.
+     *
+     * Before seeking, this verifies the player's queue actually matches the list this
+     * handler believes is loaded. If ExoPlayer's timeline is empty or a different size
+     * (which is what "only the first song ever plays" looks like from the outside - every
+     * index >= 1 is out of range, so the seek is rejected and playback stays on item 0),
+     * the queue is rebuilt from [audioList] first and the seek is then applied to a
+     * correctly populated timeline.
+     */
+    private fun selectTrack(index: Int) {
+        val expected = audioList.value
+        if (index < 0 || index >= expected.size) return
+
+        if (exoPlayer.mediaItemCount != expected.size) {
+            exoPlayer.setMediaItems(buildMediaItems(expected), index, 0L)
+            exoPlayer.prepare()
+        } else if (exoPlayer.currentMediaItemIndex != index) {
+            exoPlayer.seekTo(index, 0L)
+        }
+
+        exoPlayer.playWhenReady = true
+        exoPlayer.play()
+        _currentIndex.value = index
+        _isPlayingState.value = true
+        startProgressUpdate()
+    }
+
+    private fun buildMediaItems(songs: List<MusicEntity>): List<MediaItem> = songs.map { audio ->
+        MediaItem.Builder()
+            .setMediaId(audio.songId.toString())
+            .setUri(audio.contentUri)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(audio.songTitle)
+                    .setArtist(audio.artist)
+                    .setAlbumTitle(audio.album)
+                    .setAlbumArtist(audio.artist)
+                    .setDisplayTitle(audio.songTitle)
+                    .setSubtitle(audio.album)
+                    .build()
+            )
+            .build()
     }
 
     private fun playOrPause() {
@@ -246,7 +256,7 @@ class MelodiqServiceHandler @Inject constructor(
             stopProgressUpdate()
         } else {
             exoPlayer.play()
-            _audioState.value = MelodiqAudioState.Playing(isPlaying = true)
+            _isPlayingState.value = true
             startProgressUpdate()
         }
     }
@@ -263,7 +273,7 @@ class MelodiqServiceHandler @Inject constructor(
 
     private fun stopProgressUpdate() {
         job?.cancel()
-        _audioState.value = MelodiqAudioState.Playing(isPlaying = false)
+        _isPlayingState.value = false
     }
 }
 

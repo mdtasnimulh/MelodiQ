@@ -73,8 +73,10 @@ class HomeViewModel @Inject constructor(
     private val _progressString = MutableStateFlow("00:00")
     val progressString = _progressString.asStateFlow()
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying = _isPlaying.asStateFlow()
+    // Bound directly to the shared play/pause state rather than a local copy fed by
+    // PlaybackState.Playing - that signal travelled on a conflated StateFlow and could be
+    // dropped, leaving the play/pause button out of sync with reality.
+    val isPlaying: StateFlow<Boolean> = playerUseCases.observeIsPlaying()
 
     // Pass-throughs onto the repository's single shared StateFlow - see PlayerRepositoryImpl.
     // The home list must read exactly the same song identity the mini player and full
@@ -114,7 +116,7 @@ class HomeViewModel @Inject constructor(
                 when (mediaState) {
                     PlaybackState.Idle -> _uIState.value = UIState.Initial
                     is PlaybackState.Buffering -> calculateProgressValue(mediaState.position)
-                    is PlaybackState.Playing -> _isPlaying.value = mediaState.isPlaying
+                    is PlaybackState.Playing -> Unit
                     is PlaybackState.Progress -> calculateProgressValue(mediaState.position)
                     is PlaybackState.TrackChanged -> Unit
                     is PlaybackState.Ready -> {
@@ -133,7 +135,6 @@ class HomeViewModel @Inject constructor(
         val snapshot = playerUseCases.getPlaybackSnapshot()
         _duration.value = snapshot.duration
         calculateProgressValue(snapshot.position)
-        _isPlaying.value = snapshot.isPlaying
     }
 
     fun setSortType(type: SortType) {
@@ -152,7 +153,7 @@ class HomeViewModel @Inject constructor(
             is UIEvents.Backward -> playerUseCases.backwardTrackUseCase()
             is UIEvents.Forward -> playerUseCases.forwardTrackUseCase()
             is UIEvents.PlayPause -> {
-                if (_isPlaying.value) playerUseCases.pause() else playerUseCases.play()
+                if (isPlaying.value) playerUseCases.pause() else playerUseCases.play()
             }
             is UIEvents.SeekTo -> {
                 val position = ((_duration.value * uiEvents.position) / 100f).toLong()
@@ -221,6 +222,17 @@ class HomeViewModel @Inject constructor(
             insertMusicToPlaylist(params = InsertMusicToPlaylistUseCase.Params(details))
             _uiEvent.send(UiEvent.ShowToast("Added to playlist"))
         }
+    }
+
+    fun playAll() {
+        if (audioList.value.isEmpty()) return
+        viewModelScope.launch { playerUseCases.selectAudioChange(0) }
+    }
+
+    fun shuffleAll() {
+        val indices = audioList.value.indices
+        if (indices.isEmpty()) return
+        viewModelScope.launch { playerUseCases.selectAudioChange(indices.random()) }
     }
 
     fun toggleFavorite(songId: Long) {

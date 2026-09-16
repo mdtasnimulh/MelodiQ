@@ -61,31 +61,37 @@ class PlayerRepositoryImpl @Inject constructor(
         combine(_activeQueue, _currentIndex) { list, index -> list.getOrNull(index) }
             .stateIn(repositoryScope, SharingStarted.Eagerly, null)
 
-    private val _isPlaying = MutableStateFlow(false)
-    override val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+    override val isPlaying: StateFlow<Boolean> = serviceHandler.isPlayingState
 
     private var progressTickCount = 0
 
     init {
+        // Index and play/pause now come from dedicated StateFlows rather than being
+        // filtered out of the single multiplexed `audioState`. Sharing one conflated
+        // StateFlow meant a CurrentPlaying update published immediately before a Playing
+        // update (or just before the next 500ms Progress tick) was dropped before any
+        // collector observed it, which left the "currently selected song" stale or unset.
+        repositoryScope.launch {
+            serviceHandler.currentIndex.collect { index ->
+                _currentIndex.value = index
+                persistCurrentPlaybackPosition()
+            }
+        }
+
+        repositoryScope.launch {
+            serviceHandler.isPlayingState.collect { playing ->
+                if (!playing) persistCurrentPlaybackPosition()
+            }
+        }
+
         repositoryScope.launch {
             serviceHandler.audioState.collect { state ->
                 _playbackState.value = state.toDomain()
-                when (state) {
-                    is MelodiqAudioState.Progress -> {
-                        // Throttle disk writes to ~every 5s while playing (10 ticks * 500ms),
-                        // so a hard process kill mid-song still resumes close to where it left off.
-                        progressTickCount++
-                        if (progressTickCount % 10 == 0) persistCurrentPlaybackPosition()
-                    }
-                    is MelodiqAudioState.Playing -> {
-                        _isPlaying.value = state.isPlaying
-                        if (!state.isPlaying) persistCurrentPlaybackPosition()
-                    }
-                    is MelodiqAudioState.CurrentPlaying -> {
-                        _currentIndex.value = state.mediaItemIndex
-                        persistCurrentPlaybackPosition()
-                    }
-                    else -> Unit
+                if (state is MelodiqAudioState.Progress) {
+                    // Throttle disk writes to ~every 5s while playing (10 ticks * 500ms),
+                    // so a hard process kill mid-song still resumes close to where it left off.
+                    progressTickCount++
+                    if (progressTickCount % 10 == 0) persistCurrentPlaybackPosition()
                 }
             }
         }

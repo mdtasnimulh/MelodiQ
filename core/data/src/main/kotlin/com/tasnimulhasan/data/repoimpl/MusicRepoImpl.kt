@@ -28,7 +28,14 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
 
     override suspend fun fetchMusic(context: Context, sortType: SortType): List<MusicEntity> {
         val raw = cacheMutex.withLock {
-            cachedRawList ?: queryMediaStore(context).also { cachedRawList = it }
+            // Deliberately only cache a NON-EMPTY result. An empty list almost always means
+            // the query ran before READ_MEDIA_AUDIO was granted (or the scan hadn't finished
+            // yet) rather than "this device genuinely has no music" - caching that would
+            // leave the app permanently showing an empty library for the whole process
+            // lifetime, with no way to recover short of a restart.
+            cachedRawList ?: queryMediaStore(context).also { fetched ->
+                if (fetched.isNotEmpty()) cachedRawList = fetched
+            }
         }
         return withContext(Dispatchers.Default) { sortInMemory(raw, sortType) }
     }

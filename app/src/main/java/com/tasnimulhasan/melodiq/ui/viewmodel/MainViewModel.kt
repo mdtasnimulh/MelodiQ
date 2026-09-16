@@ -50,8 +50,10 @@ class MainViewModel @Inject constructor(
     private val _progressString = MutableStateFlow("00:00")
     val progressString = _progressString.asStateFlow()
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying = _isPlaying.asStateFlow()
+    // Bound directly to the shared play/pause state rather than a local copy fed by
+    // PlaybackState.Playing - that signal travelled on a conflated StateFlow and could be
+    // dropped, leaving the play/pause button out of sync with reality.
+    val isPlaying: StateFlow<Boolean> = playerUseCases.observeIsPlaying()
 
     // Both of these are pass-throughs onto the repository's single shared StateFlow -
     // never re-fetched or re-derived here, so this screen can never disagree with the
@@ -77,7 +79,7 @@ class MainViewModel @Inject constructor(
                 when (mediaState) {
                     PlaybackState.Idle -> _uIState.value = UiState.Initial
                     is PlaybackState.Buffering -> calculateProgressValue(mediaState.position)
-                    is PlaybackState.Playing -> _isPlaying.value = mediaState.isPlaying
+                    is PlaybackState.Playing -> Unit
                     is PlaybackState.Progress -> calculateProgressValue(mediaState.position)
                     is PlaybackState.TrackChanged -> Unit
                     is PlaybackState.Ready -> {
@@ -96,7 +98,6 @@ class MainViewModel @Inject constructor(
         val snapshot = playerUseCases.getPlaybackSnapshot()
         _duration.value = snapshot.duration
         calculateProgressValue(snapshot.position)
-        _isPlaying.value = snapshot.isPlaying
     }
 
     fun onUiEvents(uiEvents: UiEvent) = viewModelScope.launch {
@@ -104,7 +105,7 @@ class MainViewModel @Inject constructor(
             is UiEvent.Backward -> playerUseCases.backwardTrackUseCase()
             is UiEvent.Forward -> playerUseCases.forwardTrackUseCase()
             is UiEvent.PlayPause -> {
-                if (_isPlaying.value) playerUseCases.pause()
+                if (isPlaying.value) playerUseCases.pause()
                 else playerUseCases.play()
             }
             is UiEvent.SeekTo -> {

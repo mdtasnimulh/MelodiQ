@@ -86,8 +86,10 @@ class PlayerViewModel @Inject constructor(
         .map { it ?: dummyAudio }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dummyAudio)
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying = _isPlaying.asStateFlow()
+    // Bound directly to the shared play/pause state rather than a local copy fed by
+    // PlaybackState.Playing - that signal travelled on a conflated StateFlow and could be
+    // dropped, leaving the play/pause button out of sync with reality.
+    val isPlaying: StateFlow<Boolean> = playerUseCases.observeIsPlaying()
 
     private val _progress = MutableStateFlow(0f)
     val progress = _progress.asStateFlow()
@@ -135,7 +137,7 @@ class PlayerViewModel @Inject constructor(
                 when (mediaState) {
                     PlaybackState.Idle -> _uIState.value = UIState.Initial
                     is PlaybackState.Buffering -> calculateProgressValue(mediaState.position)
-                    is PlaybackState.Playing -> _isPlaying.value = mediaState.isPlaying
+                    is PlaybackState.Playing -> Unit
                     is PlaybackState.Progress -> calculateProgressValue(mediaState.position)
                     is PlaybackState.TrackChanged -> Unit
                     is PlaybackState.Ready -> {
@@ -154,7 +156,6 @@ class PlayerViewModel @Inject constructor(
         val snapshot = playerUseCases.getPlaybackSnapshot()
         _duration.value = snapshot.duration
         calculateProgressValue(snapshot.position)
-        _isPlaying.value = snapshot.isPlaying
     }
 
     fun toggleTimeDisplay() {
@@ -169,7 +170,7 @@ class PlayerViewModel @Inject constructor(
             UIEvents.Backward -> playerUseCases.backwardTrackUseCase()
             UIEvents.Forward -> playerUseCases.forwardTrackUseCase()
             is UIEvents.PlayPause -> {
-                if (_isPlaying.value) playerUseCases.pause()
+                if (isPlaying.value) playerUseCases.pause()
                 else playerUseCases.play()
             }
             is UIEvents.SeekTo -> {
