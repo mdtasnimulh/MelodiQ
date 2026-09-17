@@ -13,6 +13,7 @@ import com.tasnimulhasan.domain.player.PlaybackSnapshot
 import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.domain.repository.PlayerRepository
 import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
+import com.tasnimulhasan.domain.repository.local.LibraryRepository
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +36,7 @@ class PlayerRepositoryImpl @Inject constructor(
     private val serviceHandler: MelodiqServiceHandler,
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val preferencesDataStoreRepository: PreferencesDataStoreRepository,
+    private val libraryRepository: LibraryRepository,
     @ApplicationContext private val context: Context,
 ) : PlayerRepository {
 
@@ -75,7 +77,22 @@ class PlayerRepositoryImpl @Inject constructor(
             serviceHandler.currentIndex.collect { index ->
                 _currentIndex.value = index
                 persistCurrentPlaybackPosition()
+                _activeQueue.value.getOrNull(index)?.let { song ->
+                    // Best-effort - a play is logged whenever the current item changes.
+                    // Doesn't attempt to distinguish "listened to the whole thing" from "skipped
+                    // after 2 seconds"; that's a reasonable v1 for Recently Played / Most Played,
+                    // and never blocks or delays actual playback since it's fire-and-forget on
+                    // this same background-scoped coroutine.
+                    libraryRepository.recordPlay(song.songId)
+                }
             }
+        }
+
+        // Populate and keep the browsable library database (Tranche 2) in sync. This is
+        // independent of the in-memory queue pipeline below - it's what backs Search,
+        // Artists/Albums/Genres/Folders, and Recently/Most Played.
+        repositoryScope.launch {
+            libraryRepository.scanLibrary()
         }
 
         repositoryScope.launch {

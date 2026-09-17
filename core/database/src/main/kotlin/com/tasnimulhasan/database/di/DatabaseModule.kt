@@ -21,5 +21,6 @@ internal object DatabaseModule {
         context,
         MelodiQDatabase::class.java,
         "melodiq_database"
-    ).fallbackToDestructiveMigration(dropAllTables = true).build()
+    ).addMigrations(com.tasnimulhasan.database.migration.MIGRATION_2_3)
+        .fallbackToDestructiveMigration(dropAllTables = true).build()
 }

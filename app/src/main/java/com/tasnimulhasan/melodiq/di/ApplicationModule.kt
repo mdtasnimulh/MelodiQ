@@ -21,6 +21,23 @@ import com.tasnimulhasan.domain.localusecase.player.GetCurrentSongInfoUseCase
 import com.tasnimulhasan.domain.localusecase.player.GetPlaybackSnapshotUseCase
 import com.tasnimulhasan.domain.localusecase.player.IsPlaybackServiceRunningUseCase
 import com.tasnimulhasan.domain.localusecase.player.LoadPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.library.GetSongsByAlbumUseCase
+import com.tasnimulhasan.domain.localusecase.library.GetSongsByArtistUseCase
+import com.tasnimulhasan.domain.localusecase.library.GetSongsByGenreUseCase
+import com.tasnimulhasan.domain.localusecase.library.GetSongsInFolderUseCase
+import com.tasnimulhasan.domain.localusecase.library.GetSongsPageUseCase
+import com.tasnimulhasan.domain.localusecase.library.GetSongsUnderFolderUseCase
+import com.tasnimulhasan.domain.localusecase.library.LibraryUseCases
+import com.tasnimulhasan.domain.localusecase.library.ObserveAlbumsUseCase
+import com.tasnimulhasan.domain.localusecase.library.ObserveArtistsUseCase
+import com.tasnimulhasan.domain.localusecase.library.ObserveFoldersUseCase
+import com.tasnimulhasan.domain.localusecase.library.ObserveGenresUseCase
+import com.tasnimulhasan.domain.localusecase.library.ObserveMostPlayedUseCase
+import com.tasnimulhasan.domain.localusecase.library.ObserveRecentlyPlayedUseCase
+import com.tasnimulhasan.domain.localusecase.library.ObserveTotalSongCountUseCase
+import com.tasnimulhasan.domain.localusecase.library.RecordPlayUseCase
+import com.tasnimulhasan.domain.localusecase.library.ScanLibraryUseCase
+import com.tasnimulhasan.domain.localusecase.library.SearchLibraryUseCase
 import com.tasnimulhasan.domain.localusecase.player.AddToQueueUseCase
 import com.tasnimulhasan.domain.localusecase.player.ClearQueueUseCase
 import com.tasnimulhasan.domain.localusecase.player.MoveQueueItemUseCase
@@ -81,6 +98,44 @@ object ApplicationModule {
         val gsonBuilder = GsonBuilder()
         return gsonBuilder.create()
     }
+
+    @Provides
+    @Singleton
+    fun provideLibraryUseCases(
+        scanLibrary: ScanLibraryUseCase,
+        observeTotalSongCount: ObserveTotalSongCountUseCase,
+        getSongsPage: GetSongsPageUseCase,
+        searchLibrary: SearchLibraryUseCase,
+        observeArtists: ObserveArtistsUseCase,
+        observeAlbums: ObserveAlbumsUseCase,
+        observeGenres: ObserveGenresUseCase,
+        observeFolders: ObserveFoldersUseCase,
+        getSongsByArtist: GetSongsByArtistUseCase,
+        getSongsByAlbum: GetSongsByAlbumUseCase,
+        getSongsByGenre: GetSongsByGenreUseCase,
+        getSongsInFolder: GetSongsInFolderUseCase,
+        getSongsUnderFolder: GetSongsUnderFolderUseCase,
+        recordPlay: RecordPlayUseCase,
+        observeRecentlyPlayed: ObserveRecentlyPlayedUseCase,
+        observeMostPlayed: ObserveMostPlayedUseCase,
+    ): LibraryUseCases = LibraryUseCases(
+        scanLibrary = scanLibrary,
+        observeTotalSongCount = observeTotalSongCount,
+        getSongsPage = getSongsPage,
+        searchLibrary = searchLibrary,
+        observeArtists = observeArtists,
+        observeAlbums = observeAlbums,
+        observeGenres = observeGenres,
+        observeFolders = observeFolders,
+        getSongsByArtist = getSongsByArtist,
+        getSongsByAlbum = getSongsByAlbum,
+        getSongsByGenre = getSongsByGenre,
+        getSongsInFolder = getSongsInFolder,
+        getSongsUnderFolder = getSongsUnderFolder,
+        recordPlay = recordPlay,
+        observeRecentlyPlayed = observeRecentlyPlayed,
+        observeMostPlayed = observeMostPlayed,
+    )
 
     @Provides
     @Singleton
