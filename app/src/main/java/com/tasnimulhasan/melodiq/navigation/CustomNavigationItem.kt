@@ -18,6 +18,10 @@ enum class CustomNavigationItem(
         title = "Favourite",
         icon = Res.drawable.ic_favorite,
     ),
+    LIBRARY(
+        title = "Library",
+        icon = Res.drawable.ic_library,
+    ),
     SETTINGS(
         title = "Settings",
         icon = Res.drawable.ic_settings,

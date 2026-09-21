@@ -11,9 +11,11 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
 import com.tasnimulhasan.featureplayer.PlayerScreen
+import com.tasnimulhasan.featureplayer.lyrics.LyricsRoute
 import kotlinx.serialization.Serializable
 
 @Serializable class PlayerRoute(val musicId: String)
+@Serializable object LyricsNavRoute
 
 fun NavController.navigateToPlayer(musicId: String, navOptions: NavOptionsBuilder.() -> Unit = {}){
     navigate(route = PlayerRoute(musicId = musicId)){
@@ -21,10 +23,24 @@ fun NavController.navigateToPlayer(musicId: String, navOptions: NavOptionsBuilde
     }
 }
 
+fun NavController.navigateToLyrics() = navigate(route = LyricsNavRoute)
+
+fun NavGraphBuilder.lyricsScreen(navigateBack: () -> Unit) {
+    composable<LyricsNavRoute>(
+        enterTransition = { fadeIn() },
+        exitTransition = { fadeOut() },
+        popEnterTransition = { fadeIn() },
+        popExitTransition = { fadeOut() }
+    ) {
+        LyricsRoute(onNavigateUp = navigateBack)
+    }
+}
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 fun NavGraphBuilder.playerScreen(
     navigateBack: () -> Unit,
     navigateToEqualizerScreen: () -> Unit,
+    navigateToLyrics: () -> Unit,
 ) {
     composable<PlayerRoute>(
         enterTransition = { fadeIn() },
@@ -38,6 +54,7 @@ fun NavGraphBuilder.playerScreen(
                 musicId = musicId,
                 onNavigateUp = navigateBack,
                 navigateToEqualizerScreen = navigateToEqualizerScreen,
+                navigateToLyrics = navigateToLyrics,
                 animatedVisibilityScope = this@composable
             )
         }

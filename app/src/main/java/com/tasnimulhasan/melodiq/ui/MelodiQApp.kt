@@ -187,6 +187,7 @@ internal fun MmApp(
             onAboutClick = { appState.navigateToAbout() },
             onFeedBackClick = { appState.navigateToFeedBack() },
             onFavouriteClick = { appState.navigateToFavourite() },
+            onLibraryClick = { appState.navigateToLibraryHub() },
             onSettingsClick = { appState.navigateToSettings() }
         )
         Scaffold(

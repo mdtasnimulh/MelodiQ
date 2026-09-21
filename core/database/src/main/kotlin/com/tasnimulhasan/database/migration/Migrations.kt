@@ -55,3 +55,22 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_play_history_table_playedAt` ON `play_history_table` (`playedAt`)")
     }
 }
+
+/** v3 -> v4: adds the lyrics cache table (Tranche 4). Another CREATE-only, non-destructive
+ * migration - nothing existing is touched. */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `lyrics_cache_table` (
+                `songId` INTEGER NOT NULL,
+                `rawLyrics` TEXT NOT NULL,
+                `isSynced` INTEGER NOT NULL,
+                `providerName` TEXT NOT NULL,
+                `fetchedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`songId`)
+            )
+            """.trimIndent()
+        )
+    }
+}

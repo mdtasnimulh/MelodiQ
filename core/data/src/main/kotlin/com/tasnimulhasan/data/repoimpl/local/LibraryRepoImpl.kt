@@ -98,5 +98,6 @@ class LibraryRepoImpl @Inject constructor(
         album = album,
         albumId = albumId,
         dateAdded = dateAdded,
+        mimeType = mimeType,
     )
 }

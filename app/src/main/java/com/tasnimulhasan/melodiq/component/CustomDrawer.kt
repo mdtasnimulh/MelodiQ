@@ -28,6 +28,7 @@ fun CustomDrawer(
     onAboutClick: () -> Unit,
     onFeedBackClick: () -> Unit,
     onFavouriteClick: () -> Unit,
+    onLibraryClick: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
     Column(
@@ -71,6 +72,10 @@ fun CustomDrawer(
                         }
                         CustomNavigationItem.FAVOURITE -> {
                             onFavouriteClick.invoke()
+                            onDrawerCloseClick.invoke()
+                        }
+                        CustomNavigationItem.LIBRARY -> {
+                            onLibraryClick.invoke()
                             onDrawerCloseClick.invoke()
                         }
                         CustomNavigationItem.SETTINGS -> {

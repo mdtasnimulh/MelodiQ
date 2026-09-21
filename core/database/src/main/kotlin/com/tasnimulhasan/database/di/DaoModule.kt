@@ -3,6 +3,7 @@ package com.tasnimulhasan.database.di
 import com.tasnimulhasan.database.MelodiQDatabase
 import com.tasnimulhasan.database.dao.FavouriteDao
 import com.tasnimulhasan.database.dao.LibrarySongDao
+import com.tasnimulhasan.database.dao.LyricsCacheDao
 import com.tasnimulhasan.database.dao.MelodiQDao
 import com.tasnimulhasan.database.dao.PlayHistoryDao
 import com.tasnimulhasan.database.dao.PlaylistDetailsDao
@@ -45,5 +46,10 @@ internal object DaoModule {
     fun providesPlayHistoryDao(
         database: MelodiQDatabase
     ): PlayHistoryDao = database.playHistoryDao()
+
+    @Provides
+    fun providesLyricsCacheDao(
+        database: MelodiQDatabase
+    ): LyricsCacheDao = database.lyricsCacheDao()
 
 }

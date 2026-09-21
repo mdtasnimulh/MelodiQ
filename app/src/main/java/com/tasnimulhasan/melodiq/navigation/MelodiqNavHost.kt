@@ -9,10 +9,13 @@ import com.tasnimulhasan.eqalizer.navigation.equalizerScreen
 import com.tasnimulhasan.featureabout.navigation.aboutScreen
 import com.tasnimulhasan.featurefavourite.navigation.favouriteScreen
 import com.tasnimulhasan.featurefeedback.navigation.feedbackScreen
+import com.tasnimulhasan.featureplayer.navigation.lyricsScreen
+import com.tasnimulhasan.featureplayer.navigation.navigateToLyrics
 import com.tasnimulhasan.featureplayer.navigation.playerScreen
 import com.tasnimulhasan.featurequeue.navigation.queueScreen
 import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.home.navigation.homeScreen
+import com.tasnimulhasan.library.navigation.libraryScreens
 import com.tasnimulhasan.melodiq.ui.MelodiQAppState
 import com.tasnimulhasan.playlistdetails.navigation.playlistDetailsScreen
 import com.tasnimulhasan.playlists.navigation.playlistsScreen
@@ -52,10 +55,17 @@ fun MelodiQNavHost(
         settingsScreen()
         playerScreen(
             navigateBack = navigateBack,
-            navigateToEqualizerScreen = navigateToEqualizerScreen
+            navigateToEqualizerScreen = navigateToEqualizerScreen,
+            navigateToLyrics = { navController.navigateToLyrics() }
         )
+        lyricsScreen(navigateBack = navigateBack)
         queueScreen()
         favouriteScreen(navigateToPlayer = navigateToPlayer)
+        libraryScreens(
+            navController = navController,
+            navigateToPlayer = navigateToPlayer,
+            navigateBack = navigateBack,
+        )
         aboutScreen()
         feedbackScreen()
         equalizerScreen()

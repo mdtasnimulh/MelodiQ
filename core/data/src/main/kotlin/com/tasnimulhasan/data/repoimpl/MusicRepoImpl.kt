@@ -70,6 +70,7 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DATE_ADDED,
+            MediaStore.Audio.Media.MIME_TYPE,
         )
 
         val selection = MediaStore.Audio.Media.IS_MUSIC + "!= 0"
@@ -94,6 +95,7 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
             val albumIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
@@ -103,6 +105,7 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
                 val albumId = cursor.getLong(albumIdColumn)
                 val album = cursor.getString(albumColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn)
+                val mimeType = cursor.getString(mimeTypeColumn)
                 val contentUri: Uri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                     id
@@ -119,6 +122,7 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
                         duration = duration.toString(),
                         albumId = albumId,
                         dateAdded = dateAdded,
+                        mimeType = mimeType,
                     )
                 )
             }

@@ -104,6 +104,7 @@ internal fun SharedTransitionScope.PlayerScreen(
     modifier: Modifier = Modifier,
     onNavigateUp: () -> Unit,
     navigateToEqualizerScreen: () -> Unit,
+    navigateToLyrics: () -> Unit,
     animatedVisibilityScope: AnimatedVisibilityScope,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
@@ -490,6 +491,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                         }
                     },
                     onEQButtonClicked = { navigateToEqualizerScreen.invoke() },
+                    onLyricsButtonClicked = { navigateToLyrics.invoke() },
                     onSleepButtonClicked = { showBottomSheet.value = true },
                     onShareButtonClicked = {
                         val shareIntent = Intent().also {

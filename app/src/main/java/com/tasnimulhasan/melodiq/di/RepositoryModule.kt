@@ -4,15 +4,19 @@ import com.tasnimulhasan.data.repoimpl.MusicRepoImpl
 import com.tasnimulhasan.data.repoimpl.PreferencesDataStoreRepoImpl
 import com.tasnimulhasan.data.repoimpl.local.FavouriteRepoImpl
 import com.tasnimulhasan.data.repoimpl.local.LibraryRepoImpl
+import com.tasnimulhasan.data.repoimpl.local.LyricsRepoImpl
 import com.tasnimulhasan.data.repoimpl.local.MelodiQRepoImpl
 import com.tasnimulhasan.data.repoimpl.local.PlaylistDetailsRepoImpl
 import com.tasnimulhasan.data.repoimpl.local.PlaylistRepoImpl
 import com.tasnimulhasan.data.repoimpl.player.PlayerRepositoryImpl
+import com.tasnimulhasan.domain.lyrics.LyricsProvider
+import com.tasnimulhasan.data.lyrics.LrcLibLyricsProvider
 import com.tasnimulhasan.domain.repository.MusicRepository
 import com.tasnimulhasan.domain.repository.PlayerRepository
 import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
 import com.tasnimulhasan.domain.repository.local.FavouriteRepository
 import com.tasnimulhasan.domain.repository.local.LibraryRepository
+import com.tasnimulhasan.domain.repository.local.LyricsRepository
 import com.tasnimulhasan.domain.repository.local.MelodiQRepository
 import com.tasnimulhasan.domain.repository.local.PlaylistDetailsRepository
 import com.tasnimulhasan.domain.repository.local.PlaylistsRepository
@@ -47,4 +51,10 @@ interface RepositoryModule {
 
     @Binds
     fun bindLibraryRepository(impl: LibraryRepoImpl): LibraryRepository
+
+    @Binds
+    fun bindLyricsRepository(impl: LyricsRepoImpl): LyricsRepository
+
+    @Binds
+    fun bindLyricsProvider(impl: LrcLibLyricsProvider): LyricsProvider
 }
