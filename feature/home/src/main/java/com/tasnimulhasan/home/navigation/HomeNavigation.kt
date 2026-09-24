@@ -20,6 +20,7 @@ fun NavController.navigateToHome(navOptions: NavOptions) = navigate(route = Home
 @OptIn(ExperimentalSharedTransitionApi::class)
 fun NavGraphBuilder.homeScreen(
     navigateToPlayer: (musicId: String) -> Unit,
+    navigateToSongDetails: (songId: Long) -> Unit,
 ) {
     composable<HomeRoute>(
         enterTransition = { fadeIn() },
@@ -30,6 +31,7 @@ fun NavGraphBuilder.homeScreen(
         SharedTransitionLayout {
             HomeScreen(
                 navigateToPlayer = navigateToPlayer,
+                navigateToSongDetails = navigateToSongDetails,
                 animatedVisibilityScope = this@composable
             )
         }

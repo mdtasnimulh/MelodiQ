@@ -1,5 +1,6 @@
 package com.tasnimulhasan.home
 
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.QueuePlayNext
@@ -76,6 +77,7 @@ import timber.log.Timber
 @Composable
 internal fun SharedTransitionScope.HomeScreen(
     navigateToPlayer: (String) -> Unit,
+    navigateToSongDetails: (Long) -> Unit,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -301,6 +303,10 @@ internal fun SharedTransitionScope.HomeScreen(
                 showSongActionsSheet.value = false
                 showAddToPlaylistDialog.value = true
             },
+            onSongInfo = { song ->
+                showSongActionsSheet.value = false
+                navigateToSongDetails(song.songId)
+            },
             onDismiss = { showSongActionsSheet.value = false }
         )
     }
@@ -314,6 +320,7 @@ private fun SongActionsSheet(
     onPlayNext: (MusicEntity) -> Unit,
     onPlayLater: (MusicEntity) -> Unit,
     onAddToPlaylist: () -> Unit,
+    onSongInfo: (MusicEntity) -> Unit,
     onDismiss: () -> Unit,
 ) {
     if (!show.value || song == null) return
@@ -329,6 +336,7 @@ private fun SongActionsSheet(
             SheetAction(Icons.Filled.QueuePlayNext, "Play next") { onPlayNext(song) }
             SheetAction(Icons.AutoMirrored.Filled.QueueMusic, "Add to queue") { onPlayLater(song) }
             SheetAction(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist") { onAddToPlaylist() }
+            SheetAction(Icons.Filled.Info, "Song info") { onSongInfo(song) }
         }
     }
 }

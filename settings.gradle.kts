@@ -58,5 +58,6 @@ include(":feature-favourite")
 include(":feature-tools:feature-about")
 include(":feature-tools:feature-feedback")
 include(":feature-tools:settings")
+include(":feature-tools:song-details")
 include(":fetaure-playlist:playlist-details")
 /*** Feature Modules ***/

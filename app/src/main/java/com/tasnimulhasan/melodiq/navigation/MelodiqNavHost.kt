@@ -20,6 +20,8 @@ import com.tasnimulhasan.melodiq.ui.MelodiQAppState
 import com.tasnimulhasan.playlistdetails.navigation.playlistDetailsScreen
 import com.tasnimulhasan.playlists.navigation.playlistsScreen
 import com.tasnimulhasan.settings.navigation.settingsScreen
+import com.tasnimulhasan.songdetails.navigation.navigateToSongDetails
+import com.tasnimulhasan.songdetails.navigation.songDetailsScreen
 import com.tasnimulhasan.songs.navigation.songsScreen
 
 @Composable
@@ -38,7 +40,10 @@ fun MelodiQNavHost(
         startDestination = HomeRoute,
         modifier = modifier,
     ) {
-        homeScreen(navigateToPlayer = navigateToPlayer)
+        homeScreen(
+            navigateToPlayer = navigateToPlayer,
+            navigateToSongDetails = { songId -> navController.navigateToSongDetails(songId) },
+        )
         songsScreen(navigateToPlayer = navigateToPlayer)
         albumScreen(
             navigateToAlbumDetails = { albumId -> navigateToAlbumDetails(albumId) },
@@ -59,6 +64,7 @@ fun MelodiQNavHost(
             navigateToLyrics = { navController.navigateToLyrics() }
         )
         lyricsScreen(navigateBack = navigateBack)
+        songDetailsScreen(navigateBack = navigateBack)
         queueScreen()
         favouriteScreen(navigateToPlayer = navigateToPlayer)
         libraryScreens(
