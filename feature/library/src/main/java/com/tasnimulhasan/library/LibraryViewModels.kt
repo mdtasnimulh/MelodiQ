@@ -11,6 +11,8 @@ import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,11 +34,11 @@ internal val dummyAudio = MusicEntity(
 )
 
 /** Common "now playing + favourites" wiring shared by every Library sub-screen ViewModel. */
-internal class LibraryPlaybackState(
+class LibraryPlaybackState(
     private val playerUseCases: PlayerUseCases,
     private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
     observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
-    scope: kotlinx.coroutines.CoroutineScope,
+    private val scope: CoroutineScope,
 ) {
     val currentSelectedAudio: StateFlow<MusicEntity> = playerUseCases.observeCurrentSelectedAudio()
         .map { it ?: dummyAudio }

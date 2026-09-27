@@ -9,17 +9,18 @@ import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.library.FolderSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 /** One level of the folder tree currently being browsed: the songs directly inside it, and
  * the immediate child folders (derived from every folder path that starts with this one but
@@ -114,6 +115,7 @@ class FoldersViewModel @Inject constructor(
     }
 }
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val libraryUseCases: LibraryUseCases,
@@ -136,10 +138,11 @@ class SearchViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             _query
-                .distinctUntilChanged()
                 // Small debounce so fast typing doesn't fire a query per keystroke - short
                 // enough that the search still feels instant against the local database.
-                .debounce(150)
+                // (No distinctUntilChanged needed: StateFlow already only emits distinct
+                // consecutive values on its own.)
+                .debounce(150.milliseconds)
                 .collectLatest { q ->
                     if (q.isBlank()) {
                         _results.value = emptyList()

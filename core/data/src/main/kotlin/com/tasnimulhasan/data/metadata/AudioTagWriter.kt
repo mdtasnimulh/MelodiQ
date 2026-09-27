@@ -103,7 +103,7 @@ class AudioTagWriter @Inject constructor(@ApplicationContext private val context
         var remaining = tagSize.toLong()
         val buffer = ByteArray(8192)
         while (remaining > 0) {
-            val n = input.read(buffer, 0, minOf(buffer.size, remaining).toInt().coerceAtLeast(1))
+            val n = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt().coerceAtLeast(1))
             if (n <= 0) break
             remaining -= n
         }
@@ -126,7 +126,7 @@ class AudioTagWriter @Inject constructor(@ApplicationContext private val context
             var remaining = length.toLong()
             val buffer = ByteArray(8192)
             while (remaining > 0) {
-                val n = input.read(buffer, 0, minOf(buffer.size, remaining).toInt().coerceAtLeast(1))
+                val n = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt().coerceAtLeast(1))
                 if (n <= 0) return null
                 remaining -= n
             }
