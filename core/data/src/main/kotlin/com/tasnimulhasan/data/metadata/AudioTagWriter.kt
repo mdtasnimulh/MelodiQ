@@ -35,57 +35,75 @@ class AudioTagWriter @Inject constructor(@ApplicationContext private val context
     }
 
     /**
-     * Writes [metadata] into the file at [uri] via [outputStream] (already opened by the
-     * caller in truncate mode, after permission is confirmed). Reads the original file
-     * first through a *separate* read of [uri] to extract the audio-data portion into a
-     * temp file, before anything is written - this ordering matters: opening the output
-     * stream in truncate mode destroys the original content, so the audio data must be
-     * safely copied out before that happens.
+     * Rewrites the tags of the file at [uri]. [openOutput] opens the destination in truncate
+     * mode and is invoked ONLY after everything needed is safely held elsewhere.
+     *
+     * Order is what keeps this safe:
+     *  1. Copy the ENTIRE original file into the app's cache (a full backup).
+     *  2. Build the new tag bytes from that backup and locate where its audio begins.
+     *  3. Refuse to proceed if there would be no audio to write back.
+     *  4. Only then open the destination (which truncates it) and write tag + audio.
+     *  5. If anything fails after truncation, restore the whole original from the backup.
+     *
+     * (An earlier version opened the truncating stream first, so the "original" it then
+     * read was already empty - saving a tag wiped the audio. Never reorder steps 1 and 4.)
      */
-    fun write(uri: Uri, mimeType: String?, metadata: EditableMetadata, outputStream: OutputStream): Boolean {
+    fun write(uri: Uri, mimeType: String?, metadata: EditableMetadata, openOutput: () -> OutputStream?): Boolean {
         val support = supportFor(mimeType)
         if (support == TagWriteSupport.UNSUPPORTED) return false
 
-        val tempAudioFile = File.createTempFile("melodiq_audio_", ".tmp", context.cacheDir)
-        return try {
-            extractAudioDataTo(uri, support, tempAudioFile) ?: return false
+        val backup = File.createTempFile("melodiq_backup_", ".tmp", context.cacheDir)
+        try {
+            val copied = context.contentResolver.openInputStream(uri)?.use { input ->
+                backup.outputStream().use { out -> input.copyTo(out) }
+                true
+            } ?: false
+            if (!copied || backup.length() == 0L) return false
 
             val newTagBytes = when (support) {
                 TagWriteSupport.MP3 -> buildId3v2Tag(metadata)
-                TagWriteSupport.FLAC -> buildFlacHeader(uri, metadata) ?: return false
+                TagWriteSupport.FLAC -> buildFlacHeader({ backup.inputStream() }, metadata) ?: return false
                 TagWriteSupport.UNSUPPORTED -> return false
             }
 
-            outputStream.use { out ->
-                out.write(newTagBytes)
-                tempAudioFile.inputStream().use { audioIn -> audioIn.copyTo(out) }
+            var wroteAnything = false
+            try {
+                backup.inputStream().buffered().use { audioIn ->
+                    val audioStart = when (support) {
+                        TagWriteSupport.MP3 -> id3v2TagSize(audioIn)
+                        TagWriteSupport.FLAC -> flacMetadataTotalSize(audioIn) ?: return false
+                        TagWriteSupport.UNSUPPORTED -> return false
+                    }
+                    // Nothing after the metadata means we'd be about to destroy the file.
+                    if (backup.length() - audioStart <= 0L) return false
+
+                    val out = openOutput() ?: return false
+                    wroteAnything = true
+                    out.use {
+                        it.write(newTagBytes)
+                        audioIn.copyTo(it)
+                    }
+                }
+                return true
+            } catch (_: Exception) {
+                if (wroteAnything) restoreFromBackup(uri, backup)
+                return false
             }
-            true
         } catch (_: Exception) {
-            false
+            return false
         } finally {
-            tempAudioFile.delete()
+            backup.delete()
         }
     }
 
-    // --- Step 1: safely extract the audio-data portion (everything after the metadata
-    // region) into a temp file, BEFORE any destructive write happens. ---
-
-    private fun extractAudioDataTo(uri: Uri, support: TagWriteSupport, destination: File): Long? {
-        context.contentResolver.openInputStream(uri)?.use { raw ->
-            val input = BufferedInputStream(raw)
-            val skipBytes = when (support) {
-                TagWriteSupport.MP3 -> id3v2TagSize(input)
-                TagWriteSupport.FLAC -> flacMetadataTotalSize(input) ?: return null
-                TagWriteSupport.UNSUPPORTED -> return null
+    private fun restoreFromBackup(uri: Uri, backup: File) {
+        try {
+            context.contentResolver.openOutputStream(uri, "rwt")?.use { out ->
+                backup.inputStream().use { it.copyTo(out) }
             }
-            // id3v2TagSize/flacMetadataTotalSize already consumed exactly that many bytes
-            // (or, for mp3, consumed nothing if there was no tag) - `input` is now
-            // positioned at the start of the actual audio data.
-            destination.outputStream().use { out -> input.copyTo(out) }
-            return skipBytes
+        } catch (_: Exception) {
+            // Nothing more can be done from here; the backup is deleted by the caller.
         }
-        return null
     }
 
     /** Reads (and consumes) an existing ID3v2 header if present, returning how many bytes
@@ -188,12 +206,12 @@ class AudioTagWriter @Inject constructor(@ApplicationContext private val context
         out.write(data)
     }
 
-    private fun buildFlacHeader(originalUri: Uri, metadata: EditableMetadata): ByteArray? {
+    private fun buildFlacHeader(openOriginal: () -> java.io.InputStream?, metadata: EditableMetadata): ByteArray? {
         val preserved = mutableListOf<ByteArray>() // other block types, kept byte-identical
         var existingPicture: ByteArray? = null
         var streamInfo: ByteArray? = null
 
-        context.contentResolver.openInputStream(originalUri)?.use { raw ->
+        openOriginal()?.use { raw ->
             val input = BufferedInputStream(raw)
             val magic = ByteArray(4)
             if (input.read(magic) != 4 || String(magic, Charsets.US_ASCII) != "fLaC") return null

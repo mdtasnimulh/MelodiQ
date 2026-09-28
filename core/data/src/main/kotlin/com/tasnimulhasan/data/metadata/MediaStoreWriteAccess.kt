@@ -25,6 +25,16 @@ class MediaStoreWriteAccess @Inject constructor(@ApplicationContext private val 
         data object Failed : Access
     }
 
+    /** Checks write permission WITHOUT modifying the file. Opening with "rwt" truncates
+     * immediately, so it must never be used as a mere permission probe. */
+    fun checkWriteAccess(uri: Uri): Access = try {
+        context.contentResolver.openFileDescriptor(uri, "rw")?.use { Access.Granted } ?: Access.Failed
+    } catch (e: SecurityException) {
+        requestWriteAccess(uri, e)
+    } catch (_: Exception) {
+        Access.Failed
+    }
+
     /** Opens [uri] for a full overwrite (truncate mode) if already permitted, or returns the
      * consent request to launch if not. */
     fun openForOverwrite(uri: Uri): Pair<Access, OutputStream?> {

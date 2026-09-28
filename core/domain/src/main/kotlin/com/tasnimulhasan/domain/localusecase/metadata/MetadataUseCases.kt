@@ -42,3 +42,7 @@ class MoveSongUseCase @Inject constructor(private val repo: FileManagementReposi
 class GetShareableUriUseCase @Inject constructor(private val repo: FileManagementRepository) {
     suspend operator fun invoke(songId: Long): android.net.Uri? = repo.getShareableUri(songId)
 }
+
+class NotifyLibraryChangedUseCase @Inject constructor(private val repo: FileManagementRepository) {
+    suspend operator fun invoke() = repo.notifyLibraryChanged()
+}

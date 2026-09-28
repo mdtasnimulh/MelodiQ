@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import com.tasnimulhasan.data.library.LibraryChangeNotifier
 import com.tasnimulhasan.data.player.MelodiqAudioState
 import com.tasnimulhasan.data.player.MelodiqPlayerEvent
 import com.tasnimulhasan.data.player.MelodiqPlayerService
@@ -37,6 +38,7 @@ class PlayerRepositoryImpl @Inject constructor(
     private val fetchMusicUseCase: FetchMusicUseCase,
     private val preferencesDataStoreRepository: PreferencesDataStoreRepository,
     private val libraryRepository: LibraryRepository,
+    private val libraryChangeNotifier: LibraryChangeNotifier,
     @ApplicationContext private val context: Context,
 ) : PlayerRepository {
 
@@ -66,6 +68,9 @@ class PlayerRepositoryImpl @Inject constructor(
     override val isPlaying: StateFlow<Boolean> = serviceHandler.isPlayingState
 
     private var progressTickCount = 0
+
+    // Declared before init{} - init launches coroutines that read/write this.
+    private var lastSortType: SortType = SortType.DATE_MODIFIED_DESC
 
     init {
         // Index and play/pause now come from dedicated StateFlows rather than being
@@ -124,11 +129,25 @@ class PlayerRepositoryImpl @Inject constructor(
         // to one.
         repositoryScope.launch {
             preferencesDataStoreRepository.getSortType().collectLatest { sortType ->
+                lastSortType = sortType
                 val sorted = fetchMusicUseCase(sortType)
                 loadPlaylist(sorted, sortType)
             }
         }
+
+        // A file this app just renamed/moved/deleted/re-tagged: refetch (MusicRepoImpl
+        // drops its stale cache via the shared version counter) and reload the queue, so
+        // nothing keeps pointing at a Uri that no longer resolves. Also refresh the Room
+        // library cache immediately instead of waiting on the debounced ContentObserver.
+        repositoryScope.launch {
+            libraryChangeNotifier.changes.collectLatest {
+                libraryRepository.scanLibrary(force = true)
+                val sorted = fetchMusicUseCase(lastSortType)
+                if (sorted.isNotEmpty()) loadPlaylist(sorted, lastSortType)
+            }
+        }
     }
+
 
     private suspend fun persistCurrentPlaybackPosition() {
         val songId = serviceHandler.audioList.value

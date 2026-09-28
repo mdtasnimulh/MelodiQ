@@ -4,6 +4,7 @@ import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import com.tasnimulhasan.data.library.LibraryChangeNotifier
 import com.tasnimulhasan.data.metadata.MediaStoreWriteAccess
 import com.tasnimulhasan.domain.repository.local.FileManagementRepository
 import com.tasnimulhasan.entity.metadata.FileOpResult
@@ -15,13 +16,17 @@ import javax.inject.Inject
 class FileManagementRepoImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val writeAccess: MediaStoreWriteAccess,
+    private val changeNotifier: LibraryChangeNotifier,
 ) : FileManagementRepository {
 
     private fun songUri(songId: Long) = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
     override suspend fun deleteSong(songId: Long): FileOpResult = withContext(Dispatchers.IO) {
         val uri = songUri(songId)
-        if (writeAccess.tryDeleteDirect(uri)) return@withContext FileOpResult.Success
+        if (writeAccess.tryDeleteDirect(uri)) {
+            changeNotifier.notifyChanged()
+            return@withContext FileOpResult.Success
+        }
 
         when (val access = writeAccess.requestDeleteAccess(listOf(uri))) {
             is MediaStoreWriteAccess.Access.NeedsPermission -> FileOpResult.NeedsPermission(access.intentSender)
@@ -42,7 +47,10 @@ class FileManagementRepoImpl @Inject constructor(
         when (val access = writeAccess.tryRenameDirect(uri, newDisplayName)) {
             is MediaStoreWriteAccess.Access.NeedsPermission -> FileOpResult.NeedsPermission(access.intentSender)
             MediaStoreWriteAccess.Access.Failed -> FileOpResult.Error("Could not rename file")
-            MediaStoreWriteAccess.Access.Granted -> FileOpResult.Success
+            MediaStoreWriteAccess.Access.Granted -> {
+                changeNotifier.notifyChanged()
+                FileOpResult.Success
+            }
         }
     }
 
@@ -53,8 +61,15 @@ class FileManagementRepoImpl @Inject constructor(
         when (val access = writeAccess.tryMoveDirect(uri, normalized)) {
             is MediaStoreWriteAccess.Access.NeedsPermission -> FileOpResult.NeedsPermission(access.intentSender)
             MediaStoreWriteAccess.Access.Failed -> FileOpResult.Error("Could not move file")
-            MediaStoreWriteAccess.Access.Granted -> FileOpResult.Success
+            MediaStoreWriteAccess.Access.Granted -> {
+                changeNotifier.notifyChanged()
+                FileOpResult.Success
+            }
         }
+    }
+
+    override suspend fun notifyLibraryChanged() {
+        changeNotifier.notifyChanged()
     }
 
     override suspend fun getShareableUri(songId: Long): Uri = songUri(songId)

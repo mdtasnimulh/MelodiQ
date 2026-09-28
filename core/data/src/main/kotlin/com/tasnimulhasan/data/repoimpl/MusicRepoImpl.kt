@@ -4,6 +4,7 @@ import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import com.tasnimulhasan.data.library.LibraryChangeNotifier
 import com.tasnimulhasan.domain.repository.MusicRepository
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
@@ -15,7 +16,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class MusicRepoImpl @Inject constructor() : MusicRepository {
+class MusicRepoImpl @Inject constructor(
+    private val changeNotifier: LibraryChangeNotifier,
+) : MusicRepository {
 
     // The MediaStore query itself (walking the cursor, string allocation per row) is the
     // expensive part - not the sort. Previously every sort-type change (and every screen
@@ -25,16 +28,26 @@ class MusicRepoImpl @Inject constructor() : MusicRepository {
     // separate queries.
     private val cacheMutex = Mutex()
     private var cachedRawList: List<MusicEntity>? = null
+    private var cachedAtVersion: Long = -1L
 
     override suspend fun fetchMusic(context: Context, sortType: SortType): List<MusicEntity> {
         val raw = cacheMutex.withLock {
+            // A file this app renamed/moved/deleted/re-tagged since the cache was filled
+            // makes every cached entry suspect (a deleted song would stay "playable" while
+            // pointing at a Uri MediaStore no longer has) - drop it and re-query.
+            if (cachedAtVersion != changeNotifier.version) {
+                cachedRawList = null
+            }
             // Deliberately only cache a NON-EMPTY result. An empty list almost always means
             // the query ran before READ_MEDIA_AUDIO was granted (or the scan hadn't finished
             // yet) rather than "this device genuinely has no music" - caching that would
             // leave the app permanently showing an empty library for the whole process
             // lifetime, with no way to recover short of a restart.
             cachedRawList ?: queryMediaStore(context).also { fetched ->
-                if (fetched.isNotEmpty()) cachedRawList = fetched
+                if (fetched.isNotEmpty()) {
+                    cachedRawList = fetched
+                    cachedAtVersion = changeNotifier.version
+                }
             }
         }
         return withContext(Dispatchers.Default) { sortInMemory(raw, sortType) }

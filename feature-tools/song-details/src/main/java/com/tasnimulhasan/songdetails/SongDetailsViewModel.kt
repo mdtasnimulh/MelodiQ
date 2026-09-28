@@ -8,6 +8,7 @@ import com.tasnimulhasan.domain.localusecase.metadata.DeleteSongUseCase
 import com.tasnimulhasan.domain.localusecase.metadata.GetShareableUriUseCase
 import com.tasnimulhasan.domain.localusecase.metadata.GetWriteSupportUseCase
 import com.tasnimulhasan.domain.localusecase.metadata.MoveSongUseCase
+import com.tasnimulhasan.domain.localusecase.metadata.NotifyLibraryChangedUseCase
 import com.tasnimulhasan.domain.localusecase.metadata.ReadCurrentMetadataUseCase
 import com.tasnimulhasan.domain.localusecase.metadata.ReadFileInfoUseCase
 import com.tasnimulhasan.domain.localusecase.metadata.RenameSongUseCase
@@ -53,6 +54,7 @@ class SongDetailsViewModel @Inject constructor(
     private val renameSong: RenameSongUseCase,
     private val moveSong: MoveSongUseCase,
     private val getShareableUri: GetShareableUriUseCase,
+    private val notifyLibraryChanged: NotifyLibraryChangedUseCase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -152,7 +154,15 @@ class SongDetailsViewModel @Inject constructor(
 
         when (retry) {
             is PendingRetry.Save -> save(retry.metadata)
-            PendingRetry.Delete -> delete()
+            PendingRetry.Delete -> {
+                // createDeleteRequest makes the SYSTEM perform the deletion once the user
+                // approves - calling delete again here would find nothing left to delete,
+                // fail, and re-prompt in a loop. Approval IS the success signal.
+                viewModelScope.launch {
+                    notifyLibraryChanged()
+                    _uiState.value = _uiState.value.copy(deleted = true)
+                }
+            }
             is PendingRetry.Rename -> rename(retry.newName)
             is PendingRetry.Move -> move(retry.newFolder)
         }

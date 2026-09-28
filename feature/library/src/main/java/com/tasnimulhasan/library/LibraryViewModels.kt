@@ -11,8 +11,6 @@ import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +36,7 @@ class LibraryPlaybackState(
     private val playerUseCases: PlayerUseCases,
     private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
     observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
-    private val scope: CoroutineScope,
+    private val scope: kotlinx.coroutines.CoroutineScope,
 ) {
     val currentSelectedAudio: StateFlow<MusicEntity> = playerUseCases.observeCurrentSelectedAudio()
         .map { it ?: dummyAudio }

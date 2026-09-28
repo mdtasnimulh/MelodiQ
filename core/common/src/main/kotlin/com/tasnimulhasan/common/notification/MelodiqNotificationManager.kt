@@ -53,8 +53,14 @@ class MelodiqNotificationManager @Inject constructor(
     }
 
     private fun startForegroundNotificationService(mediaSessionService: MediaSessionService) {
+        // This placeholder must never fail to build - it's what satisfies the OS's
+        // startForeground() timing requirement before anything else has happened yet, so a
+        // missing required field here (a small icon is mandatory on API 26+) would trade one
+        // crash for another right at the most crash-sensitive point in the app.
         val notification = Notification.Builder(context, NOTIFICATION_CHANNEL_ID)
             .setCategory(Notification.CATEGORY_SERVICE)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("MelodiQ")
             .build()
         mediaSessionService.startForeground(NOTIFICATION_ID, notification)
     }

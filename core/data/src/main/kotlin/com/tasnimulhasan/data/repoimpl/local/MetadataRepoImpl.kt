@@ -3,6 +3,7 @@ package com.tasnimulhasan.data.repoimpl.local
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
+import com.tasnimulhasan.data.library.LibraryChangeNotifier
 import com.tasnimulhasan.data.metadata.AudioFileInfoReader
 import com.tasnimulhasan.data.metadata.AudioTagReader
 import com.tasnimulhasan.data.metadata.AudioTagWriter
@@ -23,6 +24,7 @@ class MetadataRepoImpl @Inject constructor(
     private val tagWriter: AudioTagWriter,
     private val fileInfoReader: AudioFileInfoReader,
     private val writeAccess: MediaStoreWriteAccess,
+    private val changeNotifier: LibraryChangeNotifier,
 ) : MetadataRepository {
 
     private fun songUri(songId: Long) = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
@@ -72,8 +74,9 @@ class MetadataRepoImpl @Inject constructor(
             return@withContext MetadataEditResult.UnsupportedFormat
         }
 
-        val (access, stream) = writeAccess.openForOverwrite(uri)
-        when (access) {
+        // Probe permission WITHOUT opening for write - the truncating open happens inside
+        // the tag writer, only after the original file has been fully backed up.
+        when (val access = writeAccess.checkWriteAccess(uri)) {
             is MediaStoreWriteAccess.Access.NeedsPermission ->
                 return@withContext MetadataEditResult.NeedsPermission(access.intentSender)
             MediaStoreWriteAccess.Access.Failed ->
@@ -81,8 +84,9 @@ class MetadataRepoImpl @Inject constructor(
             MediaStoreWriteAccess.Access.Granted -> Unit
         }
 
-        val outputStream = stream ?: return@withContext MetadataEditResult.Error("Could not open file for writing")
-        val success = tagWriter.write(uri, row.mimeType, metadata, outputStream)
+        val success = tagWriter.write(uri, row.mimeType, metadata) {
+            context.contentResolver.openOutputStream(uri, "rwt")
+        }
 
         // No manual rescan call here: writing through a MediaStore-granted Uri (as opposed
         // to a raw file path) is exactly the case the ContentObserver registered by
@@ -91,6 +95,11 @@ class MetadataRepoImpl @Inject constructor(
         // and debounces into a rescan a couple of seconds later, refreshing the library
         // cache with the new tags automatically.
 
-        if (success) MetadataEditResult.Success else MetadataEditResult.Error("Failed to write tags")
+        if (success) {
+            changeNotifier.notifyChanged()
+            MetadataEditResult.Success
+        } else {
+            MetadataEditResult.Error("Failed to write tags")
+        }
     }
 }

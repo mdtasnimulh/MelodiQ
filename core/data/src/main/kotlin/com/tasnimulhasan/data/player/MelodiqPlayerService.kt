@@ -4,6 +4,7 @@ import android.content.Intent
 import android.media.audiofx.LoudnessEnhancer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -13,21 +14,29 @@ class MelodiqPlayerService : MediaSessionService() {
     @Inject
     lateinit var mediaSession: MediaSession
 
+    @Inject
+    lateinit var notificationManager: MelodiqNotificationManager
+
     private var loudnessEnhancer: LoudnessEnhancer? = null
 
-    // NOTE: this service deliberately does NOT build its own notification any more.
-    //
-    // It previously created a PlayerNotificationManager AND called
-    // startForeground(NOTIFICATION_ID, <empty Notification>) using the same notification id.
-    // The blank foreground notification overwrote the real media notification, which is why
-    // playback continued in the background with nothing useful shown in the shade (no
-    // title, no artwork, no working progress or transport controls).
-    //
-    // MediaSessionService already publishes and maintains a proper media notification from
-    // the MediaSession's metadata via DefaultMediaNotificationProvider, and handles the
-    // foreground-service lifecycle itself, including keeping the notification alive while
-    // audio plays after the app is swiped away. Letting it do that is both less code and
-    // strictly more correct than the hand-rolled version.
+    override fun onCreate() {
+        super.onCreate()
+        // MUST call startForeground() here, synchronously, regardless of playback state.
+        //
+        // ensurePlaybackServiceStarted() calls Context.startForegroundService() the moment
+        // the user taps a song - before ExoPlayer has prepared anything, let alone started
+        // playing. Android enforces a hard timeout on that call: if startForeground() isn't
+        // reached in time, the OS kills the whole process with
+        // ForegroundServiceDidNotStartInTimeException, a FATAL crash. Media3's own
+        // automatic notification promotion only happens once the player is genuinely
+        // playing - which never happens in time on a slow prepare, and never happens at all
+        // if playback fails outright (e.g. an unreadable file) - so relying on it alone left
+        // a real window where this crashed on every single tap. Calling this immediately,
+        // unconditionally, with whatever notification is available right now closes that
+        // window; the notification's content is then kept live by the same
+        // PlayerNotificationManager for the rest of playback.
+        notificationManager.startNotificationService(this, mediaSession)
+    }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
 
@@ -42,6 +51,7 @@ class MelodiqPlayerService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        notificationManager.release()
         mediaSession.release()
         releaseVolumeBoost()
         super.onDestroy()

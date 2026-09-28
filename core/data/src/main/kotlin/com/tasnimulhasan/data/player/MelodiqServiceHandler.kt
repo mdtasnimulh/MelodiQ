@@ -118,9 +118,11 @@ class MelodiqServiceHandler @Inject constructor(
             currentUri != null -> {
                 // Already have something loaded (navigating between screens) - keep it
                 // exactly where it is. Unchanged from before.
-                newIndex = mediaItems.indexOfFirst { it.localConfiguration?.uri == currentUri }
-                    .takeIf { it >= 0 } ?: 0
-                seekPositionMs = currentPosition
+                val found = mediaItems.indexOfFirst { it.localConfiguration?.uri == currentUri }
+                newIndex = found.takeIf { it >= 0 } ?: 0
+                // If the playing song is no longer in the list (deleted/moved), don't carry
+                // its position over to whatever song lands at index 0 - start that one fresh.
+                seekPositionMs = if (found >= 0) currentPosition else 0L
             }
             restoreSongId != null -> {
                 // True cold start (fresh ExoPlayer, nothing loaded this process) - resume
@@ -249,6 +251,11 @@ class MelodiqServiceHandler @Inject constructor(
      */
     private fun selectTrack(index: Int) {
         val expected = audioList.value
+        android.util.Log.d(
+            "MelodiQ/Select",
+            "selectTrack requested=$index listSize=${expected.size} " +
+                "playerItems=${exoPlayer.mediaItemCount} playerIndex=${exoPlayer.currentMediaItemIndex}"
+        )
         if (index < 0 || index >= expected.size) return
 
         if (exoPlayer.mediaItemCount != expected.size) {
@@ -263,6 +270,11 @@ class MelodiqServiceHandler @Inject constructor(
         _currentIndex.value = index
         _isPlayingState.value = true
         startProgressUpdate()
+        android.util.Log.d(
+            "MelodiQ/Select",
+            "selectTrack done requested=$index playerIndex=${exoPlayer.currentMediaItemIndex} " +
+                "uri=${exoPlayer.currentMediaItem?.localConfiguration?.uri}"
+        )
     }
 
     private fun buildMediaItems(songs: List<MusicEntity>): List<MediaItem> = songs.map { audio ->

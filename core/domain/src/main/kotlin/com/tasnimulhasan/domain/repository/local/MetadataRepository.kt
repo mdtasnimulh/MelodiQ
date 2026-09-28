@@ -17,6 +17,9 @@ interface FileManagementRepository {
     suspend fun deleteSong(songId: Long): FileOpResult
     suspend fun renameSong(songId: Long, newTitleOnDisk: String): FileOpResult
     suspend fun moveSong(songId: Long, newFolderRelativePath: String): FileOpResult
+    /** Call after an operation the system itself completed (e.g. a user-approved delete
+     * request) so caches and the active queue refresh. */
+    suspend fun notifyLibraryChanged()
     /** A content:// Uri suitable for ACTION_SEND / opening in another app. */
     suspend fun getShareableUri(songId: Long): android.net.Uri?
 }
