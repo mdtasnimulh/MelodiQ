@@ -73,10 +73,18 @@ class MelodiqServiceHandler @Inject constructor(
         }
     }
 
-    fun updateMediaItems(audioList: List<MusicEntity>, sortType: SortType) {
+    /**
+     * [prebuiltItems] lets the caller build the (potentially thousands of) MediaItems on a
+     * background thread so only the unavoidable ExoPlayer call runs on the main thread.
+     */
+    fun updateMediaItems(
+        audioList: List<MusicEntity>,
+        sortType: SortType,
+        prebuiltItems: List<MediaItem>? = null,
+    ) {
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
-        val mediaItems = buildMediaItems(audioList)
+        val mediaItems = prebuiltItems ?: buildMediaItems(audioList)
         setMediaItemList(mediaItems)
     }
 
@@ -102,11 +110,12 @@ class MelodiqServiceHandler @Inject constructor(
         sortType: SortType,
         restoreSongId: Long? = null,
         restorePositionMs: Long = 0L,
+        prebuiltItems: List<MediaItem>? = null,
     ) {
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
 
-        val mediaItems = buildMediaItems(audioList)
+        val mediaItems = prebuiltItems ?: buildMediaItems(audioList)
 
         val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
         val currentPosition = exoPlayer.currentPosition
@@ -277,7 +286,8 @@ class MelodiqServiceHandler @Inject constructor(
         )
     }
 
-    private fun buildMediaItems(songs: List<MusicEntity>): List<MediaItem> = songs.map { audio ->
+    /** Pure function - safe to call from any thread. */
+    fun buildMediaItems(songs: List<MusicEntity>): List<MediaItem> = songs.map { audio ->
         MediaItem.Builder()
             .setMediaId(audio.songId.toString())
             .setUri(audio.contentUri)

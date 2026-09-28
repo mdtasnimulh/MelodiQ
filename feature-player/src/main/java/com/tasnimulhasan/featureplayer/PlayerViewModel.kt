@@ -82,9 +82,13 @@ class PlayerViewModel @Inject constructor(
     // why this must not be independently fetched/derived here.
     val audioList: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList()
 
+    // Seed with the repository's real current song, not a dummy: a dummy first value made
+    // the screen briefly believe "nothing is selected", which is what let it misfire.
     val currentSelectedAudio: StateFlow<MusicEntity> = playerUseCases.observeCurrentSelectedAudio()
-        .map { it ?: dummyAudio }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dummyAudio)
+        .let { source ->
+            source.map { it ?: dummyAudio }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), source.value ?: dummyAudio)
+        }
 
     // Bound directly to the shared play/pause state rather than a local copy fed by
     // PlaybackState.Playing - that signal travelled on a conflated StateFlow and could be

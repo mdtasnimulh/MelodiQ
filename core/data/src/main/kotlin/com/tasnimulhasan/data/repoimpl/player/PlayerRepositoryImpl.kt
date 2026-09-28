@@ -18,9 +18,12 @@ import com.tasnimulhasan.domain.repository.local.LibraryRepository
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +74,7 @@ class PlayerRepositoryImpl @Inject constructor(
 
     // Declared before init{} - init launches coroutines that read/write this.
     private var lastSortType: SortType = SortType.DATE_MODIFIED_DESC
+    private val initialQueueLoaded = CompletableDeferred<Unit>()
 
     init {
         // Index and play/pause now come from dedicated StateFlows rather than being
@@ -96,7 +100,13 @@ class PlayerRepositoryImpl @Inject constructor(
         // Populate and keep the browsable library database (Tranche 2) in sync. This is
         // independent of the in-memory queue pipeline below - it's what backs Search,
         // Artists/Albums/Genres/Folders, and Recently/Most Played.
+        // Deliberately started AFTER the first queue load (plus a short grace period) rather
+        // than at construction. Running this MediaStore + genre + Room bulk-upsert scan at
+        // the same moment as the initial fetch/queue load fought it for MediaStore and disk
+        // right as the Home list was first drawing - the cold-start lag.
         repositoryScope.launch {
+            initialQueueLoaded.await()
+            delay(1_500)
             libraryRepository.scanLibrary()
         }
 
@@ -132,6 +142,7 @@ class PlayerRepositoryImpl @Inject constructor(
                 lastSortType = sortType
                 val sorted = fetchMusicUseCase(sortType)
                 loadPlaylist(sorted, sortType)
+                initialQueueLoaded.complete(Unit)
             }
         }
 
@@ -156,6 +167,12 @@ class PlayerRepositoryImpl @Inject constructor(
     }
 
     override suspend fun loadPlaylist(musicList: List<MusicEntity>, sortType: SortType, keepCurrentTrack: Boolean) {
+        // Build the MediaItems on a background thread first. Doing it inline on Main (for a
+        // library of thousands of songs) froze the UI exactly when the Home list appeared.
+        // Only the ExoPlayer calls below - which must be on Main - stay there, and the state
+        // publish + player update still happen together with no suspension in between.
+        val mediaItems = withContext(Dispatchers.Default) { serviceHandler.buildMediaItems(musicList) }
+
         // Whatever list is loaded here becomes the authoritative queue that every screen's
         // "current song" lookup is based on - keep it in sync with what's actually handed
         // to ExoPlayer below.
@@ -163,7 +180,7 @@ class PlayerRepositoryImpl @Inject constructor(
         _activeQueue.value = musicList
         curatedQueueActive = false
         if (!keepCurrentTrack) {
-            serviceHandler.updateMediaItems(musicList, sortType)
+            serviceHandler.updateMediaItems(musicList, sortType, mediaItems)
             _currentIndex.value = serviceHandler.getCurrentMediaItemIndex()
             return
         }
@@ -174,9 +191,10 @@ class PlayerRepositoryImpl @Inject constructor(
                 sortType = sortType,
                 restoreSongId = lastPlayed?.songId,
                 restorePositionMs = lastPlayed?.positionMs ?: 0L,
+                prebuiltItems = mediaItems,
             )
         } else {
-            serviceHandler.updateMediaItemsWithCurrentTrack(musicList, sortType)
+            serviceHandler.updateMediaItemsWithCurrentTrack(musicList, sortType, prebuiltItems = mediaItems)
         }
     }
 

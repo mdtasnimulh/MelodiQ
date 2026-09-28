@@ -22,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -89,6 +92,7 @@ import com.tasnimulhasan.featureplayer.components.SleepTimerBottomSheet
 import com.tasnimulhasan.featureplayer.components.SleepTimerOption
 import com.tasnimulhasan.ui.image.AlbumArt
 import com.tasnimulhasan.ui.image.rememberPaletteThumbnail
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -120,7 +124,15 @@ internal fun SharedTransitionScope.PlayerScreen(
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
 
-    val pagerState = rememberPagerState { audioList.size }
+    // Start the pager on the song this screen was opened for. Starting at page 0 (the
+    // default) and only scrolling later is what made the old code think the user had swiped
+    // to the FIRST song and announce it as a track change.
+    val initialPage = remember {
+        val targetId = musicId.toLongOrNull()
+        audioList.indexOfFirst { it.songId == targetId }.takeIf { it >= 0 }
+            ?: audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }.coerceAtLeast(0)
+    }
+    val pagerState = rememberPagerState(initialPage = initialPage) { audioList.size }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -137,32 +149,39 @@ internal fun SharedTransitionScope.PlayerScreen(
     val sleepTimerRunning by viewModel.sleepTimerActive.collectAsStateWithLifecycle()
     val sleepTimerRemainingMillis by viewModel.sleepTimerRemainingMillis.collectAsStateWithLifecycle()
 
-    // One-way sync, ViewModel -> Pager, guarded so the programmatic scroll it performs
-    // doesn't get misread by the effect below as a user swipe. The ViewModel is the single
-    // source of truth for "what track is current" - it already decided that atomically in
-    // its init (including for the initial navigation into this screen), so Compose's only
-    // job here is to reflect that position visually.
-    var isSyncingFromPlayer by remember { mutableStateOf(false) }
-
+    // ViewModel -> Pager: keep the pager visually on the current song (next/previous
+    // buttons, auto-advance, notification controls). Never triggers playback changes.
     LaunchedEffect(currentSelectedAudio.songId, audioList) {
         val targetIndex = audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
         if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
-            isSyncingFromPlayer = true
             pagerState.scrollToPage(targetIndex)
-            isSyncingFromPlayer = false
         }
     }
 
-    // Pager -> ViewModel, the other direction: only for an actual user swipe. Skipped
-    // entirely while isSyncingFromPlayer is true (i.e. the page change above caused this),
-    // and only fires when the settled page's song genuinely differs from what's already
-    // current - never re-announces the song that's already playing.
-    LaunchedEffect(pagerState.currentPage) {
-        if (isSyncingFromPlayer) return@LaunchedEffect
-        val settledSongId = audioList.getOrNull(pagerState.currentPage)?.songId
-        if (settledSongId != null && settledSongId != currentSelectedAudio.songId) {
-            viewModel.onUiEvents(UIEvents.SelectedAudioChange(pagerState.currentPage))
+    // Pager -> ViewModel: ONLY when the user physically drags the pager. Any other page
+    // change (initial position, programmatic sync, next/previous buttons) is a reflection
+    // of the player's state and must never change what is playing or start playback.
+    val latestAudioList by rememberUpdatedState(audioList)
+    val latestCurrentSongId by rememberUpdatedState(currentSelectedAudio.songId)
+    var userDraggedPager by remember { mutableStateOf(false) }
+
+    LaunchedEffect(pagerState) {
+        pagerState.interactionSource.interactions.collect { interaction ->
+            if (interaction is DragInteraction.Start) userDraggedPager = true
         }
+    }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }
+            .drop(1)
+            .collect { page ->
+                if (!userDraggedPager) return@collect
+                userDraggedPager = false
+                val settledSongId = latestAudioList.getOrNull(page)?.songId ?: return@collect
+                if (settledSongId != latestCurrentSongId) {
+                    viewModel.onUiEvents(UIEvents.SelectedAudioChange(page))
+                }
+            }
     }
 
     val currentPage = pagerState.currentPage

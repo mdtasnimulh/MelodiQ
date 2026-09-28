@@ -15,6 +15,7 @@ import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.key.Keyer
 import coil.request.Options
+import coil.size.Dimension
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -37,7 +38,20 @@ class AlbumArtKeyer : Keyer<AlbumArt> {
 class AlbumArtFetcher(
     private val data: AlbumArt,
     private val context: Context,
+    private val options: Options,
 ) : Fetcher {
+
+    // Ask MediaStore for what the request actually needs instead of always 512x512. A list
+    // row shows ~100dp; decoding a full 512px bitmap per row bloated the memory cache and
+    // made the first cold-start scroll of Home janky. Big surfaces (player) still get up
+    // to 512px, and Coil re-fetches when a cached sampled bitmap is too small for them.
+    private val thumbnailSize: Size by lazy {
+        val w = (options.size.width as? Dimension.Pixels)?.px
+        val h = (options.size.height as? Dimension.Pixels)?.px
+        val side = maxOf(w ?: MAX_THUMBNAIL_PX, h ?: MAX_THUMBNAIL_PX)
+            .coerceIn(MIN_THUMBNAIL_PX, MAX_THUMBNAIL_PX)
+        Size(side, side)
+    }
 
     override suspend fun fetch(): FetchResult? = withContext(Dispatchers.IO) {
         loadArtwork()?.let { bitmap ->
@@ -53,7 +67,7 @@ class AlbumArtFetcher(
         // Fast path: MediaStore's own thumbnail pipeline (min SDK 30, always available).
         // Already downsampled + cached by the system — this is what makes scrolling smooth.
         runCatching {
-            return context.contentResolver.loadThumbnail(data.contentUri, THUMBNAIL_SIZE, null)
+            return context.contentResolver.loadThumbnail(data.contentUri, thumbnailSize, null)
         }
 
         // Fallback: legacy per-album art table (some OEM ROMs / older files).
@@ -90,11 +104,12 @@ class AlbumArtFetcher(
 
     class Factory : Fetcher.Factory<AlbumArt> {
         override fun create(data: AlbumArt, options: Options, imageLoader: ImageLoader): Fetcher =
-            AlbumArtFetcher(data, options.context)
+            AlbumArtFetcher(data, options.context, options)
     }
 
     private companion object {
-        val THUMBNAIL_SIZE = Size(512, 512)
+        const val MAX_THUMBNAIL_PX = 512
+        const val MIN_THUMBNAIL_PX = 128
         val LEGACY_ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
     }
 }
