@@ -13,7 +13,9 @@ import com.tasnimulhasan.entity.room.library.FolderSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
 import com.tasnimulhasan.entity.room.library.LibrarySongEntity
 import com.tasnimulhasan.entity.room.library.PlayHistoryEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -28,6 +30,14 @@ class LibraryRepoImpl @Inject constructor(
     override suspend fun scanLibrary(force: Boolean) = scanner.scanIfNeeded(force)
 
     override fun observeTotalSongCount(): Flow<Int> = librarySongDao.observeTotalCount()
+
+    override fun observeAllSongs(sort: SortType): Flow<List<MusicEntity>> {
+        val (column, ascending) = sort.toColumnAndDirection()
+        return librarySongDao.observeAllSorted(column, ascending)
+            // Row -> MusicEntity mapping for thousands of rows: keep it off the main thread.
+            .map { rows -> rows.map { it.toMusicEntity() } }
+            .flowOn(Dispatchers.Default)
+    }
 
     override suspend fun getSongsPage(sort: SortType, limit: Int, offset: Int): List<MusicEntity> {
         val (column, ascending) = sort.toColumnAndDirection()

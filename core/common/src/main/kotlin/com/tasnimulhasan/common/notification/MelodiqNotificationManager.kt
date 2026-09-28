@@ -45,6 +45,9 @@ class MelodiqNotificationManager @Inject constructor(
             playerNotificationManager = buildNotification(mediaSession)
         }
         startForegroundNotificationService(mediaSessionService)
+        // The placeholder above reuses the same id and would otherwise sit there until the
+        // next player event; force the real title/art/controls back immediately.
+        playerNotificationManager?.invalidate()
     }
 
     fun release() {

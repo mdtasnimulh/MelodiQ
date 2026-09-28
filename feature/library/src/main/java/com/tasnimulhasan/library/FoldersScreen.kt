@@ -92,7 +92,7 @@ internal fun FoldersRoute(
                     subtitle = item.artist,
                     songId = item.songId,
                     albumId = item.albumId,
-                    isSelected = current.songId == item.songId && isPlaying,
+                    isSelected = current.songId == item.songId,
                     isFavourite = favorites.contains(item.songId),
                     onClick = {
                         viewModel.playback.ensurePlaybackServiceStarted()

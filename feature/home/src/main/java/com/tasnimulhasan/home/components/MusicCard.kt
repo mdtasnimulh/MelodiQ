@@ -26,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,7 +67,9 @@ fun SharedTransitionScope.MusicCard(
     onFavouriteIconClicked: () -> Unit,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
-    val isSelected = selectedId == songId && isPlaying
+    val isSelected = selectedId == songId
+    // Formatting used to allocate a SimpleDateFormat on every recomposition of every row.
+    val durationText = remember(duration) { convertLongToReadableDateTime(duration.toLongOrNull() ?: 0L, "mm:ss") }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
@@ -86,13 +89,9 @@ fun SharedTransitionScope.MusicCard(
         elevation = CardDefaults.cardElevation(2.dp),
     ) {
         Row(
-            modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val albumArtUri = ContentUris.withAppendedId(
-                "content://media/external/audio/albumart".toUri(),
-                albumId ?: 0L
-            )
             AsyncImage(
                 model = AlbumArt(
                     songId = songId,
@@ -100,7 +99,7 @@ fun SharedTransitionScope.MusicCard(
                     albumId = albumId ?: 0L,
                 ),
                 contentDescription = "Cover art",
-                modifier = modifier
+                modifier = Modifier
                     .sharedBounds(
                         sharedContentState = rememberSharedContentState(key = "image-$songId"),
                         animatedVisibilityScope = animatedVisibilityScope ?: return@Row,
@@ -123,7 +122,7 @@ fun SharedTransitionScope.MusicCard(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    modifier = modifier
+                    modifier = Modifier
                         .sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "title-$songId"),
                             animatedVisibilityScope = animatedVisibilityScope,
@@ -138,7 +137,7 @@ fun SharedTransitionScope.MusicCard(
                     maxLines = 2
                 )
                 Text(
-                    modifier = modifier
+                    modifier = Modifier
                         .padding(top = 6.dp),
                     text = artist,
                     style = TextStyle(
@@ -149,8 +148,8 @@ fun SharedTransitionScope.MusicCard(
                     )
                 )
                 Text(
-                    modifier = modifier.padding(top = 4.dp),
-                    text = convertLongToReadableDateTime(duration.toLong(), "mm:ss"),
+                    modifier = Modifier.padding(top = 4.dp),
+                    text = durationText,
                     style = TextStyle(
                         fontSize = 11.sp,
                         color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurfaceVariant,

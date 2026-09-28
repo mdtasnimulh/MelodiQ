@@ -41,13 +41,15 @@ class MelodiqPlayerService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // Swiping the app away should not silently orphan a paused session: if nothing is
-        // actually playing, tear the service down so no stale notification lingers.
         val player = mediaSession.player
         if (!player.playWhenReady || player.mediaItemCount == 0) {
+            // Nothing playing: don't leave a stale paused notification behind.
             stopSelf()
+            super.onTaskRemoved(rootIntent)
         }
-        super.onTaskRemoved(rootIntent)
+        // Music IS playing: deliberately do NOT call super. Its default handling may stop the
+        // service when the task is swiped away, which is what removed the notification while
+        // the song kept playing.
     }
 
     override fun onDestroy() {

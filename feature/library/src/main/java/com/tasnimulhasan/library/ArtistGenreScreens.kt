@@ -73,7 +73,7 @@ internal fun ArtistDetailsRoute(
                 subtitle = item.album,
                 songId = item.songId,
                 albumId = item.albumId,
-                isSelected = current.songId == item.songId && isPlaying,
+                isSelected = current.songId == item.songId,
                 isFavourite = favorites.contains(item.songId),
                 onClick = {
                     viewModel.playback.ensurePlaybackServiceStarted()
@@ -142,7 +142,7 @@ internal fun GenreDetailsRoute(
                 subtitle = item.artist,
                 songId = item.songId,
                 albumId = item.albumId,
-                isSelected = current.songId == item.songId && isPlaying,
+                isSelected = current.songId == item.songId,
                 isFavourite = favorites.contains(item.songId),
                 onClick = {
                     viewModel.playback.ensurePlaybackServiceStarted()

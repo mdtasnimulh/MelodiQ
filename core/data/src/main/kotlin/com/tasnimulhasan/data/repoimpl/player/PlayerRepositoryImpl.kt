@@ -9,7 +9,6 @@ import com.tasnimulhasan.data.player.MelodiqAudioState
 import com.tasnimulhasan.data.player.MelodiqPlayerEvent
 import com.tasnimulhasan.data.player.MelodiqPlayerService
 import com.tasnimulhasan.data.player.MelodiqServiceHandler
-import com.tasnimulhasan.domain.localusecase.music.FetchMusicUseCase
 import com.tasnimulhasan.domain.player.PlaybackSnapshot
 import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.domain.repository.PlayerRepository
@@ -28,17 +27,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class PlayerRepositoryImpl @Inject constructor(
     private val serviceHandler: MelodiqServiceHandler,
-    private val fetchMusicUseCase: FetchMusicUseCase,
     private val preferencesDataStoreRepository: PreferencesDataStoreRepository,
     private val libraryRepository: LibraryRepository,
     private val libraryChangeNotifier: LibraryChangeNotifier,
@@ -97,17 +100,32 @@ class PlayerRepositoryImpl @Inject constructor(
             }
         }
 
-        // Populate and keep the browsable library database (Tranche 2) in sync. This is
-        // independent of the in-memory queue pipeline below - it's what backs Search,
-        // Artists/Albums/Genres/Folders, and Recently/Most Played.
-        // Deliberately started AFTER the first queue load (plus a short grace period) rather
-        // than at construction. Running this MediaStore + genre + Room bulk-upsert scan at
-        // the same moment as the initial fetch/queue load fought it for MediaStore and disk
-        // right as the Home list was first drawing - the cold-start lag.
+        // Room is now the single source of truth for the song list (Home, queue, Search,
+        // Artists/Albums/...). This block only keeps Room in sync with MediaStore:
+        //  - first launch (empty table): scan immediately, the list can't show without it;
+        //  - every later launch: the list already renders instantly from Room, so run a
+        //    cheap incremental diff shortly AFTER it's on screen to pick up files added,
+        //    removed or edited while the app was closed. (The ContentObserver only exists
+        //    while the process is alive, so without this those changes were never seen.)
         repositoryScope.launch {
-            initialQueueLoaded.await()
-            delay(1_500)
-            libraryRepository.scanLibrary()
+            val hasCachedLibrary = libraryRepository.observeTotalSongCount().first() > 0
+            if (!hasCachedLibrary) {
+                libraryRepository.scanLibrary()
+            } else {
+                initialQueueLoaded.await()
+                delay(1_500)
+                libraryRepository.scanLibrary(force = true)
+            }
+        }
+
+        // Whenever playback starts, make sure the foreground service (and therefore the
+        // notification + media session) is actually running. After the app is swiped out of
+        // recents the service can be gone while ExoPlayer, held by this singleton, keeps
+        // playing - nothing else restarted it until the user tapped a song.
+        repositoryScope.launch {
+            serviceHandler.isPlayingState.collect { playing ->
+                if (playing) runCatching { ensurePlaybackServiceStarted() }
+            }
         }
 
         repositoryScope.launch {
@@ -138,23 +156,26 @@ class PlayerRepositoryImpl @Inject constructor(
         // also cuts three redundant MediaStore queries + three redundant queue loads down
         // to one.
         repositoryScope.launch {
-            preferencesDataStoreRepository.getSortType().collectLatest { sortType ->
-                lastSortType = sortType
-                val sorted = fetchMusicUseCase(sortType)
-                loadPlaylist(sorted, sortType)
-                initialQueueLoaded.complete(Unit)
-            }
+            preferencesDataStoreRepository.getSortType()
+                .flatMapLatest { sortType ->
+                    lastSortType = sortType
+                    libraryRepository.observeAllSongs(sortType).map { songs -> sortType to songs }
+                }
+                .collect { (sortType, songs) ->
+                    // An empty table just means "not scanned yet" (or permission not granted
+                    // yet) - never replace a working queue with nothing.
+                    if (songs.isEmpty()) return@collect
+                    loadPlaylist(songs, sortType)
+                    initialQueueLoaded.complete(Unit)
+                }
         }
 
-        // A file this app just renamed/moved/deleted/re-tagged: refetch (MusicRepoImpl
-        // drops its stale cache via the shared version counter) and reload the queue, so
-        // nothing keeps pointing at a Uri that no longer resolves. Also refresh the Room
-        // library cache immediately instead of waiting on the debounced ContentObserver.
+        // A file this app just renamed/moved/deleted/re-tagged: refresh Room immediately
+        // instead of waiting on the debounced ContentObserver. The observeAllSongs flow above
+        // then re-emits by itself and reloads the queue - no second fetch needed here.
         repositoryScope.launch {
             libraryChangeNotifier.changes.collectLatest {
                 libraryRepository.scanLibrary(force = true)
-                val sorted = fetchMusicUseCase(lastSortType)
-                if (sorted.isNotEmpty()) loadPlaylist(sorted, lastSortType)
             }
         }
     }
@@ -171,12 +192,31 @@ class PlayerRepositoryImpl @Inject constructor(
         // library of thousands of songs) froze the UI exactly when the Home list appeared.
         // Only the ExoPlayer calls below - which must be on Main - stay there, and the state
         // publish + player update still happen together with no suspension in between.
-        val mediaItems = withContext(Dispatchers.Default) { serviceHandler.buildMediaItems(musicList) }
+        val currentQueueIds = serviceHandler.audioList.value
+        val queueUnchanged = serviceHandler.getMediaItemCount() > 0 && withContext(Dispatchers.Default) {
+            currentQueueIds.size == musicList.size &&
+                currentQueueIds.indices.all { currentQueueIds[it].songId == musicList[it].songId }
+        }
+        val mediaItems = if (queueUnchanged && keepCurrentTrack) emptyList()
+        else withContext(Dispatchers.Default) { serviceHandler.buildMediaItems(musicList) }
 
         // Whatever list is loaded here becomes the authoritative queue that every screen's
         // "current song" lookup is based on - keep it in sync with what's actually handed
         // to ExoPlayer below.
         _audioList.value = musicList
+
+        if (keepCurrentTrack && serviceHandler.getMediaItemCount() > 0) {
+            // A playlist/curated queue is what's playing: a library refresh must only update
+            // the browsable list, never yank the player's queue out from under it.
+            if (curatedQueueActive) return
+            // Same songs in the same order (e.g. Room re-emitted after an unrelated row
+            // changed): nothing to reload, so playback isn't interrupted at all.
+            if (queueUnchanged) {
+                _activeQueue.value = musicList
+                return
+            }
+        }
+
         _activeQueue.value = musicList
         curatedQueueActive = false
         if (!keepCurrentTrack) {

@@ -60,7 +60,7 @@ fun MusicCard(
     onMusicLongClicked: () -> Unit,
     onFavouriteIconClicked: () -> Unit,
 ) {
-    val isSelected = selectedId == songId && isPlaying
+    val isSelected = selectedId == songId
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,

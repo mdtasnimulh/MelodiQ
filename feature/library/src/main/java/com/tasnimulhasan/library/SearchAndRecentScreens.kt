@@ -73,7 +73,7 @@ internal fun SearchRoute(
                         subtitle = "${item.artist} • ${item.album}",
                         songId = item.songId,
                         albumId = item.albumId,
-                        isSelected = current.songId == item.songId && isPlaying,
+                        isSelected = current.songId == item.songId,
                         isFavourite = favorites.contains(item.songId),
                         onClick = {
                             viewModel.playback.ensurePlaybackServiceStarted()
@@ -121,7 +121,7 @@ internal fun RecentlyPlayedRoute(
                     subtitle = item.artist,
                     songId = item.songId,
                     albumId = item.albumId,
-                    isSelected = current.songId == item.songId && isPlaying,
+                    isSelected = current.songId == item.songId,
                     isFavourite = favorites.contains(item.songId),
                     onClick = {
                         viewModel.playback.ensurePlaybackServiceStarted()
@@ -143,7 +143,7 @@ internal fun RecentlyPlayedRoute(
                     subtitle = item.artist,
                     songId = item.songId,
                     albumId = item.albumId,
-                    isSelected = current.songId == item.songId && isPlaying,
+                    isSelected = current.songId == item.songId,
                     isFavourite = favorites.contains(item.songId),
                     trailingText = "${count}x",
                     onClick = {

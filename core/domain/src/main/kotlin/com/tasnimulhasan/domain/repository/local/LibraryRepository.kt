@@ -19,6 +19,9 @@ interface LibraryRepository {
     suspend fun scanLibrary(force: Boolean = false)
     fun observeTotalSongCount(): Flow<Int>
 
+    /** Live, fully sorted library straight from Room. Emits again on every library change. */
+    fun observeAllSongs(sort: SortType): Flow<List<MusicEntity>>
+
     suspend fun getSongsPage(sort: SortType, limit: Int, offset: Int): List<MusicEntity>
     suspend fun searchSongs(query: String, limit: Int, offset: Int): List<MusicEntity>
 

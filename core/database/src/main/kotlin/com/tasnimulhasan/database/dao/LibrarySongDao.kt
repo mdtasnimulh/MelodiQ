@@ -53,6 +53,27 @@ interface LibrarySongDao {
     )
     suspend fun getSongsPage(sortColumn: String, ascending: Boolean, limit: Int, offset: Int): List<LibrarySongEntity>
 
+    /**
+     * The whole library, already sorted by SQLite, as a live query. This is what backs the
+     * Home list and the player queue: Room re-emits it whenever the scanner inserts, updates
+     * or deletes a row, so new downloads / deleted files show up without any manual refresh.
+     * songId is the final tie-break so equal keys always come back in the same order.
+     */
+    @Query(
+        """SELECT * FROM library_song_table
+           ORDER BY
+             CASE WHEN :sortColumn = 'title' AND :ascending = 1 THEN titleKey END ASC,
+             CASE WHEN :sortColumn = 'title' AND :ascending = 0 THEN titleKey END DESC,
+             CASE WHEN :sortColumn = 'artist' AND :ascending = 1 THEN artistKey END ASC,
+             CASE WHEN :sortColumn = 'artist' AND :ascending = 0 THEN artistKey END DESC,
+             CASE WHEN :sortColumn = 'duration' AND :ascending = 1 THEN durationMs END ASC,
+             CASE WHEN :sortColumn = 'duration' AND :ascending = 0 THEN durationMs END DESC,
+             CASE WHEN :sortColumn = 'date' AND :ascending = 1 THEN dateModified END ASC,
+             CASE WHEN :sortColumn = 'date' AND :ascending = 0 THEN dateModified END DESC,
+             songId ASC"""
+    )
+    fun observeAllSorted(sortColumn: String, ascending: Boolean): Flow<List<LibrarySongEntity>>
+
     @Query(
         """SELECT * FROM library_song_table
            WHERE titleKey LIKE '%' || :query || '%'

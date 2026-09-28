@@ -114,8 +114,6 @@ internal fun MmApp(
 ) {
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
-    val progress by viewModel.progress.collectAsStateWithLifecycle()
-    val progressString by viewModel.progressString.collectAsStateWithLifecycle()
     var showPopUpPlayer by remember { mutableStateOf(false) }
 
     val currentDestination = appState.currentDestination
@@ -165,6 +163,13 @@ internal fun MmApp(
     )
     BackHandler(enabled = customDrawerState.isOpened()) {
         customDrawerState = CustomDrawerState.Closed
+    }
+
+    // Playback can outlive the service (app swiped from recents while playing). Whenever
+    // audio is playing and this UI is up, make sure the service - and with it the
+    // notification and media session - is running again.
+    LaunchedEffect(isPlaying) {
+        if (isPlaying) viewModel.ensurePlaybackServiceStarted()
     }
 
     LaunchedEffect(openPlayerRequested, currentSelectedAudio.songId) {
@@ -256,7 +261,7 @@ internal fun MmApp(
                 if (currentDestination?.route != PlayerRoute::class.qualifiedName.plus("/{musicId}")) {
                     AnimatedVisibility(
                         modifier = Modifier.align(Alignment.BottomEnd),
-                        visible = viewModel.isPlaybackServiceRunning() && currentSelectedAudio.songId != 0L && !showPopUpPlayer,
+                        visible = (isPlaying || viewModel.isPlaybackServiceRunning()) && currentSelectedAudio.songId != 0L && !showPopUpPlayer,
                         enter = scaleIn(
                             animationSpec = tween(durationMillis = 500),
                             transformOrigin = TransformOrigin(
@@ -299,6 +304,10 @@ internal fun MmApp(
                             )
                         ) + fadeOut(animationSpec = tween(durationMillis = 500))
                     ) {
+                        // Collected here, not at the top of MmApp, so the 500ms progress tick
+                        // only recomposes the popup instead of the whole app scaffold.
+                        val progress by viewModel.progress.collectAsStateWithLifecycle()
+                        val progressString by viewModel.progressString.collectAsStateWithLifecycle()
                         PopUpPlayer(
                             modifier = Modifier,
                             songId = currentSelectedAudio.songId,
