@@ -30,7 +30,7 @@ fun MelodiQNavHost(
     modifier: Modifier = Modifier,
     navigateToPlayer: (String) -> Unit,
     navigateToEqualizerScreen: () -> Unit,
-    onPlaylistClicked: (Int) -> Unit,
+    onPlaylistClicked: (Int, String) -> Unit,
     navigateToAlbumDetails: (Long) -> Unit,
     navigateBack: () -> Unit,
 ) {
@@ -53,8 +53,8 @@ fun MelodiQNavHost(
             navigateToPlayer = navigateToPlayer,
         )
         playlistsScreen(
-            onPlaylistClicked = { playlistId ->
-                onPlaylistClicked.invoke(playlistId)
+            onPlaylistClicked = { playlistId, playlistName ->
+                onPlaylistClicked.invoke(playlistId, playlistName)
             }
         )
         settingsScreen()
@@ -77,7 +77,7 @@ fun MelodiQNavHost(
         equalizerScreen()
         playlistDetailsScreen(
             navigateBack = navigateBack,
-            navigateToPlayer = navigateToPlayer
+            navigateToPlayer = navigateToPlayer,
         )
     }
 }

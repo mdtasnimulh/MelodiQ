@@ -33,4 +33,8 @@ class PlaylistDetailsRepoImpl @Inject constructor(
     override fun searchPlaylistMusic(searchKey: String): Flow<List<PlaylistDetailsEntity>> {
         return dao.searchPlaylistMusic(searchKey)
     }
+
+    override suspend fun isSongInPlaylist(playlistId: Int, songId: Long): Boolean {
+        return dao.countSongInPlaylist(playlistId, songId) > 0
+    }
 }

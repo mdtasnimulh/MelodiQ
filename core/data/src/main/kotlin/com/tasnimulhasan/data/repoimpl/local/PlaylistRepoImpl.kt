@@ -3,6 +3,7 @@ package com.tasnimulhasan.data.repoimpl.local
 import com.tasnimulhasan.database.dao.PlaylistsDao
 import com.tasnimulhasan.domain.repository.local.PlaylistsRepository
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
+import com.tasnimulhasan.entity.room.playlist.PlaylistWithStats
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -31,5 +32,9 @@ class PlaylistRepoImpl @Inject constructor(
 
     override fun searchPlaylistByName(playlistName: String): Flow<List<PlaylistEntity>> {
         return playlistsDao.searchPlaylistsByName(playlistName = playlistName)
+    }
+
+    override fun getAllPlaylistsWithStats(): Flow<List<PlaylistWithStats>> {
+        return playlistsDao.getAllPlaylistsWithStats()
     }
 }

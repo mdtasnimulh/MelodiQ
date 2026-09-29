@@ -16,4 +16,6 @@ interface PlaylistDetailsRepository {
     fun getAllPlaylistMusic(params: GetAllMusicFromPlaylistUseCase.Params): Flow<List<PlaylistDetailsEntity>>
 
     fun searchPlaylistMusic(searchKey: String): Flow<List<PlaylistDetailsEntity>>
+
+    suspend fun isSongInPlaylist(playlistId: Int, songId: Long): Boolean
 }

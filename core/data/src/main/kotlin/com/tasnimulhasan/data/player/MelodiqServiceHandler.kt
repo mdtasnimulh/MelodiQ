@@ -97,6 +97,9 @@ class MelodiqServiceHandler @Inject constructor(
         val mediaItems = buildMediaItems(audioList)
         val clampedIndex = startIndex.coerceIn(0, (mediaItems.size - 1).coerceAtLeast(0))
         exoPlayer.setMediaItems(mediaItems, clampedIndex, 0L)
+        // A curated queue (playlist) is a closed set: Next/Previous should wrap within it
+        // instead of stopping at the first/last track.
+        exoPlayer.repeatMode = Player.REPEAT_MODE_ALL
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
         exoPlayer.play()

@@ -16,7 +16,7 @@ fun NavController.navigateToPlaylists(navOptions: NavOptions) =
     navigate(route = PlaylistsRoute, navOptions)
 
 fun NavGraphBuilder.playlistsScreen(
-    onPlaylistClicked: (Int) -> Unit,
+    onPlaylistClicked: (Int, String) -> Unit,
 ) {
     composable<PlaylistsRoute>(
         enterTransition = { slideInHorizontally { it } },
@@ -25,7 +25,7 @@ fun NavGraphBuilder.playlistsScreen(
         popExitTransition = { slideOutHorizontally { it } }
     ) {
         PlaylistsRoute(
-            onPlaylistClicked = { playlistId -> onPlaylistClicked.invoke(playlistId) }
+            onPlaylistClicked = { playlistId, playlistName -> onPlaylistClicked.invoke(playlistId, playlistName) }
         )
     }
 }

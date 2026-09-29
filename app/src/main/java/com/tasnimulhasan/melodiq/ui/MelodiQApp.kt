@@ -347,8 +347,8 @@ private fun GetContent(appState: MelodiQAppState) {
             navigateToEqualizerScreen = {
                 appState.navigateToEqualizerScreen()
             },
-            onPlaylistClicked = { playlistId ->
-                appState.navigateToPlaylistDetails(playlistId)
+            onPlaylistClicked = { playlistId, playlistName ->
+                appState.navigateToPlaylistDetails(playlistId, playlistName)
             },
             navigateToAlbumDetails = { albumId ->
                 appState.navigateToAlbumDetails(albumId)

@@ -98,7 +98,7 @@ class MelodiQAppState(
 
     fun navigateToEqualizerScreen() = navController.navigateToEqualizer()
 
-    fun navigateToPlaylistDetails(playlistId: Int) = navController.navigateToPlaylistDetails(playlistId = playlistId)
+    fun navigateToPlaylistDetails(playlistId: Int, playlistName: String) = navController.navigateToPlaylistDetails(playlistId = playlistId, playlistName = playlistName)
 
     fun navigateToAlbumDetails(albumId: Long) = navController.navigateToAlbumDetails(albumId = albumId)
 

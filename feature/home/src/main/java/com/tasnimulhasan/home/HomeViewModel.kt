@@ -10,6 +10,7 @@ import com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicListToPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlistdetails.IsSongInPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.GetAllPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
@@ -43,6 +44,7 @@ class HomeViewModel @Inject constructor(
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val getAllPlaylistUseCase: GetAllPlaylistUseCase,
     private val insertMusicToPlaylist: InsertMusicToPlaylistUseCase,
+    private val isSongInPlaylistUseCase: IsSongInPlaylistUseCase,
     private val insertMusicListToPlaylistUseCase: InsertMusicListToPlaylistUseCase,
     private val observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
     private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
@@ -208,6 +210,13 @@ class HomeViewModel @Inject constructor(
 
     private fun addMusicToPlaylist(playlistId: Int, music: MusicEntity) {
         execute {
+            val alreadyAdded = isSongInPlaylistUseCase(
+                IsSongInPlaylistUseCase.Params(playlistId = playlistId, songId = music.songId)
+            )
+            if (alreadyAdded) {
+                _uiEvent.send(UiEvent.ShowToast("Already added to this playlist"))
+                return@execute
+            }
             val details = PlaylistDetailsEntity(
                 playlistId = playlistId,
                 contentUri = music.contentUri.toString(),

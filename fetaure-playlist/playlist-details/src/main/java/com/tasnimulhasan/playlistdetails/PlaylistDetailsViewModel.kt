@@ -2,22 +2,29 @@ package com.tasnimulhasan.playlistdetails
 
 import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.base.BaseViewModel
+import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
+import com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
+import com.tasnimulhasan.domain.localusecase.playlistdetails.DeleteMusicFromPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
-import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class PlaylistDetailsViewModel @Inject constructor(
     private val getAllMusicFromPlaylistUseCase: GetAllMusicFromPlaylistUseCase,
+    private val deleteMusicFromPlaylistUseCase: DeleteMusicFromPlaylistUseCase,
     private val playerUseCases: PlayerUseCases,
+    private val observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
+    private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
 ) : BaseViewModel() {
 
     private val _uiEvent = Channel<UiEvent>()
@@ -29,9 +36,14 @@ class PlaylistDetailsViewModel @Inject constructor(
     val currentSelectedAudio: StateFlow<MusicEntity?> = playerUseCases.observeCurrentSelectedAudio()
     val isPlaying: StateFlow<Boolean> = playerUseCases.observeIsPlaying()
 
+    val favorites: StateFlow<Set<Long>> = observeFavouriteIdsUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     val action: (UiAction) -> Unit = {
         when (it) {
             is UiAction.FetchMusicList -> getMusicList(it.params)
+            is UiAction.RemoveFromPlaylist -> removeFromPlaylist(it.item)
+            is UiAction.ToggleFavorite -> toggleFavorite(it.songId)
         }
     }
 
@@ -43,6 +55,19 @@ class PlaylistDetailsViewModel @Inject constructor(
                 if (it.isEmpty()) _uiEvent.send(UiEvent.DataEmpty)
                 else _uiEvent.send(UiEvent.MusicList(it))
             }
+        }
+    }
+
+    private fun removeFromPlaylist(item: PlaylistDetailsEntity) {
+        execute {
+            deleteMusicFromPlaylistUseCase.invoke(DeleteMusicFromPlaylistUseCase.Params(item))
+            _uiEvent.send(UiEvent.ShowToast("Removed from playlist"))
+        }
+    }
+
+    private fun toggleFavorite(songId: Long) {
+        viewModelScope.launch {
+            toggleFavouriteUseCase(songId)
         }
     }
 
@@ -65,4 +90,6 @@ sealed interface UiEvent {
 
 sealed interface UiAction {
     data class FetchMusicList(val params: GetAllMusicFromPlaylistUseCase.Params) : UiAction
+    data class RemoveFromPlaylist(val item: PlaylistDetailsEntity) : UiAction
+    data class ToggleFavorite(val songId: Long) : UiAction
 }

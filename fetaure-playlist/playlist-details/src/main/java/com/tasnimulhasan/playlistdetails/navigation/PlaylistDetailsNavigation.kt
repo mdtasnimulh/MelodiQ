@@ -8,13 +8,18 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import com.tasnimulhasan.playlistdetails.PlaylistDetailsScreen
 import kotlinx.serialization.Serializable
 
-@Serializable class PlaylistDetailsRoute(val playlistId: Int)
+@Serializable class PlaylistDetailsRoute(val playlistId: Int, val playlistName: String = "")
 
-fun NavController.navigateToPlaylistDetails(playlistId: Int, navOptions: NavOptionsBuilder.() -> Unit = {}){
-    navigate(route = PlaylistDetailsRoute(playlistId = playlistId)){
+fun NavController.navigateToPlaylistDetails(
+    playlistId: Int,
+    playlistName: String = "",
+    navOptions: NavOptionsBuilder.() -> Unit = {},
+) {
+    navigate(route = PlaylistDetailsRoute(playlistId = playlistId, playlistName = playlistName)) {
         navOptions()
     }
 }
@@ -30,10 +35,11 @@ fun NavGraphBuilder.playlistDetailsScreen(
         popEnterTransition = { fadeIn() },
         popExitTransition = { fadeOut() }
     ) { backStackEntry ->
-        val playlistId = backStackEntry.arguments?.getInt("playlistId") ?: -1
+        val route = backStackEntry.toRoute<PlaylistDetailsRoute>()
         SharedTransitionLayout {
             PlaylistDetailsScreen(
-                playlistId = playlistId,
+                playlistId = route.playlistId,
+                playlistName = route.playlistName,
                 onNavigateUp = navigateBack,
                 navigateToPlayer = navigateToPlayer,
             )
