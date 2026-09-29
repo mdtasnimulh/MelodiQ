@@ -72,7 +72,7 @@ fun SharedTransitionScope.MusicCard(
     val durationText = remember(duration) { convertLongToReadableDateTime(duration.toLongOrNull() ?: 0L, "mm:ss") }
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
+            containerColor = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         ),
         modifier = modifier
             .fillMaxWidth()
