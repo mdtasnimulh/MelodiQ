@@ -308,17 +308,21 @@ class PlayerViewModel @Inject constructor(
         setVolumeWithBoost((gain * 200).toInt(), fromSlider = true)
     }
 
-    fun startSleepTimer(totalDurationMillis: Long) {
+    fun startSleepTimer(totalDurationMillis: Long, fadeOutSeconds: Int = 10) {
         sleepTimerController.start(totalDurationMillis) {
-            onUiEvents(UIEvents.PlayPause)
-            android.os.Process.killProcess(android.os.Process.myPid())
+            viewModelScope.launch {
+                playerUseCases.fadeOutAndPause(fadeOutSeconds * 1000L)
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
         }
     }
 
-    fun startEndOfSongSleepTimer() {
+    fun startEndOfSongSleepTimer(fadeOutSeconds: Int = 10) {
         sleepTimerController.startEndOfSong {
-            onUiEvents(UIEvents.PlayPause)
-            android.os.Process.killProcess(android.os.Process.myPid())
+            viewModelScope.launch {
+                playerUseCases.fadeOutAndPause(fadeOutSeconds * 1000L)
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
         }
     }
 

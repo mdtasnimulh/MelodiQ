@@ -74,6 +74,17 @@ enum class SleepTimerOption(val label: String) {
     HOUR_2("2 h"),
 }
 
+/** Fade-out presets offered alongside the timer duration - applied right before playback
+ * actually stops, so the end of a sleep timer isn't a sudden cut. OFF (0s) pauses instantly,
+ * matching the previous behavior for anyone who doesn't want a fade. */
+enum class FadeOutOption(val label: String, val seconds: Int) {
+    OFF("Off", 0),
+    SEC_10("10s", 10),
+    SEC_20("20s", 20),
+    SEC_30("30s", 30),
+    SEC_60("60s", 60),
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SleepTimerBottomSheet(
@@ -81,11 +92,14 @@ fun SleepTimerBottomSheet(
     isTimerRunning: Boolean,
     remainingTimeMillis: Long,
     accentColor: Color = MaterialTheme.colorScheme.primary,
-    onOptionSelected: (SleepTimerOption) -> Unit,
-    onCustomTimeSet: (hours: Int, minutes: Int, seconds: Int) -> Unit,
+    // (option, fadeOutSeconds) / (h, m, s, fadeOutSeconds) - the fade choice travels with
+    // whichever way the user actually started the timer, made in the same sheet.
+    onOptionSelected: (SleepTimerOption, Int) -> Unit,
+    onCustomTimeSet: (hours: Int, minutes: Int, seconds: Int, fadeOutSeconds: Int) -> Unit,
     onCancelTimer: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
+    var fadeOutOption by remember { mutableStateOf(FadeOutOption.SEC_10) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -126,12 +140,14 @@ fun SleepTimerBottomSheet(
                 } else {
                     TimerOptionsContent(
                         accentColor = accentColor,
+                        fadeOutOption = fadeOutOption,
+                        onFadeOutOptionSelected = { fadeOutOption = it },
                         onOptionSelected = {
-                            onOptionSelected(it)
+                            onOptionSelected(it, fadeOutOption.seconds)
                             onDismiss()
                         },
                         onCustomTimeSet = { h, m, s ->
-                            onCustomTimeSet(h, m, s)
+                            onCustomTimeSet(h, m, s, fadeOutOption.seconds)
                             onDismiss()
                         }
                     )
@@ -144,6 +160,8 @@ fun SleepTimerBottomSheet(
 @Composable
 private fun TimerOptionsContent(
     accentColor: Color,
+    fadeOutOption: FadeOutOption,
+    onFadeOutOptionSelected: (FadeOutOption) -> Unit,
     onOptionSelected: (SleepTimerOption) -> Unit,
     onCustomTimeSet: (hours: Int, minutes: Int, seconds: Int) -> Unit,
 ) {
@@ -234,6 +252,37 @@ private fun TimerOptionsContent(
                 accentColor = accentColor,
                 onTimeSet = onCustomTimeSet
             )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text = "Fade out: ${fadeOutOption.label}",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp,
+            modifier = Modifier.align(Alignment.Start)
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FadeOutOption.entries.forEach { option ->
+                val selected = option == fadeOutOption
+                Text(
+                    text = option.label,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selected) accentColor else accentColor.copy(alpha = 0.08f))
+                        .clickable { onFadeOutOptionSelected(option) }
+                        .padding(vertical = 8.dp)
+                )
+            }
         }
     }
 }

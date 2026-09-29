@@ -13,6 +13,7 @@ data class PlayerUseCases(
     val seekStep: SeekStepUseCase,
     val play: PlayUseCase,
     val pause: PauseUseCase,
+    val fadeOutAndPause: FadeOutAndPauseUseCase,
     val next: NextTrackUseCase,
     val previous: PreviousTrackUseCase,
     val forwardTrackUseCase: ForwardTrackUseCase,

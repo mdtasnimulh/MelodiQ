@@ -1,11 +1,9 @@
 package com.tasnimulhasan.data.player
 
-import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.extractor.metadata.vorbis.VorbisComment
@@ -77,6 +75,12 @@ class MelodiqServiceHandler @Inject constructor(
     private var replayGainMultiplier: Float = 1f
     private var crossfadeEnvelope: Float = 1f
     private var crossfadeJob: Job? = null
+
+    // Separate from crossfadeEnvelope: this is a one-shot fade used by the sleep timer's
+    // "fade out" option, not something the 500ms progress tick or track transitions ever
+    // touch. Combined into applyVolume() like the other two multipliers.
+    private var sleepFadeMultiplier: Float = 1f
+    private var sleepFadeJob: Job? = null
 
     // Long-lived scope for the preference collectors below and for the crossfade fade job -
     // distinct from the per-call ad-hoc scopes elsewhere in this class so those are left
@@ -280,7 +284,37 @@ class MelodiqServiceHandler @Inject constructor(
     fun getMediaItemCount(): Int = exoPlayer.mediaItemCount
 
     private fun applyVolume() {
-        exoPlayer.volume = (replayGainMultiplier * crossfadeEnvelope).coerceIn(0f, 1f)
+        exoPlayer.volume = (replayGainMultiplier * crossfadeEnvelope * sleepFadeMultiplier).coerceIn(0f, 1f)
+    }
+
+    /** Ramps volume down to silent over [durationMs], pauses, then restores the multiplier
+     * to 1 so a later play() isn't silently muted. Suspends until done - the sleep timer
+     * awaits this before it proceeds with whatever happens after playback stops. A duration
+     * of 0 (or less) pauses immediately with no fade. */
+    suspend fun fadeOutAndPause(durationMs: Long) {
+        sleepFadeJob?.cancel()
+        if (durationMs <= 0L) {
+            sleepFadeMultiplier = 0f
+            applyVolume()
+            onPlayerEvents(MelodiqPlayerEvent.Pause)
+            sleepFadeMultiplier = 1f
+            applyVolume()
+            return
+        }
+        val steps = (durationMs / 100L).coerceAtLeast(1)
+        val start = sleepFadeMultiplier
+        for (i in 1..steps) {
+            sleepFadeMultiplier = start + (0f - start) * (i / steps.toFloat())
+            applyVolume()
+            delay(100)
+        }
+        sleepFadeMultiplier = 0f
+        applyVolume()
+        onPlayerEvents(MelodiqPlayerEvent.Pause)
+        // Restore for the next time the user presses play - this fade must never linger
+        // into a future playback session.
+        sleepFadeMultiplier = 1f
+        applyVolume()
     }
 
     /**
@@ -289,7 +323,6 @@ class MelodiqServiceHandler @Inject constructor(
      * album gain since these are individual songs, not an album being played straight
      * through. Files with no such tag simply keep the default multiplier of 1 (untouched).
      */
-    @OptIn(UnstableApi::class)
     override fun onMetadata(metadata: Metadata) {
         if (!replayGainEnabled) return
         var trackGainDb: Float? = null

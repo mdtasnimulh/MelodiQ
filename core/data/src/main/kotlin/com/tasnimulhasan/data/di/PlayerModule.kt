@@ -13,7 +13,6 @@ import androidx.media3.session.MediaSession
 import com.tasnimulhasan.common.constant.AppConstants
 import com.tasnimulhasan.common.notification.MelodiqNotificationManager
 import com.tasnimulhasan.data.player.MelodiqServiceHandler
-import com.tasnimulhasan.domain.repository.PlayerRepository
 import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
 import dagger.Module
 import dagger.Provides

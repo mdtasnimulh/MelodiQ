@@ -89,12 +89,9 @@ fun MelodiQApp(
     onOpenPlayerHandled: () -> Unit = {},
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
-    var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
-
     MmApp(
         appState = appState,
         modifier = modifier,
-        onTopAppBarActionClick = { showSettingsDialog = true },
         openPlayerRequested = openPlayerRequested,
         onOpenPlayerHandled = onOpenPlayerHandled,
         windowAdaptiveInfo = windowAdaptiveInfo,
@@ -106,7 +103,6 @@ fun MelodiQApp(
 internal fun MmApp(
     appState: MelodiQAppState,
     modifier: Modifier = Modifier,
-    onTopAppBarActionClick: () -> Unit,
     openPlayerRequested: Boolean = false,
     onOpenPlayerHandled: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel(),
@@ -213,8 +209,6 @@ internal fun MmApp(
                         titleRes = currentTitleRes,
                         navigationIcon = navigationIcon,
                         navigationIconContentDescription = navigationIconContentDescription,
-                        actionIcon = MelodiqIcons.ActionMore,
-                        actionIconsContentDescription = stringResource(id = Res.string.title_settings),
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent,
                             scrolledContainerColor = Color.Unspecified,
@@ -222,7 +216,6 @@ internal fun MmApp(
                             titleContentColor = Color.Unspecified,
                             actionIconContentColor = Color.Unspecified
                         ),
-                        onActionClick = { onTopAppBarActionClick() },
                         onNavigationClick = {
                             if (!isTopLevelDestination) appState.navigateBack()
                             else customDrawerState = customDrawerState.opposite()

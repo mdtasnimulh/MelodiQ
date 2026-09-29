@@ -531,15 +531,15 @@ internal fun SharedTransitionScope.PlayerScreen(
                         isTimerRunning = sleepTimerRunning,
                         remainingTimeMillis = sleepTimerRemainingMillis,
                         accentColor = Color(darkPaletteColor),
-                        onOptionSelected = { option ->
+                        onOptionSelected = { option, fadeOutSeconds ->
                             if (option == SleepTimerOption.END_OF_SONG) {
-                                viewModel.startEndOfSongSleepTimer()
+                                viewModel.startEndOfSongSleepTimer(fadeOutSeconds)
                             } else {
-                                viewModel.startSleepTimer(resolveSleepTimerMillis(option))
+                                viewModel.startSleepTimer(resolveSleepTimerMillis(option), fadeOutSeconds)
                             }
                         },
-                        onCustomTimeSet = { h, m, s ->
-                            viewModel.startSleepTimer((h * 3600L + m * 60L + s) * 1000L)
+                        onCustomTimeSet = { h, m, s, fadeOutSeconds ->
+                            viewModel.startSleepTimer((h * 3600L + m * 60L + s) * 1000L, fadeOutSeconds)
                         },
                         onCancelTimer = { viewModel.cancelSleepTimer() }
                     )

@@ -25,9 +25,12 @@ fun MelodiqTopAppBar(
     @StringRes titleRes: Int,
     navigationIcon: ImageVector,
     navigationIconContentDescription: String,
-    actionIcon: ImageVector,
-    actionIconsContentDescription: String,
     modifier: Modifier = Modifier,
+    // Optional now: the app has no use for a right-side top bar action (Settings already
+    // lives in the drawer, reached via [navigationIcon]) - passing null renders a plain bar
+    // with just the title and navigation icon.
+    actionIcon: ImageVector? = null,
+    actionIconsContentDescription: String = "",
     colors: TopAppBarColors = TopAppBarDefaults.centerAlignedTopAppBarColors(),
     onNavigationClick: () -> Unit = {},
     onActionClick: () -> Unit = {}
@@ -44,12 +47,14 @@ fun MelodiqTopAppBar(
             }
         },
         actions = {
-            IconButton(onClick = onActionClick) {
-                Icon(
-                    imageVector = actionIcon,
-                    contentDescription = actionIconsContentDescription,
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
+            if (actionIcon != null) {
+                IconButton(onClick = onActionClick) {
+                    Icon(
+                        imageVector = actionIcon,
+                        contentDescription = actionIconsContentDescription,
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         },
         colors = colors,
@@ -66,8 +71,6 @@ private fun MelodiqTopAppBarPreview() {
             titleRes = Res.string.app_name,
             navigationIcon = MelodiqIcons.NavigationMenu,
             navigationIconContentDescription = "Navigation Icon",
-            actionIcon = MelodiqIcons.ActionMore,
-            actionIconsContentDescription = "See More"
         )
     }
 }

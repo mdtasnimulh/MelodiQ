@@ -41,6 +41,10 @@ interface PlayerRepository {
 
     suspend fun play()
     suspend fun pause()
+    /** Ramps volume from full down to silent over [durationMs], pauses, then restores
+     * volume to full so the next time the user presses play it isn't silently muted. Used
+     * by the sleep timer's fade-out option. Suspends until the fade (and pause) completes. */
+    suspend fun fadeOutAndPause(durationMs: Long)
     suspend fun seekTo(position: Long)
     suspend fun next()
     suspend fun previous()

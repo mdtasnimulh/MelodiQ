@@ -305,6 +305,10 @@ class PlayerRepositoryImpl @Inject constructor(
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.Pause)
     }
 
+    override suspend fun fadeOutAndPause(durationMs: Long) {
+        serviceHandler.fadeOutAndPause(durationMs)
+    }
+
     override suspend fun seekTo(position: Long) {
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SeekTo, seekPosition = position)
     }
