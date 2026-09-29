@@ -260,11 +260,19 @@ class MelodiqServiceHandler @Inject constructor(
             }
             MelodiqPlayerEvent.SkipNext -> {
                 resetCrossfadeEnvelope()
-                exoPlayer.seekToNextMediaItem()
+                if (exoPlayer.currentMediaItemIndex < exoPlayer.mediaItemCount - 1 ) {
+                    exoPlayer.seekToNextMediaItem()
+                } else {
+                    exoPlayer.seekToDefaultPosition(0)
+                }
             }
             MelodiqPlayerEvent.SkipPrevious -> {
                 resetCrossfadeEnvelope()
-                exoPlayer.seekToPreviousMediaItem()
+                if (exoPlayer.currentMediaItemIndex > 0) {
+                    exoPlayer.seekToPreviousMediaItem()
+                } else {
+                    exoPlayer.seekToDefaultPosition(exoPlayer.mediaItemCount - 1)
+                }
             }
             MelodiqPlayerEvent.SelectAudioChange -> {
                 resetCrossfadeEnvelope()
