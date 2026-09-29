@@ -1,14 +1,22 @@
 package com.tasnimulhasan.data.player
 
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.extractor.metadata.id3.TextInformationFrame
+import androidx.media3.extractor.metadata.vorbis.VorbisComment
+import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
+import kotlin.math.pow
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +26,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class MelodiqServiceHandler @Inject constructor(
-    private val exoPlayer: ExoPlayer
+    private val exoPlayer: ExoPlayer,
+    private val preferencesDataStoreRepository: PreferencesDataStoreRepository,
 ) : Player.Listener {
 
     private val _audioState: MutableStateFlow<MelodiqAudioState> = MutableStateFlow(MelodiqAudioState.Initial)
@@ -50,10 +59,58 @@ class MelodiqServiceHandler @Inject constructor(
     @Volatile
     var seekStepMs: Long = 10_000L
 
+    // --- Volume normalization (ReplayGain) + crossfade -----------------------------------
+    // exoPlayer.volume is a single float, and both features want to drive it independently
+    // (a per-track loudness correction vs. a fade envelope around track transitions), so the
+    // two are tracked as separate multipliers and multiplied together on every change. This
+    // is the only thing either feature touches - no changes to the queue, timeline, media
+    // session, or notification.
+    @Volatile
+    private var replayGainEnabled: Boolean = false
+
+    @Volatile
+    private var crossfadeEnabled: Boolean = false
+
+    @Volatile
+    private var crossfadeDurationMs: Long = 4_000L
+
+    private var replayGainMultiplier: Float = 1f
+    private var crossfadeEnvelope: Float = 1f
+    private var crossfadeJob: Job? = null
+
+    // Long-lived scope for the preference collectors below and for the crossfade fade job -
+    // distinct from the per-call ad-hoc scopes elsewhere in this class so those are left
+    // untouched.
+    private val handlerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     fun currentPlaybackSpeed(): Float = exoPlayer.playbackParameters.speed
 
     init {
         exoPlayer.addListener(this)
+        handlerScope.launch {
+            preferencesDataStoreRepository.getReplayGainEnabled().collect { enabled ->
+                replayGainEnabled = enabled
+                // Toggling off must restore full volume immediately, not just stop applying
+                // future gain - otherwise the last-applied reduction would linger.
+                replayGainMultiplier = 1f
+                applyVolume()
+            }
+        }
+        handlerScope.launch {
+            preferencesDataStoreRepository.getCrossfadeEnabled().collect { enabled ->
+                crossfadeEnabled = enabled
+                if (!enabled) {
+                    crossfadeJob?.cancel()
+                    crossfadeEnvelope = 1f
+                    applyVolume()
+                }
+            }
+        }
+        handlerScope.launch {
+            preferencesDataStoreRepository.getCrossfadeDurationMs().collect { durationMs ->
+                crossfadeDurationMs = durationMs
+            }
+        }
         if (exoPlayer.playbackState == ExoPlayer.STATE_READY) {
             _audioState.value = MelodiqAudioState.Ready(exoPlayer.duration)
             _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
@@ -191,10 +248,22 @@ class MelodiqServiceHandler @Inject constructor(
                     stopProgressUpdate()
                 }
             }
-            MelodiqPlayerEvent.SeekTo -> exoPlayer.seekTo(seekPosition)
-            MelodiqPlayerEvent.SkipNext -> exoPlayer.seekToNextMediaItem()
-            MelodiqPlayerEvent.SkipPrevious -> exoPlayer.seekToPreviousMediaItem()
-            MelodiqPlayerEvent.SelectAudioChange -> selectTrack(selectedAudionIndex)
+            MelodiqPlayerEvent.SeekTo -> {
+                resetCrossfadeEnvelope()
+                exoPlayer.seekTo(seekPosition)
+            }
+            MelodiqPlayerEvent.SkipNext -> {
+                resetCrossfadeEnvelope()
+                exoPlayer.seekToNextMediaItem()
+            }
+            MelodiqPlayerEvent.SkipPrevious -> {
+                resetCrossfadeEnvelope()
+                exoPlayer.seekToPreviousMediaItem()
+            }
+            MelodiqPlayerEvent.SelectAudioChange -> {
+                resetCrossfadeEnvelope()
+                selectTrack(selectedAudionIndex)
+            }
             MelodiqPlayerEvent.Stop -> stopProgressUpdate()
             is MelodiqPlayerEvent.UpdateProgress -> {
                 exoPlayer.seekTo((exoPlayer.duration * playerEvent.newProgress).toLong())
@@ -209,6 +278,79 @@ class MelodiqServiceHandler @Inject constructor(
     fun getDuration(): Long = exoPlayer.duration
     fun isPlaying(): Boolean = exoPlayer.playWhenReady
     fun getMediaItemCount(): Int = exoPlayer.mediaItemCount
+
+    private fun applyVolume() {
+        exoPlayer.volume = (replayGainMultiplier * crossfadeEnvelope).coerceIn(0f, 1f)
+    }
+
+    /**
+     * ID3 TXXX ("REPLAYGAIN_TRACK_GAIN") for mp3, or a Vorbis comment of the same name for
+     * ogg/flac - whichever the file actually has embedded. Track gain is preferred over
+     * album gain since these are individual songs, not an album being played straight
+     * through. Files with no such tag simply keep the default multiplier of 1 (untouched).
+     */
+    @OptIn(UnstableApi::class)
+    override fun onMetadata(metadata: Metadata) {
+        if (!replayGainEnabled) return
+        var trackGainDb: Float? = null
+        var albumGainDb: Float? = null
+        for (i in 0 until metadata.length()) {
+            when (val entry = metadata.get(i)) {
+                is TextInformationFrame -> {
+                    val desc = entry.description?.uppercase()
+                    val value = entry.values.firstOrNull()
+                    if (value != null) {
+                        when (desc) {
+                            "REPLAYGAIN_TRACK_GAIN" -> trackGainDb = parseGainDb(value)
+                            "REPLAYGAIN_ALBUM_GAIN" -> albumGainDb = parseGainDb(value)
+                        }
+                    }
+                }
+                is VorbisComment -> {
+                    when (entry.key.uppercase()) {
+                        "REPLAYGAIN_TRACK_GAIN" -> trackGainDb = parseGainDb(entry.value)
+                        "REPLAYGAIN_ALBUM_GAIN" -> albumGainDb = parseGainDb(entry.value)
+                    }
+                }
+                else -> Unit
+            }
+        }
+        val gainDb = trackGainDb ?: albumGainDb ?: return
+        // Linear gain = 10^(dB/20). Clamped to <= 1: ExoPlayer's volume can attenuate but not
+        // amplify past unity, so a positive tag (rare - a track quieter than the target
+        // loudness) is left at full volume rather than clipped.
+        replayGainMultiplier = 10f.pow(gainDb / 20f).coerceIn(0f, 1f)
+        applyVolume()
+    }
+
+    private fun parseGainDb(raw: String): Float? =
+        raw.trim().removeSuffix("dB").removeSuffix("DB").trim().toFloatOrNull()
+
+    private fun fadeEnvelopeTo(target: Float, durationMs: Long) {
+        crossfadeJob?.cancel()
+        val safeDuration = durationMs.coerceAtLeast(100L)
+        crossfadeJob = handlerScope.launch {
+            val steps = (safeDuration / 100L).coerceAtLeast(1)
+            val start = crossfadeEnvelope
+            for (i in 1..steps) {
+                if (!isActive) return@launch
+                crossfadeEnvelope = start + (target - start) * (i / steps.toFloat())
+                applyVolume()
+                delay(100)
+            }
+            crossfadeEnvelope = target
+            applyVolume()
+        }
+    }
+
+    /** Cancels any in-progress fade and snaps straight back to full volume - used whenever
+     * the user interacts manually (skip/seek/select), so a fade-out in progress can never
+     * leave playback stuck quiet after a manual jump. */
+    private fun resetCrossfadeEnvelope() {
+        crossfadeJob?.cancel()
+        crossfadeEnvelope = 1f
+        applyVolume()
+    }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
         when (playbackState) {
@@ -249,6 +391,19 @@ class MelodiqServiceHandler @Inject constructor(
         // Fires on auto-advance to the next track too - this is what keeps every screen's
         // "now playing" highlight correct without the user touching anything.
         _currentIndex.value = exoPlayer.currentMediaItemIndex
+        // Reset per-track gain; onMetadata (below) overwrites this once the new track's tags,
+        // if any, are parsed. Without this a quiet track's gain would incorrectly linger onto
+        // the next track for the brief window before its own metadata arrives.
+        replayGainMultiplier = 1f
+        if (crossfadeEnabled && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+            // Auto-advance only - a manual skip should be instant, not muted-then-faded.
+            crossfadeEnvelope = 0f
+            applyVolume()
+            fadeEnvelopeTo(1f, crossfadeDurationMs)
+        } else {
+            crossfadeEnvelope = 1f
+            applyVolume()
+        }
     }
 
     /**
@@ -377,8 +532,28 @@ class MelodiqServiceHandler @Inject constructor(
         job = CoroutineScope(Dispatchers.Main).launch {
             while (isActive) {
                 _audioState.value = MelodiqAudioState.Progress(exoPlayer.currentPosition)
+                maybeScheduleCrossfadeOut()
                 delay(500)
             }
+        }
+    }
+
+    /** Piggybacks on the existing 500ms progress tick: once the current track is within
+     * [crossfadeDurationMs] of its end AND another track follows, start fading volume down so
+     * it reaches (about) zero right as the gapless transition happens. [onMediaItemTransition]
+     * then fades the next track back in - together these approximate a crossfade using a
+     * single player/timeline, so the existing queue, media session and notification code
+     * needs no changes. This is a sequential fade-out/fade-in, not true overlapping playback
+     * of two decoders at once. */
+    private fun maybeScheduleCrossfadeOut() {
+        if (!crossfadeEnabled) return
+        if (crossfadeJob?.isActive == true) return
+        val duration = exoPlayer.duration
+        if (duration <= 0 || duration == androidx.media3.common.C.TIME_UNSET) return
+        if (!exoPlayer.hasNextMediaItem()) return
+        val remaining = duration - exoPlayer.currentPosition
+        if (remaining in 0..crossfadeDurationMs && crossfadeEnvelope > 0f) {
+            fadeEnvelopeTo(0f, remaining.coerceAtMost(crossfadeDurationMs))
         }
     }
 

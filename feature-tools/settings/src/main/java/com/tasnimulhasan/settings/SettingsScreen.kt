@@ -1,25 +1,39 @@
 package com.tasnimulhasan.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
 
@@ -30,15 +44,27 @@ internal fun SettingsRoute(
 ) {
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
     val themeConfig by viewModel.themeConfig.collectAsStateWithLifecycle()
+    val accentColor by viewModel.accentColor.collectAsStateWithLifecycle()
+    val replayGainEnabled by viewModel.replayGainEnabled.collectAsStateWithLifecycle()
+    val crossfadeSettings by viewModel.crossfadeSettings.collectAsStateWithLifecycle()
 
     SettingsScreen(
         modifier = modifier,
         sortType = sortType,
         themeConfig = themeConfig,
+        accentColor = accentColor,
+        replayGainEnabled = replayGainEnabled,
+        crossfadeEnabled = crossfadeSettings.enabled,
+        crossfadeDurationMs = crossfadeSettings.durationMs,
         sortTypeLabel = viewModel::sortTypeToDisplayString,
         themeConfigLabel = viewModel::themeConfigToDisplayString,
+        accentColorLabel = viewModel::accentColorLabel,
         onSortTypeSelected = viewModel::setSortType,
         onThemeConfigSelected = viewModel::setThemeConfig,
+        onAccentColorSelected = viewModel::setAccentColor,
+        onReplayGainToggled = viewModel::setReplayGainEnabled,
+        onCrossfadeToggled = viewModel::setCrossfadeEnabled,
+        onCrossfadeDurationChanged = viewModel::setCrossfadeDurationMs,
     )
 }
 
@@ -47,10 +73,19 @@ internal fun SettingsScreen(
     modifier: Modifier = Modifier,
     sortType: SortType,
     themeConfig: DarkThemeConfig,
+    accentColor: AccentColorOption,
+    replayGainEnabled: Boolean,
+    crossfadeEnabled: Boolean,
+    crossfadeDurationMs: Long,
     sortTypeLabel: (SortType) -> String,
     themeConfigLabel: (DarkThemeConfig) -> String,
+    accentColorLabel: (AccentColorOption) -> String,
     onSortTypeSelected: (SortType) -> Unit,
     onThemeConfigSelected: (DarkThemeConfig) -> Unit,
+    onAccentColorSelected: (AccentColorOption) -> Unit,
+    onReplayGainToggled: (Boolean) -> Unit,
+    onCrossfadeToggled: (Boolean) -> Unit,
+    onCrossfadeDurationChanged: (Long) -> Unit,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         item { SectionHeader("Sort songs by") }
@@ -71,6 +106,45 @@ internal fun SettingsScreen(
                 selected = option == themeConfig,
                 onClick = { onThemeConfigSelected(option) },
             )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+        item { SectionHeader("Accent color") }
+        item {
+            AccentColorPicker(
+                selected = accentColor,
+                label = accentColorLabel,
+                onSelected = onAccentColorSelected,
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+        item { SectionHeader("Playback") }
+        item {
+            SettingsSwitchRow(
+                title = "Volume normalization",
+                subtitle = "Even out loudness between tracks using embedded ReplayGain tags, when present",
+                checked = replayGainEnabled,
+                onCheckedChange = onReplayGainToggled,
+            )
+        }
+        item {
+            SettingsSwitchRow(
+                title = "Crossfade",
+                subtitle = "Fade out the end of a track while the next one fades in",
+                checked = crossfadeEnabled,
+                onCheckedChange = onCrossfadeToggled,
+            )
+        }
+        if (crossfadeEnabled) {
+            item {
+                CrossfadeDurationSlider(
+                    durationMs = crossfadeDurationMs,
+                    onDurationChanged = onCrossfadeDurationChanged,
+                )
+            }
         }
     }
 }
@@ -104,4 +178,131 @@ private fun SettingsRadioRow(
             Text(text = label, style = MaterialTheme.typography.bodyLarge)
         }
     }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun CrossfadeDurationSlider(
+    durationMs: Long,
+    onDurationChanged: (Long) -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Text(
+            text = "Duration: ${durationMs / 1000}s",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Slider(
+            value = (durationMs / 1000L).toInt().coerceIn(1, 12).toFloat(),
+            onValueChange = { onDurationChanged((it.toLong()) * 1000L) },
+            valueRange = 1f..12f,
+            steps = 10,
+        )
+    }
+}
+
+@Composable
+private fun AccentColorPicker(
+    selected: AccentColorOption,
+    label: (AccentColorOption) -> String,
+    onSelected: (AccentColorOption) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        items(AccentColorOption.entries.toList()) { option ->
+            AccentColorSwatch(
+                option = option,
+                label = label(option),
+                isSelected = option == selected,
+                onClick = { onSelected(option) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccentColorSwatch(
+    option: AccentColorOption,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable { onClick() }
+            .padding(vertical = 8.dp)
+    ) {
+        val swatchColor = accentPreviewColor(option)
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(swatchColor ?: MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            when {
+                isSelected -> Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Selected",
+                    tint = Color.White,
+                )
+                option == AccentColorOption.DYNAMIC || option == AccentColorOption.ALBUM_ART -> Icon(
+                    imageVector = Icons.Filled.Palette,
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+            }
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+/** A representative preview swatch for the picker row. DYNAMIC/ALBUM_ART have no single
+ * fixed color (they're resolved at runtime), so they get a neutral gradient-like tone with
+ * a palette icon on top instead of pretending to show a specific color. */
+private fun accentPreviewColor(option: AccentColorOption): Color? = when (option) {
+    AccentColorOption.PURPLE -> Color(0xFF6650A4)
+    AccentColorOption.BLUE -> Color(0xFF0077B6)
+    AccentColorOption.GREEN -> Color(0xFF2E7D32)
+    AccentColorOption.ORANGE -> Color(0xFFEF6C00)
+    AccentColorOption.PINK -> Color(0xFFD81B60)
+    AccentColorOption.RED -> Color(0xFFC62828)
+    AccentColorOption.TEAL -> Color(0xFF00796B)
+    AccentColorOption.DYNAMIC -> Color(0xFF757575)
+    AccentColorOption.ALBUM_ART -> Color(0xFF757575)
 }

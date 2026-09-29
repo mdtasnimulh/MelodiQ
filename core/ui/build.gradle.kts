@@ -12,6 +12,7 @@ dependencies {
     api(projects.core.common)
 
     api(libs.androidx.metrics)
+    implementation(libs.androidx.palette.compose)
     implementation(libs.coil.kt)
     implementation(libs.coil.kt.compose)
     implementation(libs.bundles.androidx.material.dependencies)

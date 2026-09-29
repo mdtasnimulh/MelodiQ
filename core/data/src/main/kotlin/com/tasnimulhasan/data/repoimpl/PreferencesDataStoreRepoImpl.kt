@@ -22,6 +22,7 @@ import com.tasnimulhasan.common.constant.AppConstants.FLAT
 import com.tasnimulhasan.common.constant.AppConstants.PRESET_FLAT
 import com.tasnimulhasan.entity.enums.SortType
 import kotlinx.coroutines.flow.distinctUntilChanged
+import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 
 class PreferencesDataStoreRepoImpl @Inject constructor(
@@ -111,6 +112,59 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
             .distinctUntilChanged()
     }
 
+    override suspend fun saveAccentColor(option: AccentColorOption) {
+        tryIt {
+            dataStorePreferences.edit { preferences ->
+                preferences[PreferencesKeys.accentColor] = option.name
+            }
+        }
+    }
+
+    override fun getAccentColor(): Flow<AccentColorOption> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                val name = preferences[PreferencesKeys.accentColor]
+                AccentColorOption.entries.find { it.name == name } ?: AccentColorOption.DYNAMIC
+            }
+            .distinctUntilChanged()
+    }
+
+    override suspend fun saveReplayGainEnabled(enabled: Boolean) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.replayGainEnabled] = enabled }
+        }
+    }
+
+    override fun getReplayGainEnabled(): Flow<Boolean> {
+        return dataStorePreferences.data
+            .map { preferences -> preferences[PreferencesKeys.replayGainEnabled] ?: false }
+            .distinctUntilChanged()
+    }
+
+    override suspend fun saveCrossfadeEnabled(enabled: Boolean) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.crossfadeEnabled] = enabled }
+        }
+    }
+
+    override fun getCrossfadeEnabled(): Flow<Boolean> {
+        return dataStorePreferences.data
+            .map { preferences -> preferences[PreferencesKeys.crossfadeEnabled] ?: false }
+            .distinctUntilChanged()
+    }
+
+    override suspend fun saveCrossfadeDurationMs(durationMs: Long) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.crossfadeDurationMs] = durationMs }
+        }
+    }
+
+    override fun getCrossfadeDurationMs(): Flow<Long> {
+        return dataStorePreferences.data
+            .map { preferences -> preferences[PreferencesKeys.crossfadeDurationMs] ?: 4_000L }
+            .distinctUntilChanged()
+    }
+
     override suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long) {
         tryIt {
             dataStorePreferences.edit { preferences ->
@@ -137,6 +191,10 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
         val enableEqualizer = booleanPreferencesKey(name = "enable_equalizer")
         val sortType = stringPreferencesKey("sort_type")
         val themeConfig = stringPreferencesKey("theme_config")
+        val accentColor = stringPreferencesKey("accent_color")
+        val replayGainEnabled = booleanPreferencesKey("replaygain_enabled")
+        val crossfadeEnabled = booleanPreferencesKey("crossfade_enabled")
+        val crossfadeDurationMs = longPreferencesKey("crossfade_duration_ms")
         val lastPlayedSongId = longPreferencesKey("last_played_song_id")
         val lastPlayedPositionMs = longPreferencesKey("last_played_position_ms")
     }

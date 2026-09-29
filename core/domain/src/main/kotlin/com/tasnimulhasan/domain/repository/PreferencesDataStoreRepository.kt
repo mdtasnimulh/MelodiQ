@@ -1,6 +1,7 @@
 package com.tasnimulhasan.domain.repository
 
 import com.tasnimulhasan.entity.AppConfiguration
+import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.eqalizer.AudioEffects
@@ -17,6 +18,18 @@ interface PreferencesDataStoreRepository {
 
     suspend fun saveThemeConfig(config: DarkThemeConfig)
     fun getThemeConfig(): Flow<DarkThemeConfig>
+
+    suspend fun saveAccentColor(option: AccentColorOption)
+    fun getAccentColor(): Flow<AccentColorOption>
+
+    suspend fun saveReplayGainEnabled(enabled: Boolean)
+    fun getReplayGainEnabled(): Flow<Boolean>
+
+    suspend fun saveCrossfadeEnabled(enabled: Boolean)
+    fun getCrossfadeEnabled(): Flow<Boolean>
+
+    suspend fun saveCrossfadeDurationMs(durationMs: Long)
+    fun getCrossfadeDurationMs(): Flow<Long>
 
     suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long)
     suspend fun getLastPlayedTrack(): LastPlayedTrack?

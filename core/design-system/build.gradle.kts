@@ -8,6 +8,8 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.model.entity)
+
     implementation(libs.bundles.androidx.core.dependencies)
     implementation(libs.bundles.androidx.material.dependencies)
     implementation(libs.bundles.androidx.navigation.dependencies)

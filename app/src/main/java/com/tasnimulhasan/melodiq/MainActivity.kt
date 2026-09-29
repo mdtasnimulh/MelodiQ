@@ -59,11 +59,19 @@ class MainActivity : ComponentActivity() {
             val themeConfig by mainActivityViewModel.themeConfig.collectAsStateWithLifecycle()
             val darkTheme = when (themeConfig) {
                 DarkThemeConfig.LIGHT -> false
-                DarkThemeConfig.DARK -> true
+                DarkThemeConfig.DARK, DarkThemeConfig.AMOLED -> true
                 DarkThemeConfig.FOLLOW_SYSTEM -> isSystemInDarkTheme()
             }
+            val amoledBlack = themeConfig == DarkThemeConfig.AMOLED
+            val useDynamicColor by mainActivityViewModel.useDynamicColor.collectAsStateWithLifecycle()
+            val accentSeedColor by mainActivityViewModel.accentSeedColor.collectAsStateWithLifecycle()
 
-            MelodiqTheme(darkTheme = darkTheme) {
+            MelodiqTheme(
+                darkTheme = darkTheme,
+                dynamicColor = useDynamicColor,
+                amoledBlack = amoledBlack,
+                seedColor = accentSeedColor,
+            ) {
                 if (permissionsState.allPermissionsGranted) {
                     val shouldOpenPlayer by openPlayerRequested
                     MelodiQApp(
