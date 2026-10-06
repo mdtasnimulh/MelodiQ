@@ -7,6 +7,7 @@ import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
 import com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase
+import com.tasnimulhasan.domain.localusecase.library.LibraryUseCases
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicListToPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
@@ -21,6 +22,7 @@ import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
+import com.tasnimulhasan.entity.room.library.ListeningStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -40,6 +43,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
+    private val libraryUseCases: LibraryUseCases,
     private val setSortTypeUseCase: SetSortTypeUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val getAllPlaylistUseCase: GetAllPlaylistUseCase,
@@ -97,6 +101,34 @@ class HomeViewModel @Inject constructor(
 
     val favorites: StateFlow<Set<Long>> = observeFavouriteIdsUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    // --- Dashboard data for the redesigned Home screen -----------------------------------
+    // All derived from the existing shared library/history infrastructure - nothing here
+    // duplicates or races the Songs screen's own copy of the same underlying data.
+
+    val listeningStats: StateFlow<ListeningStats> = libraryUseCases.observeListeningStats()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListeningStats(0, 0L))
+
+    val artistCount: StateFlow<Int> = libraryUseCases.observeArtists()
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val albumCount: StateFlow<Int> = libraryUseCases.observeAlbums()
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val recentlyPlayed: StateFlow<List<Pair<MusicEntity, Long>>> = libraryUseCases.observeRecentlyPlayedWithTimestamp(12)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val mostPlayed: StateFlow<List<Pair<MusicEntity, Int>>> = libraryUseCases.observeMostPlayed(10)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // Favorite songs resolved against the same audioList everything else reads, rather than
+    // a second query - a favorite that isn't in the current library scan just doesn't show,
+    // same as everywhere else in the app.
+    val favoriteSongs: StateFlow<List<MusicEntity>> = combine(favorites, audioList) { ids, songs ->
+        songs.filter { ids.contains(it.songId) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val action: (UiAction) -> Unit = {
         when (it) {
@@ -184,6 +216,24 @@ class HomeViewModel @Inject constructor(
     fun convertLongToReadableDateTime(time: Long, format: String): String {
         val df = SimpleDateFormat(format, Locale.US)
         return df.format(time)
+    }
+
+    /** "2 min ago" / "3h ago" / "Yesterday" / "12 Aug" style relative label for Recently
+     * Played - not the exact timestamp the user doesn't need. */
+    fun relativeTimeAgo(epochMillis: Long): String {
+        val now = System.currentTimeMillis()
+        val diff = (now - epochMillis).coerceAtLeast(0L)
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
+        val hours = TimeUnit.MILLISECONDS.toHours(diff)
+        val days = TimeUnit.MILLISECONDS.toDays(diff)
+        return when {
+            minutes < 1 -> "Just now"
+            minutes < 60 -> "$minutes min ago"
+            hours < 24 -> "${hours}h ago"
+            days == 1L -> "Yesterday"
+            days < 7 -> "${days}d ago"
+            else -> SimpleDateFormat("d MMM", Locale.US).format(epochMillis)
+        }
     }
 
     fun sortTypeToDisplayString(sortType: SortType): String = when (sortType) {

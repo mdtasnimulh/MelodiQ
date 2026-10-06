@@ -33,6 +33,8 @@ import com.tasnimulhasan.domain.localusecase.library.ObserveArtistsUseCase
 import com.tasnimulhasan.domain.localusecase.library.ObserveFoldersUseCase
 import com.tasnimulhasan.domain.localusecase.library.ObserveGenresUseCase
 import com.tasnimulhasan.domain.localusecase.library.ObserveMostPlayedUseCase
+import com.tasnimulhasan.domain.localusecase.library.ObserveRecentlyPlayedWithTimestampUseCase
+import com.tasnimulhasan.domain.localusecase.library.ObserveListeningStatsUseCase
 import com.tasnimulhasan.domain.localusecase.library.ObserveRecentlyPlayedUseCase
 import com.tasnimulhasan.domain.localusecase.library.ObserveTotalSongCountUseCase
 import com.tasnimulhasan.domain.localusecase.library.RecordPlayUseCase
@@ -119,6 +121,8 @@ object ApplicationModule {
         recordPlay: RecordPlayUseCase,
         observeRecentlyPlayed: ObserveRecentlyPlayedUseCase,
         observeMostPlayed: ObserveMostPlayedUseCase,
+        observeListeningStats: ObserveListeningStatsUseCase,
+        observeRecentlyPlayedWithTimestamp: ObserveRecentlyPlayedWithTimestampUseCase,
     ): LibraryUseCases = LibraryUseCases(
         scanLibrary = scanLibrary,
         observeTotalSongCount = observeTotalSongCount,
@@ -136,6 +140,8 @@ object ApplicationModule {
         recordPlay = recordPlay,
         observeRecentlyPlayed = observeRecentlyPlayed,
         observeMostPlayed = observeMostPlayed,
+        observeListeningStats = observeListeningStats,
+        observeRecentlyPlayedWithTimestamp = observeRecentlyPlayedWithTimestamp,
     )
 
     @Provides

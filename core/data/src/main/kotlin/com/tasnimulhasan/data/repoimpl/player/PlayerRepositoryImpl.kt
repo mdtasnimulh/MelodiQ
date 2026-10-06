@@ -4,7 +4,6 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
-import androidx.media3.common.util.UnstableApi
 import com.tasnimulhasan.data.library.LibraryChangeNotifier
 import com.tasnimulhasan.data.player.MelodiqAudioState
 import com.tasnimulhasan.data.player.MelodiqPlayerEvent
@@ -39,7 +38,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class PlayerRepositoryImpl @Inject constructor(
     private val serviceHandler: MelodiqServiceHandler,

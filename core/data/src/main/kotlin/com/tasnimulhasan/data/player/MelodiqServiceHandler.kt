@@ -4,7 +4,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.extractor.metadata.vorbis.VorbisComment
@@ -24,7 +23,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@UnstableApi
 class MelodiqServiceHandler @Inject constructor(
     private val exoPlayer: ExoPlayer,
     private val preferencesDataStoreRepository: PreferencesDataStoreRepository,
@@ -260,19 +258,11 @@ class MelodiqServiceHandler @Inject constructor(
             }
             MelodiqPlayerEvent.SkipNext -> {
                 resetCrossfadeEnvelope()
-                if (exoPlayer.currentMediaItemIndex < exoPlayer.mediaItemCount - 1 ) {
-                    exoPlayer.seekToNextMediaItem()
-                } else {
-                    exoPlayer.seekToDefaultPosition(0)
-                }
+                exoPlayer.seekToNextMediaItem()
             }
             MelodiqPlayerEvent.SkipPrevious -> {
                 resetCrossfadeEnvelope()
-                if (exoPlayer.currentMediaItemIndex > 0) {
-                    exoPlayer.seekToPreviousMediaItem()
-                } else {
-                    exoPlayer.seekToDefaultPosition(exoPlayer.mediaItemCount - 1)
-                }
+                exoPlayer.seekToPreviousMediaItem()
             }
             MelodiqPlayerEvent.SelectAudioChange -> {
                 resetCrossfadeEnvelope()
@@ -418,7 +408,7 @@ class MelodiqServiceHandler @Inject constructor(
      * isPlaying momentarily goes false whenever the engine stalls - most visibly while
      * seeking, when it re-buffers at the new position. Binding the icon to it made the
      * button flip to "play" mid-drag even though the user never paused, and left the icon
-     * disagreeing with the actual transport state afterward. playWhenReady reflects
+     * disagreeing with the actual transport state afterwards. playWhenReady reflects
      * intent ("should this be playing?"), which is what the button is actually showing.
      */
     override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.GraphicEq
@@ -60,6 +61,7 @@ fun CustomButtonGroups(
     onShareButtonClicked: () -> Unit,
     onVolumeBoostClicked: () -> Unit,
     onLyricsButtonClicked: () -> Unit,
+    onQueueButtonClicked: () -> Unit,
     sleepTimerActive: Boolean = false,
     sleepTimerRemainingMillis: Long = 0L,
 ) {
@@ -209,6 +211,23 @@ fun CustomButtonGroups(
                     contentDescription = "Lyrics Button"
                 )
             }
+
+            PillActionButton(
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .weight(1f),
+                buttonColor = buttonColor,
+                onClick = onQueueButtonClicked,
+            ) { tint ->
+                Icon(
+                    modifier = Modifier
+                        .width(24.dp)
+                        .height(24.dp),
+                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                    tint = tint,
+                    contentDescription = "Queue Button"
+                )
+            }
         }
     }
 }
@@ -282,6 +301,7 @@ fun PreviewCustomButtonGroups() {
         onShareButtonClicked = {},
         onVolumeBoostClicked = {},
         onLyricsButtonClicked = {},
+        onQueueButtonClicked = {},
     )
 }
 

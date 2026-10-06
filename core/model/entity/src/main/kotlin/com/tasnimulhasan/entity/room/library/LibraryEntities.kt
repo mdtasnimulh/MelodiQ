@@ -99,3 +99,17 @@ data class PlayCountRow(
     val songId: Long,
     val playCount: Int,
 )
+
+/** Row shape for "recently played, with the actual last-played time" - used to show "2 min
+ * ago" style labels on Home, not just relative ordering. */
+data class RecentPlayRow(
+    val songId: Long,
+    val playedAt: Long,
+)
+
+/** Aggregate across the whole play_history_table, joined with song durations - backs the
+ * Home screen's "47h 32m listened - 1,284 plays" header. */
+data class ListeningStats(
+    val totalPlays: Int,
+    val totalDurationMs: Long,
+)

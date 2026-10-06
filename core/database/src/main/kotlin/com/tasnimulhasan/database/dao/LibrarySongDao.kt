@@ -9,8 +9,10 @@ import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.FolderSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
 import com.tasnimulhasan.entity.room.library.LibrarySongEntity
+import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.library.PlayCountRow
 import com.tasnimulhasan.entity.room.library.PlayHistoryEntity
+import com.tasnimulhasan.entity.room.library.RecentPlayRow
 import com.tasnimulhasan.entity.room.library.SongIdAndModified
 import kotlinx.coroutines.flow.Flow
 
@@ -148,6 +150,14 @@ interface PlayHistoryDao {
     )
     fun observeRecentlyPlayedIds(limit: Int): Flow<List<Long>>
 
+    /** Same distinct-songs-most-recent-first set, but carrying each song's actual last-played
+     * timestamp - for a "2 min ago" style label rather than just ordering. */
+    @Query(
+        """SELECT songId, MAX(playedAt) AS playedAt FROM play_history_table
+           GROUP BY songId ORDER BY playedAt DESC LIMIT :limit"""
+    )
+    fun observeRecentlyPlayedWithTimestamp(limit: Int): Flow<List<RecentPlayRow>>
+
     @Query(
         """SELECT songId, COUNT(*) AS playCount FROM play_history_table
            GROUP BY songId ORDER BY playCount DESC LIMIT :limit"""
@@ -166,4 +176,13 @@ interface PlayHistoryDao {
            (SELECT id FROM play_history_table ORDER BY playedAt DESC LIMIT :keepCount)"""
     )
     suspend fun pruneOlderThan(keepCount: Int)
+
+    /** Total plays and total time listened, joined against each song's own duration rather
+     * than kept as separate running counters that could drift from the history log. */
+    @Query(
+        """SELECT COUNT(*) AS totalPlays, COALESCE(SUM(s.durationMs), 0) AS totalDurationMs
+           FROM play_history_table h
+           INNER JOIN library_song_table s ON s.songId = h.songId"""
+    )
+    fun observeListeningStats(): Flow<ListeningStats>
 }

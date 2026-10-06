@@ -1,11 +1,16 @@
 package com.tasnimulhasan.featureplayer.lyrics
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -23,18 +28,23 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.entity.lyrics.LyricLine
 import com.tasnimulhasan.entity.lyrics.LyricsUiState
+import kotlinx.coroutines.launch
 
 @Composable
 fun LyricsRoute(
@@ -46,8 +56,50 @@ fun LyricsRoute(
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val positionMs by viewModel.positionMs.collectAsStateWithLifecycle()
 
+    // Same drag-down-to-dismiss physics as the Player screen, so the gesture feels
+    // identical everywhere the user might expect a bottom-sheet-style screen.
+    val density = LocalDensity.current
+    val maxDragDistance = with(density) { 500.dp.toPx() }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    val thresholdFraction = 0.6f
+    val scope = rememberCoroutineScope()
+
     LyricsScreen(
-        modifier = modifier,
+        modifier = modifier
+            .offset { IntOffset(0, offsetY.toInt()) }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        val shouldDismiss = offsetY >= maxDragDistance * thresholdFraction
+                        scope.launch {
+                            animate(
+                                initialValue = offsetY,
+                                targetValue = if (shouldDismiss) maxDragDistance else 0f,
+                                animationSpec = spring(
+                                    dampingRatio = if (shouldDismiss) Spring.DampingRatioNoBouncy else Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            ) { value, _ -> offsetY = value }
+                            if (shouldDismiss) onNavigateUp()
+                        }
+                    },
+                    onDragCancel = {
+                        scope.launch {
+                            animate(
+                                initialValue = offsetY,
+                                targetValue = 0f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            ) { value, _ -> offsetY = value }
+                        }
+                    }
+                ) { change, dragAmount ->
+                    offsetY = (offsetY + dragAmount).coerceIn(0f, maxDragDistance)
+                    change.consume()
+                }
+            },
         songTitle = song.songTitle,
         artist = song.artist,
         state = lyricsState,

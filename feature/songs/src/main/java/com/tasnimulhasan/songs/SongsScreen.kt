@@ -2,17 +2,31 @@ package com.tasnimulhasan.songs
 
 import android.net.Uri
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -37,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -52,12 +67,14 @@ import com.tasnimulhasan.designsystem.R as Res
 internal fun SongsRouteScreen(
     modifier: Modifier = Modifier,
     navigateToPlayer: (musicId: String) -> Unit,
+    navigateToSearch: () -> Unit,
     viewModel: SongsViewModel = hiltViewModel()
 ) {
     val audioList by viewModel.audioList.collectAsStateWithLifecycle()
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val sortType by viewModel.sortType.collectAsStateWithLifecycle()
 
     SongsScreen(
         modifier = modifier,
@@ -65,6 +82,12 @@ internal fun SongsRouteScreen(
         selectedId = currentSelectedAudio.songId,
         isPlaying = isPlaying,
         favorites = favorites,
+        sortType = sortType,
+        sortTypeLabel = viewModel::sortTypeToDisplayString,
+        onSortTypeSelected = viewModel::setSortType,
+        onPlayAll = viewModel::playAll,
+        onShuffleAll = viewModel::shuffleAll,
+        navigateToSearch = navigateToSearch,
         onSongClicked = { songId ->
             viewModel.ensurePlaybackServiceStarted()
             if (currentSelectedAudio.songId != songId) viewModel.playSong(songId)
@@ -81,6 +104,12 @@ internal fun SongsScreen(
     selectedId: Long,
     isPlaying: Boolean,
     favorites: Set<Long>,
+    sortType: com.tasnimulhasan.entity.enums.SortType = com.tasnimulhasan.entity.enums.SortType.DATE_MODIFIED_DESC,
+    sortTypeLabel: (com.tasnimulhasan.entity.enums.SortType) -> String = { it.name },
+    onSortTypeSelected: (com.tasnimulhasan.entity.enums.SortType) -> Unit = {},
+    onPlayAll: () -> Unit = {},
+    onShuffleAll: () -> Unit = {},
+    navigateToSearch: () -> Unit = {},
     onSongClicked: (Long) -> Unit,
     onFavouriteClicked: (Long) -> Unit,
 ) {
@@ -91,7 +120,48 @@ internal fun SongsScreen(
         return
     }
 
+    var showSortMenu by remember { mutableStateOf(false) }
+
     LazyColumn(modifier = modifier.fillMaxSize()) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = if (audioList.size == 1) "1 song" else "${audioList.size} songs",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row {
+                    IconButton(onClick = navigateToSearch) {
+                        Icon(Icons.Filled.Search, contentDescription = "Search")
+                    }
+                    IconButton(onClick = { showSortMenu = true }) {
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Button(onClick = onPlayAll, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Play all")
+                }
+                OutlinedButton(onClick = onShuffleAll, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Shuffle")
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
         itemsIndexed(
             items = audioList,
             key = { _, item -> item.songId }
@@ -109,6 +179,42 @@ internal fun SongsScreen(
                 onClick = { onSongClicked(item.songId) },
                 onFavouriteClick = { onFavouriteClicked(item.songId) },
             )
+        }
+    }
+
+    if (showSortMenu) {
+        val options = com.tasnimulhasan.entity.enums.SortType.entries.toList()
+        Dialog(onDismissRequest = { showSortMenu = false }) {
+            androidx.compose.material3.Card(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Sort by",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                    options.forEach { option ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSortTypeSelected(option)
+                                    showSortMenu = false
+                                }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = sortType == option,
+                                onCheckedChange = {
+                                    onSortTypeSelected(option)
+                                    showSortMenu = false
+                                }
+                            )
+                            Text(text = sortTypeLabel(option))
+                        }
+                    }
+                }
+            }
         }
     }
 }

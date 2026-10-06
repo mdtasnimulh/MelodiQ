@@ -79,7 +79,6 @@ object PlayerModule {
         exoPlayer = player,
     )
 
-    @OptIn(UnstableApi::class)
     @Provides
     @Singleton
     fun provideServiceHandler(

@@ -21,6 +21,7 @@ fun NavController.navigateToHome(navOptions: NavOptions) = navigate(route = Home
 fun NavGraphBuilder.homeScreen(
     navigateToPlayer: (musicId: String) -> Unit,
     navigateToSongDetails: (songId: Long) -> Unit,
+    navigateToSearch: () -> Unit,
 ) {
     composable<HomeRoute>(
         enterTransition = { fadeIn() },
@@ -32,6 +33,7 @@ fun NavGraphBuilder.homeScreen(
             HomeScreen(
                 navigateToPlayer = navigateToPlayer,
                 navigateToSongDetails = navigateToSongDetails,
+                navigateToSearch = navigateToSearch,
                 animatedVisibilityScope = this@composable
             )
         }

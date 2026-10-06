@@ -7,6 +7,7 @@ import com.tasnimulhasan.entity.room.library.AlbumSummary
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.FolderSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
+import com.tasnimulhasan.entity.room.library.ListeningStats
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -76,8 +77,17 @@ class ObserveRecentlyPlayedUseCase @Inject constructor(private val repo: Library
     operator fun invoke(limit: Int = 30): Flow<List<MusicEntity>> = repo.observeRecentlyPlayed(limit)
 }
 
+class ObserveRecentlyPlayedWithTimestampUseCase @Inject constructor(private val repo: LibraryRepository) {
+    operator fun invoke(limit: Int = 30): Flow<List<Pair<MusicEntity, Long>>> =
+        repo.observeRecentlyPlayedWithTimestamp(limit)
+}
+
 class ObserveMostPlayedUseCase @Inject constructor(private val repo: LibraryRepository) {
     operator fun invoke(limit: Int = 30): Flow<List<Pair<MusicEntity, Int>>> = repo.observeMostPlayed(limit)
+}
+
+class ObserveListeningStatsUseCase @Inject constructor(private val repo: LibraryRepository) {
+    operator fun invoke(): Flow<ListeningStats> = repo.observeListeningStats()
 }
 
 /** Bundled the same way PlayerUseCases is, so feature ViewModels take one constructor
@@ -98,5 +108,7 @@ data class LibraryUseCases(
     val getSongsUnderFolder: GetSongsUnderFolderUseCase,
     val recordPlay: RecordPlayUseCase,
     val observeRecentlyPlayed: ObserveRecentlyPlayedUseCase,
+    val observeRecentlyPlayedWithTimestamp: ObserveRecentlyPlayedWithTimestampUseCase,
     val observeMostPlayed: ObserveMostPlayedUseCase,
+    val observeListeningStats: ObserveListeningStatsUseCase,
 )

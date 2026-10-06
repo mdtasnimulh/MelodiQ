@@ -2,6 +2,7 @@ package com.tasnimulhasan.domain.repository.local
 
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
+import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.library.AlbumSummary
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.FolderSummary
@@ -38,5 +39,9 @@ interface LibraryRepository {
 
     suspend fun recordPlay(songId: Long)
     fun observeRecentlyPlayed(limit: Int): Flow<List<MusicEntity>>
+    /** Same as [observeRecentlyPlayed] but paired with each song's actual last-played time
+     * (epoch millis), for a "2 min ago" style label. */
+    fun observeRecentlyPlayedWithTimestamp(limit: Int): Flow<List<Pair<MusicEntity, Long>>>
     fun observeMostPlayed(limit: Int): Flow<List<Pair<MusicEntity, Int>>>
+    fun observeListeningStats(): Flow<ListeningStats>
 }

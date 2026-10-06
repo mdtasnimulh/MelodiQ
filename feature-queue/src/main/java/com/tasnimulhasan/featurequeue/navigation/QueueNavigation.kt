@@ -17,13 +17,13 @@ fun NavController.navigateToQueue(navOptions: NavOptionsBuilder.() -> Unit = {})
     }
 }
 
-fun NavGraphBuilder.queueScreen() {
+fun NavGraphBuilder.queueScreen(navigateBack: () -> Unit = {}) {
     composable<QueueRoute>(
         enterTransition = { slideInHorizontally {it} },
         exitTransition = { slideOutHorizontally { -it } },
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
     ) {
-        QueueScreen()
+        QueueScreen(onNavigateUp = navigateBack)
     }
 }

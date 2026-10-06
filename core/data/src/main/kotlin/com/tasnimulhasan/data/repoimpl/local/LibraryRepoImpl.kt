@@ -7,6 +7,7 @@ import com.tasnimulhasan.database.dao.PlayHistoryDao
 import com.tasnimulhasan.domain.repository.local.LibraryRepository
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
+import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.library.AlbumSummary
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.FolderSummary
@@ -81,11 +82,19 @@ class LibraryRepoImpl @Inject constructor(
             ids.mapNotNull { songs[it] }.map { it.toMusicEntity() }
         }
 
+    override fun observeRecentlyPlayedWithTimestamp(limit: Int): Flow<List<Pair<MusicEntity, Long>>> =
+        playHistoryDao.observeRecentlyPlayedWithTimestamp(limit).map { rows ->
+            val songs = librarySongDao.getByIds(rows.map { it.songId }).associateBy { it.songId }
+            rows.mapNotNull { row -> songs[row.songId]?.let { it.toMusicEntity() to row.playedAt } }
+        }
+
     override fun observeMostPlayed(limit: Int): Flow<List<Pair<MusicEntity, Int>>> =
         playHistoryDao.observeMostPlayed(limit).map { rows ->
             val songs = librarySongDao.getByIds(rows.map { it.songId }).associateBy { it.songId }
             rows.mapNotNull { row -> songs[row.songId]?.let { it.toMusicEntity() to row.playCount } }
         }
+
+    override fun observeListeningStats(): Flow<ListeningStats> = playHistoryDao.observeListeningStats()
 
     private fun SortType.toColumnAndDirection(): Pair<String, Boolean> = when (this) {
         SortType.NAME_ASC -> "title" to true

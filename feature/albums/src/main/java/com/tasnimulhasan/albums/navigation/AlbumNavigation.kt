@@ -27,6 +27,7 @@ fun NavController.navigateToAlbumDetails(albumId: Long, navOptions: NavOptionsBu
 
 fun NavGraphBuilder.albumScreen(
     navigateToAlbumDetails: (albumId: Long) -> Unit,
+    navigateToSearch: () -> Unit,
 ) {
     composable<AlbumRoute>(
         enterTransition = { slideInHorizontally {it} },
@@ -34,7 +35,7 @@ fun NavGraphBuilder.albumScreen(
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
     ) {
-        AlbumsScreen(onAlbumClicked = navigateToAlbumDetails)
+        AlbumsScreen(onAlbumClicked = navigateToAlbumDetails, navigateToSearch = navigateToSearch)
     }
 }
 

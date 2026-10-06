@@ -41,6 +41,7 @@ fun NavGraphBuilder.playerScreen(
     navigateBack: () -> Unit,
     navigateToEqualizerScreen: () -> Unit,
     navigateToLyrics: () -> Unit,
+    navigateToQueue: () -> Unit,
 ) {
     composable<PlayerRoute>(
         enterTransition = { fadeIn() },
@@ -55,6 +56,7 @@ fun NavGraphBuilder.playerScreen(
                 onNavigateUp = navigateBack,
                 navigateToEqualizerScreen = navigateToEqualizerScreen,
                 navigateToLyrics = navigateToLyrics,
+                navigateToQueue = navigateToQueue,
                 animatedVisibilityScope = this@composable
             )
         }

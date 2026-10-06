@@ -1,6 +1,10 @@
 package com.tasnimulhasan.featurequeue
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,29 +32,80 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.tasnimulhasan.ui.image.AlbumArt
+import kotlinx.coroutines.launch
 import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
 internal fun QueueScreen(
     modifier: Modifier = Modifier,
+    onNavigateUp: () -> Unit = {},
     viewModel: QueueViewModel = hiltViewModel(),
 ) {
     val queue by viewModel.queue.collectAsStateWithLifecycle()
     val current by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
 
+    // Same drag-down-to-dismiss physics as the Player and Lyrics screens.
+    val density = LocalDensity.current
+    val maxDragDistance = with(density) { 500.dp.toPx() }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    val thresholdFraction = 0.6f
+    val scope = rememberCoroutineScope()
+    val dragModifier = Modifier
+        .offset { IntOffset(0, offsetY.toInt()) }
+        .pointerInput(Unit) {
+            detectVerticalDragGestures(
+                onDragEnd = {
+                    val shouldDismiss = offsetY >= maxDragDistance * thresholdFraction
+                    scope.launch {
+                        animate(
+                            initialValue = offsetY,
+                            targetValue = if (shouldDismiss) maxDragDistance else 0f,
+                            animationSpec = spring(
+                                dampingRatio = if (shouldDismiss) Spring.DampingRatioNoBouncy else Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        ) { value, _ -> offsetY = value }
+                        if (shouldDismiss) onNavigateUp()
+                    }
+                },
+                onDragCancel = {
+                    scope.launch {
+                        animate(
+                            initialValue = offsetY,
+                            targetValue = 0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        ) { value, _ -> offsetY = value }
+                    }
+                }
+            ) { change, dragAmount ->
+                offsetY = (offsetY + dragAmount).coerceIn(0f, maxDragDistance)
+                change.consume()
+            }
+        }
+
     if (queue.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = modifier.fillMaxSize().then(dragModifier), contentAlignment = Alignment.Center) {
             Text(
                 text = "Queue is empty",
                 modifier = Modifier.padding(24.dp),
@@ -59,7 +115,7 @@ internal fun QueueScreen(
         return
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().then(dragModifier)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,

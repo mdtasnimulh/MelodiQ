@@ -12,10 +12,12 @@ import com.tasnimulhasan.featurefeedback.navigation.feedbackScreen
 import com.tasnimulhasan.featureplayer.navigation.lyricsScreen
 import com.tasnimulhasan.featureplayer.navigation.navigateToLyrics
 import com.tasnimulhasan.featureplayer.navigation.playerScreen
+import com.tasnimulhasan.featurequeue.navigation.navigateToQueue
 import com.tasnimulhasan.featurequeue.navigation.queueScreen
 import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.home.navigation.homeScreen
 import com.tasnimulhasan.library.navigation.libraryScreens
+import com.tasnimulhasan.library.navigation.navigateToSearch
 import com.tasnimulhasan.melodiq.ui.MelodiQAppState
 import com.tasnimulhasan.playlistdetails.navigation.playlistDetailsScreen
 import com.tasnimulhasan.playlists.navigation.playlistsScreen
@@ -43,10 +45,15 @@ fun MelodiQNavHost(
         homeScreen(
             navigateToPlayer = navigateToPlayer,
             navigateToSongDetails = { songId -> navController.navigateToSongDetails(songId) },
+            navigateToSearch = { navController.navigateToSearch() },
         )
-        songsScreen(navigateToPlayer = navigateToPlayer)
+        songsScreen(
+            navigateToPlayer = navigateToPlayer,
+            navigateToSearch = { navController.navigateToSearch() },
+        )
         albumScreen(
             navigateToAlbumDetails = { albumId -> navigateToAlbumDetails(albumId) },
+            navigateToSearch = { navController.navigateToSearch() },
         )
         albumDetailsScreen(
             navigateBack = navigateBack,
@@ -61,11 +68,12 @@ fun MelodiQNavHost(
         playerScreen(
             navigateBack = navigateBack,
             navigateToEqualizerScreen = navigateToEqualizerScreen,
-            navigateToLyrics = { navController.navigateToLyrics() }
+            navigateToLyrics = { navController.navigateToLyrics() },
+            navigateToQueue = { navController.navigateToQueue() }
         )
         lyricsScreen(navigateBack = navigateBack)
         songDetailsScreen(navigateBack = navigateBack)
-        queueScreen()
+        queueScreen(navigateBack = navigateBack)
         favouriteScreen(navigateToPlayer = navigateToPlayer)
         libraryScreens(
             navController = navController,

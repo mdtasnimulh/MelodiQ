@@ -4,11 +4,14 @@ import android.net.Uri
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward5
 import androidx.compose.material.icons.filled.Replay5
@@ -18,7 +21,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,11 +81,28 @@ fun PopUpPlayer(
         } ?: LightOrange.toArgb()
     }
 
+    // Swiping up on the popup opens the full player, same as tapping it - both end up
+    // calling onMiniPlayerClick, so this never diverges from the existing tap behavior.
+    var dragAccumY by remember { mutableFloatStateOf(0f) }
     Card(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
             .padding(horizontal = 16.dp, vertical = 12.dp)
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragStart = { dragAccumY = 0f },
+                    onVerticalDrag = { change, dragAmount ->
+                        dragAccumY += dragAmount
+                        change.consume()
+                    },
+                    onDragEnd = {
+                        if (dragAccumY < -60f) onMiniPlayerClick()
+                        dragAccumY = 0f
+                    },
+                    onDragCancel = { dragAccumY = 0f },
+                )
+            }
             .clickable { onMiniPlayerClick() },
     ) {
         ConstraintLayout (

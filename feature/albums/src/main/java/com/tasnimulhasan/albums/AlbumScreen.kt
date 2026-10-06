@@ -9,10 +9,16 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +41,7 @@ import com.tasnimulhasan.designsystem.R as Res
 internal fun AlbumsScreen(
     modifier: Modifier = Modifier,
     onAlbumClicked: (Long) -> Unit = {},
+    navigateToSearch: () -> Unit = {},
     viewModel: AlbumViewModel = hiltViewModel()
 ) {
     val albums by viewModel.albums.collectAsStateWithLifecycle()
@@ -53,6 +60,13 @@ internal fun AlbumsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                IconButton(onClick = navigateToSearch) {
+                    Icon(Icons.Filled.Search, contentDescription = "Search")
+                }
+            }
+        }
         items(items = albums, key = { it.albumId }) { album ->
             AlbumGridCard(album = album, onClick = { onAlbumClicked(album.albumId) })
         }

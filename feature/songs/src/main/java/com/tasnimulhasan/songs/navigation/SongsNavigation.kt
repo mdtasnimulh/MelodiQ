@@ -15,6 +15,7 @@ fun NavController.navigateToSongs(navOptions: NavOptions) = navigate(route = Son
 
 fun NavGraphBuilder.songsScreen(
     navigateToPlayer: (musicId: String) -> Unit,
+    navigateToSearch: () -> Unit,
 ) {
     composable<SongsRoute>(
         enterTransition = { slideInHorizontally {it} },
@@ -22,6 +23,6 @@ fun NavGraphBuilder.songsScreen(
         popEnterTransition = { slideInHorizontally { -it } },
         popExitTransition = { slideOutHorizontally { it } }
     ) {
-        SongsRouteScreen(navigateToPlayer = navigateToPlayer)
+        SongsRouteScreen(navigateToPlayer = navigateToPlayer, navigateToSearch = navigateToSearch)
     }
 }
