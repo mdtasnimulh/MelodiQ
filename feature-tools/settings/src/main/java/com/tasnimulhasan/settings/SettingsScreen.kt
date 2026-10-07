@@ -1,5 +1,10 @@
 package com.tasnimulhasan.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
@@ -26,6 +31,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 
 @Composable
 internal fun SettingsRoute(
@@ -47,6 +58,28 @@ internal fun SettingsRoute(
     val accentColor by viewModel.accentColor.collectAsStateWithLifecycle()
     val replayGainEnabled by viewModel.replayGainEnabled.collectAsStateWithLifecycle()
     val crossfadeSettings by viewModel.crossfadeSettings.collectAsStateWithLifecycle()
+    val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
+
+    // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
+    // this app's own playback, not the microphone). Asked for only at the moment the user
+    // actually picks a style - never up front, and OFF never needs it.
+    val context = LocalContext.current
+    var pendingStyle by remember { mutableStateOf<VisualizerStyle?>(null) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val style = pendingStyle
+        pendingStyle = null
+        if (granted && style != null) {
+            viewModel.setVisualizerStyle(style)
+        } else {
+            Toast.makeText(
+                context,
+                "The visualizer needs audio permission to read this app's own playback. It stays off without it.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     SettingsScreen(
         modifier = modifier,
@@ -65,6 +98,19 @@ internal fun SettingsRoute(
         onReplayGainToggled = viewModel::setReplayGainEnabled,
         onCrossfadeToggled = viewModel::setCrossfadeEnabled,
         onCrossfadeDurationChanged = viewModel::setCrossfadeDurationMs,
+        visualizerStyle = visualizerStyle,
+        visualizerStyleLabel = viewModel::visualizerStyleLabel,
+        onVisualizerStyleSelected = { style ->
+            val granted = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            if (style == VisualizerStyle.OFF || granted) {
+                viewModel.setVisualizerStyle(style)
+            } else {
+                pendingStyle = style
+                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        },
     )
 }
 
@@ -86,6 +132,9 @@ internal fun SettingsScreen(
     onReplayGainToggled: (Boolean) -> Unit,
     onCrossfadeToggled: (Boolean) -> Unit,
     onCrossfadeDurationChanged: (Long) -> Unit,
+    visualizerStyle: VisualizerStyle,
+    visualizerStyleLabel: (VisualizerStyle) -> String,
+    onVisualizerStyleSelected: (VisualizerStyle) -> Unit,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         item { SectionHeader("Sort songs by") }
@@ -116,6 +165,17 @@ internal fun SettingsScreen(
                 selected = accentColor,
                 label = accentColorLabel,
                 onSelected = onAccentColorSelected,
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+        item { SectionHeader("Audio visualizer") }
+        items(VisualizerStyle.entries.toList()) { option ->
+            SettingsRadioRow(
+                label = visualizerStyleLabel(option),
+                selected = option == visualizerStyle,
+                onClick = { onVisualizerStyleSelected(option) },
             )
         }
 

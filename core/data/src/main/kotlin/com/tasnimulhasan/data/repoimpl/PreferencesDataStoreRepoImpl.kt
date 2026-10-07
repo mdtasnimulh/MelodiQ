@@ -24,6 +24,7 @@ import com.tasnimulhasan.entity.enums.SortType
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 
 class PreferencesDataStoreRepoImpl @Inject constructor(
     private val gson: Gson,
@@ -165,6 +166,21 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
             .distinctUntilChanged()
     }
 
+    override suspend fun saveVisualizerStyle(style: VisualizerStyle) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.visualizerStyle] = style.name }
+        }
+    }
+
+    override fun getVisualizerStyle(): Flow<VisualizerStyle> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                val name = preferences[PreferencesKeys.visualizerStyle]
+                VisualizerStyle.entries.find { it.name == name } ?: VisualizerStyle.OFF
+            }
+            .distinctUntilChanged()
+    }
+
     override suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long) {
         tryIt {
             dataStorePreferences.edit { preferences ->
@@ -195,6 +211,7 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
         val replayGainEnabled = booleanPreferencesKey("replaygain_enabled")
         val crossfadeEnabled = booleanPreferencesKey("crossfade_enabled")
         val crossfadeDurationMs = longPreferencesKey("crossfade_duration_ms")
+        val visualizerStyle = stringPreferencesKey("visualizer_style")
         val lastPlayedSongId = longPreferencesKey("last_played_song_id")
         val lastPlayedPositionMs = longPreferencesKey("last_played_position_ms")
     }

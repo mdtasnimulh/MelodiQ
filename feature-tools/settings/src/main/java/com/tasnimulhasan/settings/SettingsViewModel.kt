@@ -8,6 +8,8 @@ import com.tasnimulhasan.domain.localusecase.datastore.GetCrossfadeSettingsUseCa
 import com.tasnimulhasan.domain.localusecase.datastore.GetReplayGainEnabledUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetThemeConfigUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.GetVisualizerStyleUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetVisualizerStyleUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetAccentColorUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetCrossfadeDurationUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetCrossfadeEnabledUseCase
@@ -17,6 +19,7 @@ import com.tasnimulhasan.domain.localusecase.datastore.SetThemeConfigUseCase
 import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +40,8 @@ class SettingsViewModel @Inject constructor(
     private val getCrossfadeSettingsUseCase: GetCrossfadeSettingsUseCase,
     private val setCrossfadeEnabledUseCase: SetCrossfadeEnabledUseCase,
     private val setCrossfadeDurationUseCase: SetCrossfadeDurationUseCase,
+    private val getVisualizerStyleUseCase: GetVisualizerStyleUseCase,
+    private val setVisualizerStyleUseCase: SetVisualizerStyleUseCase,
 ) : ViewModel() {
 
     val sortType: StateFlow<SortType> = getSortTypeUseCase()
@@ -53,6 +58,20 @@ class SettingsViewModel @Inject constructor(
 
     val crossfadeSettings: StateFlow<CrossfadeSettings> = getCrossfadeSettingsUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CrossfadeSettings(false, 4_000L))
+
+    val visualizerStyle: StateFlow<VisualizerStyle> = getVisualizerStyleUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VisualizerStyle.OFF)
+
+    fun setVisualizerStyle(style: VisualizerStyle) {
+        viewModelScope.launch { setVisualizerStyleUseCase(style) }
+    }
+
+    fun visualizerStyleLabel(style: VisualizerStyle): String = when (style) {
+        VisualizerStyle.OFF -> "Off"
+        VisualizerStyle.BARS -> "Bars"
+        VisualizerStyle.WAVEFORM -> "Waveform"
+        VisualizerStyle.CIRCULAR -> "Circular"
+    }
 
     fun setSortType(type: SortType) {
         viewModelScope.launch { setSortTypeUseCase(type) }

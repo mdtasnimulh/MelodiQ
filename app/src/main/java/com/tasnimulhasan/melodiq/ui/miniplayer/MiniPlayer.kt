@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,7 +27,9 @@ import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.R
 import com.tasnimulhasan.designsystem.theme.LightOrange
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 import com.tasnimulhasan.ui.image.AlbumArt
+import com.tasnimulhasan.ui.visualizer.AudioVisualizer
 import com.tasnimulhasan.ui.image.rememberPaletteThumbnail
 
 @Composable
@@ -36,6 +39,10 @@ fun MiniPlayer(
     contentUri: Uri,
     albumId: Long?,
     onImageClick: () -> Unit,
+    // Optional so every existing call site/preview keeps compiling unchanged; OFF (the
+    // default) draws nothing and costs nothing.
+    visualizerStyle: VisualizerStyle = VisualizerStyle.OFF,
+    visualizerBars: FloatArray = FloatArray(0),
 ) {
     val paletteThumbnail = rememberPaletteThumbnail(songId, contentUri)
     val darkPaletteColor = remember(paletteThumbnail) {
@@ -58,18 +65,32 @@ fun MiniPlayer(
                 onImageClick.invoke()
             },
     ) {
-        AsyncImage(
-            modifier = modifier
-                .size(65.dp)
-                .clip(MaterialTheme.shapes.medium)
-                .border(width = 3.dp, shape = MaterialTheme.shapes.medium, color = Color(darkPaletteColor)),
-            model = AlbumArt(songId = songId, contentUri = contentUri, albumId = albumId ?: 0L),
-            contentDescription = "Cover art",
-            contentScale = ContentScale.FillHeight,
-            placeholder = painterResource(R.drawable.default_cover),
-            error = painterResource(R.drawable.default_cover),
-            alignment = Alignment.Center,
-        )
+        Box(contentAlignment = Alignment.BottomCenter) {
+            AsyncImage(
+                modifier = modifier
+                    .size(65.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .border(width = 3.dp, shape = MaterialTheme.shapes.medium, color = Color(darkPaletteColor)),
+                model = AlbumArt(songId = songId, contentUri = contentUri, albumId = albumId ?: 0L),
+                contentDescription = "Cover art",
+                contentScale = ContentScale.FillHeight,
+                placeholder = painterResource(R.drawable.default_cover),
+                error = painterResource(R.drawable.default_cover),
+                alignment = Alignment.Center,
+            )
+            if (visualizerStyle != VisualizerStyle.OFF) {
+                // Drawn over the lower part of the art so it reads as the cover "reacting",
+                // not as a separate widget competing for space in the small bubble.
+                AudioVisualizer(
+                    bars = visualizerBars,
+                    style = visualizerStyle,
+                    color = Color(darkPaletteColor).copy(alpha = 0.9f),
+                    modifier = Modifier
+                        .size(65.dp)
+                        .padding(8.dp),
+                )
+            }
+        }
     }
 }
 

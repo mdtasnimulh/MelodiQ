@@ -46,7 +46,9 @@ import coil.compose.AsyncImage
 import com.tasnimulhasan.designsystem.theme.LightOrange
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
 import com.tasnimulhasan.melodiq.ui.components.MiniPlayerWaveProgressBar
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 import com.tasnimulhasan.ui.image.AlbumArt
+import com.tasnimulhasan.ui.visualizer.AudioVisualizer
 import com.tasnimulhasan.ui.image.rememberPaletteThumbnail
 import kotlin.random.Random
 import com.tasnimulhasan.designsystem.R as Res
@@ -69,6 +71,8 @@ fun PopUpPlayer(
     onSeekPreviousClick: () -> Unit,
     onSeekNextClick: () -> Unit,
     onImageClick: () -> Unit,
+    visualizerStyle: VisualizerStyle = VisualizerStyle.OFF,
+    visualizerBars: FloatArray = FloatArray(0),
 ) {
     val paletteThumbnail = rememberPaletteThumbnail(songId, contentUri)
     val darkPaletteColor = remember(paletteThumbnail) {
@@ -129,6 +133,27 @@ fun PopUpPlayer(
                 placeholder = painterResource(Res.drawable.default_cover),
                 error = painterResource(Res.drawable.default_cover)
             )
+
+            if (visualizerStyle != VisualizerStyle.OFF) {
+                // Separate ref (not part of the createRefs() destructuring above) so the
+                // existing layout constraints are untouched. Pinned to the same bounds as
+                // the cover art so it overlays it.
+                val visualizerRef = createRef()
+                AudioVisualizer(
+                    bars = visualizerBars,
+                    style = visualizerStyle,
+                    color = Color(darkPaletteColor).copy(alpha = 0.9f),
+                    modifier = Modifier
+                        .size(60.dp)
+                        .padding(6.dp)
+                        .constrainAs(visualizerRef) {
+                            top.linkTo(coverArt.top)
+                            bottom.linkTo(coverArt.bottom)
+                            start.linkTo(coverArt.start)
+                            end.linkTo(coverArt.end)
+                        },
+                )
+            }
 
             Text(
                 modifier = Modifier

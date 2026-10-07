@@ -309,6 +309,9 @@ class PlayerRepositoryImpl @Inject constructor(
         serviceHandler.fadeOutAndPause(durationMs)
     }
 
+    override val visualizerBars: StateFlow<FloatArray> = serviceHandler.visualizerBars
+    override val visualizerActive: StateFlow<Boolean> = serviceHandler.visualizerActive
+
     override suspend fun seekTo(position: Long) {
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SeekTo, seekPosition = position)
     }

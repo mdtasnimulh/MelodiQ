@@ -110,6 +110,7 @@ internal fun MmApp(
 ) {
     val currentSelectedAudio by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
     var showPopUpPlayer by remember { mutableStateOf(false) }
 
     val currentDestination = appState.currentDestination
@@ -270,12 +271,17 @@ internal fun MmApp(
                             )
                         ) + fadeOut(animationSpec = tween(durationMillis = 500))
                     ) {
+                        // Collected here (not at the top of MmApp) so ~20fps visualizer
+                        // updates only recompose this player, not the whole scaffold.
+                        val visualizerBars by viewModel.visualizerBars.collectAsStateWithLifecycle()
                         MiniPlayer(
                             modifier = Modifier,
                             songId = currentSelectedAudio.songId,
                             contentUri = currentSelectedAudio.contentUri,
                             albumId = currentSelectedAudio.albumId,
-                            onImageClick = { showPopUpPlayer = !showPopUpPlayer }
+                            onImageClick = { showPopUpPlayer = !showPopUpPlayer },
+                            visualizerStyle = visualizerStyle,
+                            visualizerBars = visualizerBars,
                         )
                     }
 
@@ -301,6 +307,7 @@ internal fun MmApp(
                         // only recomposes the popup instead of the whole app scaffold.
                         val progress by viewModel.progress.collectAsStateWithLifecycle()
                         val progressString by viewModel.progressString.collectAsStateWithLifecycle()
+                        val visualizerBars by viewModel.visualizerBars.collectAsStateWithLifecycle()
                         PopUpPlayer(
                             modifier = Modifier,
                             songId = currentSelectedAudio.songId,
@@ -320,7 +327,9 @@ internal fun MmApp(
                             onPreviousClick = { viewModel.onUiEvents(UiEvent.SeekToPrevious) },
                             onSeekNextClick = { viewModel.onUiEvents(UiEvent.Forward) },
                             onSeekPreviousClick = { viewModel.onUiEvents(UiEvent.Backward) },
-                            onImageClick = { showPopUpPlayer = !showPopUpPlayer }
+                            onImageClick = { showPopUpPlayer = !showPopUpPlayer },
+                            visualizerStyle = visualizerStyle,
+                            visualizerBars = visualizerBars,
                         )
                     }
                 }

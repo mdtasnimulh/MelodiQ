@@ -56,6 +56,7 @@ import com.tasnimulhasan.domain.localusecase.player.ObserveCurrentSelectedAudioU
 import com.tasnimulhasan.domain.localusecase.player.ObserveIsPlayingUseCase
 import com.tasnimulhasan.domain.localusecase.player.PauseUseCase
 import com.tasnimulhasan.domain.localusecase.player.FadeOutAndPauseUseCase
+import com.tasnimulhasan.domain.localusecase.player.ObserveVisualizerUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.player.PreviousTrackUseCase
@@ -160,6 +161,7 @@ object ApplicationModule {
         play: PlayUseCase,
         pause: PauseUseCase,
         fadeOutAndPause: FadeOutAndPauseUseCase,
+        observeVisualizer: ObserveVisualizerUseCase,
         seekTo: SeekToUseCase,
         next: NextTrackUseCase,
         previous: PreviousTrackUseCase,
@@ -193,6 +195,7 @@ object ApplicationModule {
         play = play,
         pause = pause,
         fadeOutAndPause = fadeOutAndPause,
+        observeVisualizer = observeVisualizer,
         seekTo = seekTo,
         next = next,
         previous = previous,

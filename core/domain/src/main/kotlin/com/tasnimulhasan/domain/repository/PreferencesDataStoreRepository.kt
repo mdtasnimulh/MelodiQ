@@ -3,6 +3,7 @@ package com.tasnimulhasan.domain.repository
 import com.tasnimulhasan.entity.AppConfiguration
 import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.eqalizer.AudioEffects
 import com.tasnimulhasan.entity.player.LastPlayedTrack
@@ -30,6 +31,9 @@ interface PreferencesDataStoreRepository {
 
     suspend fun saveCrossfadeDurationMs(durationMs: Long)
     fun getCrossfadeDurationMs(): Flow<Long>
+
+    suspend fun saveVisualizerStyle(style: VisualizerStyle)
+    fun getVisualizerStyle(): Flow<VisualizerStyle>
 
     suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long)
     suspend fun getLastPlayedTrack(): LastPlayedTrack?

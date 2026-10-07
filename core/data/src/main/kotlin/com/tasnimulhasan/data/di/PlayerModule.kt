@@ -83,9 +83,11 @@ object PlayerModule {
     @Singleton
     fun provideServiceHandler(
         exoPlayer: ExoPlayer,
-        preferencesDataStoreRepository: PreferencesDataStoreRepository
+        preferencesDataStoreRepository: PreferencesDataStoreRepository,
+        @ApplicationContext context: Context
     ): MelodiqServiceHandler = MelodiqServiceHandler(
         exoPlayer = exoPlayer,
-        preferencesDataStoreRepository = preferencesDataStoreRepository
+        preferencesDataStoreRepository = preferencesDataStoreRepository,
+        context
     )
 }

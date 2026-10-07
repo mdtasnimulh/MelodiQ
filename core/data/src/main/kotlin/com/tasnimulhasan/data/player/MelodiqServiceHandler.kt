@@ -7,7 +7,10 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.extractor.metadata.vorbis.VorbisComment
+import android.content.Context
 import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
+import com.tasnimulhasan.entity.enums.VisualizerStyle
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlin.math.pow
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
@@ -26,6 +29,7 @@ import javax.inject.Inject
 class MelodiqServiceHandler @Inject constructor(
     private val exoPlayer: ExoPlayer,
     private val preferencesDataStoreRepository: PreferencesDataStoreRepository,
+    @ApplicationContext private val context: Context,
 ) : Player.Listener {
 
     private val _audioState: MutableStateFlow<MelodiqAudioState> = MutableStateFlow(MelodiqAudioState.Initial)
@@ -82,6 +86,18 @@ class MelodiqServiceHandler @Inject constructor(
     private var sleepFadeMultiplier: Float = 1f
     private var sleepFadeJob: Job? = null
 
+    // --- Visualizer ------------------------------------------------------------------------
+    // OFF by default and inactive (no capture, no permission prompt) unless the user opts in
+    // from Settings. Re-attach is attempted on every onIsPlayingChanged(true) rather than
+    // some dedicated "session ready" callback - ExoPlayer's audioSessionId is usually stable
+    // for the player's lifetime, and attach() is cheap to call repeatedly (see its own doc).
+    private val visualizerController = VisualizerController(context)
+    val visualizerBars: StateFlow<FloatArray> = visualizerController.bars
+    val visualizerActive: StateFlow<Boolean> = visualizerController.isActive
+
+    @Volatile
+    private var visualizerStyle: VisualizerStyle = VisualizerStyle.OFF
+
     // Long-lived scope for the preference collectors below and for the crossfade fade job -
     // distinct from the per-call ad-hoc scopes elsewhere in this class so those are left
     // untouched.
@@ -113,6 +129,16 @@ class MelodiqServiceHandler @Inject constructor(
         handlerScope.launch {
             preferencesDataStoreRepository.getCrossfadeDurationMs().collect { durationMs ->
                 crossfadeDurationMs = durationMs
+            }
+        }
+        handlerScope.launch {
+            preferencesDataStoreRepository.getVisualizerStyle().collect { style ->
+                visualizerStyle = style
+                if (style == VisualizerStyle.OFF) {
+                    visualizerController.release()
+                } else {
+                    visualizerController.attach(exoPlayer.audioSessionId)
+                }
             }
         }
         if (exoPlayer.playbackState == ExoPlayer.STATE_READY) {
@@ -397,10 +423,20 @@ class MelodiqServiceHandler @Inject constructor(
         _currentIndex.value = exoPlayer.currentMediaItemIndex
         if (isPlaying) {
             CoroutineScope(Dispatchers.Main).launch { startProgressUpdate() }
+            // Cheap no-op if already attached to this session (see attach()'s own doc) -
+            // this is what catches the case where the style preference turned on before
+            // exoPlayer.audioSessionId was actually assigned yet.
+            if (visualizerStyle != VisualizerStyle.OFF && !visualizerController.isActive.value) {
+                visualizerController.attach(exoPlayer.audioSessionId)
+            }
         } else {
             job?.cancel()
         }
     }
+
+    /** Called when the service is torn down - stops any live audio capture immediately
+     * rather than leaving it running past the player's own lifetime. */
+    fun releaseVisualizer() = visualizerController.release()
 
     /**
      * The play/pause icon is driven from playWhenReady, NOT isPlaying.

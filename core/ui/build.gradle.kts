@@ -10,6 +10,7 @@ android {
 dependencies {
     api(projects.core.designSystem)
     api(projects.core.common)
+    implementation(projects.core.model.entity)
 
     api(libs.androidx.metrics)
     implementation(libs.androidx.palette.compose)

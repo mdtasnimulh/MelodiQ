@@ -384,6 +384,8 @@ internal fun SharedTransitionScope.PlayerScreen(
                 }
             }
 
+            PlayerVisualizerStrip(viewModel)
+
             Spacer(modifier = Modifier.height(16.dp))
 
             currentMusic?.let { currentTrack ->
@@ -673,4 +675,21 @@ private fun formatSleepRemaining(millis: Long): String {
     } else {
         String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
+}
+
+/** Collects the ~20fps bar data in its own scope, so only this strip recomposes per frame -
+ * not the whole player screen around it. Renders nothing when the style is OFF. */
+@Composable
+private fun PlayerVisualizerStrip(viewModel: PlayerViewModel) {
+    val style by viewModel.visualizerStyle.collectAsStateWithLifecycle()
+    if (style == com.tasnimulhasan.entity.enums.VisualizerStyle.OFF) return
+    val bars by viewModel.visualizerBars.collectAsStateWithLifecycle()
+    com.tasnimulhasan.ui.visualizer.AudioVisualizer(
+        bars = bars,
+        style = style,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+    )
 }

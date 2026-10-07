@@ -45,6 +45,10 @@ interface PlayerRepository {
      * volume to full so the next time the user presses play it isn't silently muted. Used
      * by the sleep timer's fade-out option. Suspends until the fade (and pause) completes. */
     suspend fun fadeOutAndPause(durationMs: Long)
+    /** 0f..1f normalized amplitude per bar, empty/zeroed when no visualizer style is
+     * active or the user hasn't granted RECORD_AUDIO. */
+    val visualizerBars: StateFlow<FloatArray>
+    val visualizerActive: StateFlow<Boolean>
     suspend fun seekTo(position: Long)
     suspend fun next()
     suspend fun previous()

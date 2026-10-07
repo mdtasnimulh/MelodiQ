@@ -19,6 +19,8 @@ dependencies {
     implementation(projects.core.notifications)
     implementation(libs.androidx.dataStore.core)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.bundles.androidx.core.dependencies)
+    implementation(libs.timber)
     implementation(libs.gson)
     implementation(libs.kotlinx.serialization.json)
 

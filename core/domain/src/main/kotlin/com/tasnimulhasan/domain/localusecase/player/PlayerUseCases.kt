@@ -14,6 +14,7 @@ data class PlayerUseCases(
     val play: PlayUseCase,
     val pause: PauseUseCase,
     val fadeOutAndPause: FadeOutAndPauseUseCase,
+    val observeVisualizer: ObserveVisualizerUseCase,
     val next: NextTrackUseCase,
     val previous: PreviousTrackUseCase,
     val forwardTrackUseCase: ForwardTrackUseCase,

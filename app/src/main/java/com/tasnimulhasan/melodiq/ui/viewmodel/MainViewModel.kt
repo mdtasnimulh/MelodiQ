@@ -4,9 +4,11 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.GetVisualizerStyleUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.entity.enums.SortType
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +28,12 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
     private val getSortTypeUseCase: GetSortTypeUseCase,
+    private val getVisualizerStyleUseCase: GetVisualizerStyleUseCase,
 ) : BaseViewModel() {
+    val visualizerStyle: StateFlow<VisualizerStyle> = getVisualizerStyleUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VisualizerStyle.OFF)
+    val visualizerBars: StateFlow<FloatArray> = playerUseCases.observeVisualizer.bars
+
     private val dummyAudio = MusicEntity(
         contentUri = "".toUri(),
         songId = 0L,
