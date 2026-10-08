@@ -23,6 +23,7 @@ import com.tasnimulhasan.common.constant.AppConstants.PRESET_FLAT
 import com.tasnimulhasan.entity.enums.SortType
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.tasnimulhasan.entity.enums.AccentColorOption
+import com.tasnimulhasan.entity.enums.CoverArtStyle
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.VisualizerStyle
 
@@ -181,6 +182,21 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
             .distinctUntilChanged()
     }
 
+    override suspend fun saveCoverArtStyle(style: CoverArtStyle) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.coverArtStyle] = style.name }
+        }
+    }
+
+    override fun getCoverArtStyle(): Flow<CoverArtStyle> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                val name = preferences[PreferencesKeys.coverArtStyle]
+                CoverArtStyle.entries.find { it.name == name } ?: CoverArtStyle.HALF
+            }
+            .distinctUntilChanged()
+    }
+
     override suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long) {
         tryIt {
             dataStorePreferences.edit { preferences ->
@@ -212,6 +228,7 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
         val crossfadeEnabled = booleanPreferencesKey("crossfade_enabled")
         val crossfadeDurationMs = longPreferencesKey("crossfade_duration_ms")
         val visualizerStyle = stringPreferencesKey("visualizer_style")
+        val coverArtStyle = stringPreferencesKey("cover_art_style")
         val lastPlayedSongId = longPreferencesKey("last_played_song_id")
         val lastPlayedPositionMs = longPreferencesKey("last_played_position_ms")
     }

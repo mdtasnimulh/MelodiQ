@@ -34,6 +34,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class PlayerViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
     private val getVisualizerStyleUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetVisualizerStyleUseCase,
+    private val getCoverArtStyleUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetCoverArtStyleUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val exoPlayer: ExoPlayer, // volume-boost only
     private val sleepTimerController: SleepTimerController,
@@ -99,6 +100,8 @@ class PlayerViewModel @Inject constructor(
     val visualizerStyle: StateFlow<com.tasnimulhasan.entity.enums.VisualizerStyle> = getVisualizerStyleUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.VisualizerStyle.OFF)
     val visualizerBars: StateFlow<FloatArray> = playerUseCases.observeVisualizer.bars
+    val coverArtStyle: StateFlow<com.tasnimulhasan.entity.enums.CoverArtStyle> = getCoverArtStyleUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.CoverArtStyle.HALF)
 
     private val _progress = MutableStateFlow(0f)
     val progress = _progress.asStateFlow()

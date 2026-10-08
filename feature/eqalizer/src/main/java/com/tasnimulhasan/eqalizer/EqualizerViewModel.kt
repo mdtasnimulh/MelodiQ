@@ -43,7 +43,7 @@ class EqualizerViewModel @Inject constructor(
             getEqTypeUseCase.invoke().collectLatest { appConfig ->
                 audioEffects.tryEmit(appConfig.audioEffects)
                 enableEqualizer.tryEmit(appConfig.enableEqualizer)
-                enableTenBand.tryEmit(appConfig.audioEffects.gainValues.size == 10)
+                enableTenBand.tryEmit(appConfig.audioEffects?.gainValues?.size == 10)
             }
         }
     }

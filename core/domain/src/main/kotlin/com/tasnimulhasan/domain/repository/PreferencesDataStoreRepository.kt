@@ -2,6 +2,7 @@ package com.tasnimulhasan.domain.repository
 
 import com.tasnimulhasan.entity.AppConfiguration
 import com.tasnimulhasan.entity.enums.AccentColorOption
+import com.tasnimulhasan.entity.enums.CoverArtStyle
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.VisualizerStyle
 import com.tasnimulhasan.entity.enums.SortType
@@ -34,6 +35,9 @@ interface PreferencesDataStoreRepository {
 
     suspend fun saveVisualizerStyle(style: VisualizerStyle)
     fun getVisualizerStyle(): Flow<VisualizerStyle>
+
+    suspend fun saveCoverArtStyle(style: CoverArtStyle)
+    fun getCoverArtStyle(): Flow<CoverArtStyle>
 
     suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long)
     suspend fun getLastPlayedTrack(): LastPlayedTrack?

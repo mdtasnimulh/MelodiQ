@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.entity.enums.AccentColorOption
+import com.tasnimulhasan.entity.enums.CoverArtStyle
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.enums.VisualizerStyle
@@ -59,6 +60,7 @@ internal fun SettingsRoute(
     val replayGainEnabled by viewModel.replayGainEnabled.collectAsStateWithLifecycle()
     val crossfadeSettings by viewModel.crossfadeSettings.collectAsStateWithLifecycle()
     val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
+    val coverArtStyle by viewModel.coverArtStyle.collectAsStateWithLifecycle()
 
     // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
     // this app's own playback, not the microphone). Asked for only at the moment the user
@@ -100,11 +102,34 @@ internal fun SettingsRoute(
         onCrossfadeDurationChanged = viewModel::setCrossfadeDurationMs,
         visualizerStyle = visualizerStyle,
         visualizerStyleLabel = viewModel::visualizerStyleLabel,
+        coverArtStyle = coverArtStyle,
+        coverArtStyleLabel = viewModel::coverArtStyleLabel,
+        onCoverArtStyleSelected = { style ->
+            // The circular visualizer is a ring drawn around round artwork - on any other
+            // cover style it has nothing to wrap, so switching away from Circle while it's
+            // active drops back to Bars (and says so) instead of leaving a broken combo.
+            if (style != CoverArtStyle.CIRCLE && visualizerStyle == VisualizerStyle.CIRCULAR) {
+                viewModel.setVisualizerStyle(VisualizerStyle.BARS)
+                Toast.makeText(
+                    context,
+                    "Circular visualizer needs Circle cover art - switched visualizer to Bars.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            viewModel.setCoverArtStyle(style)
+        },
         onVisualizerStyleSelected = { style ->
             val granted = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.RECORD_AUDIO
             ) == PackageManager.PERMISSION_GRANTED
-            if (style == VisualizerStyle.OFF || granted) {
+            if (style == VisualizerStyle.CIRCULAR && coverArtStyle != CoverArtStyle.CIRCLE) {
+                // Don't even ask for the permission yet - this combination can't render.
+                Toast.makeText(
+                    context,
+                    "First set Cover art to Circle, then enable the circular visualizer.",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else if (style == VisualizerStyle.OFF || granted) {
                 viewModel.setVisualizerStyle(style)
             } else {
                 pendingStyle = style
@@ -135,6 +160,9 @@ internal fun SettingsScreen(
     visualizerStyle: VisualizerStyle,
     visualizerStyleLabel: (VisualizerStyle) -> String,
     onVisualizerStyleSelected: (VisualizerStyle) -> Unit,
+    coverArtStyle: CoverArtStyle,
+    coverArtStyleLabel: (CoverArtStyle) -> String,
+    onCoverArtStyleSelected: (CoverArtStyle) -> Unit,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         item { SectionHeader("Sort songs by") }
@@ -170,10 +198,23 @@ internal fun SettingsScreen(
 
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
+        item { SectionHeader("Player cover art") }
+        items(CoverArtStyle.entries.toList()) { option ->
+            SettingsRadioRow(
+                label = coverArtStyleLabel(option),
+                selected = option == coverArtStyle,
+                onClick = { onCoverArtStyleSelected(option) },
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
         item { SectionHeader("Audio visualizer") }
         items(VisualizerStyle.entries.toList()) { option ->
             SettingsRadioRow(
-                label = visualizerStyleLabel(option),
+                label = visualizerStyleLabel(option) +
+                    if (option == VisualizerStyle.CIRCULAR && coverArtStyle != CoverArtStyle.CIRCLE)
+                        "  (needs Circle cover art)" else "",
                 selected = option == visualizerStyle,
                 onClick = { onVisualizerStyleSelected(option) },
             )

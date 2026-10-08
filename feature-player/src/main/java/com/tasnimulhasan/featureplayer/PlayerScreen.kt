@@ -12,6 +12,14 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.withFrameNanos
+import com.tasnimulhasan.entity.enums.CoverArtStyle
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -125,6 +133,17 @@ internal fun SharedTransitionScope.PlayerScreen(
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
 
+    // Cover art presentation + how the visualizer should fit it. The ring visualizer only
+    // makes sense around round art (Settings enforces that pairing; this just guards the
+    // render so a stale saved combo can never draw a ring around a rectangle).
+    val coverArtStyle by viewModel.coverArtStyle.collectAsStateWithLifecycle()
+    val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
+    val isFull = coverArtStyle == CoverArtStyle.FULL
+    val isCircle = coverArtStyle == CoverArtStyle.CIRCLE
+    val ringVisualizer = isCircle && visualizerStyle == VisualizerStyle.CIRCULAR
+    val primaryText = if (isFull) Color.White else MaterialTheme.colorScheme.onSurface
+    val secondaryText = if (isFull) Color.White.copy(alpha = 0.78f) else MaterialTheme.colorScheme.onSurfaceVariant
+
     // Start the pager on the song this screen was opened for. Starting at page 0 (the
     // default) and only scrolling later is what made the old code think the user had swiped
     // to the FIRST song and announce it as a track change.
@@ -222,6 +241,121 @@ internal fun SharedTransitionScope.PlayerScreen(
         SleepTimerOption.HOUR_2 -> TimeUnit.HOURS.toMillis(2)
     }
 
+    // Circle art slowly spins while playing and holds its angle when paused. The angle is only
+    // READ inside graphicsLayer {} blocks, so ticking it every frame never recomposes the
+    // screen - it just redraws the layer.
+    var coverAngle by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(isPlaying, isCircle) {
+        if (isPlaying && isCircle) {
+            var last = withFrameNanos { it }
+            while (true) {
+                val now = withFrameNanos { it }
+                coverAngle = (coverAngle + (now - last) / 1_000_000_000f * 12f) % 360f
+                last = now
+            }
+        }
+    }
+    // Art eases slightly smaller when paused and springs back on play.
+    val playScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0.92f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "artPlayScale"
+    )
+
+    val artPager: @Composable (Modifier) -> Unit = { pagerModifier ->
+        HorizontalPager(
+            modifier = pagerModifier,
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) { page ->
+            val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
+            val pageMusic = audioList.getOrNull(page)
+            val artModel = AlbumArt(
+                songId = pageMusic?.songId ?: 0L,
+                contentUri = pageMusic?.contentUri ?: android.net.Uri.EMPTY,
+                albumId = pageMusic?.albumId ?: 0L,
+            )
+            val sharedImageModifier = Modifier.sharedBounds(
+                sharedContentState = rememberSharedContentState(key = "image-${pageMusic?.songId}"),
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
+
+            when (coverArtStyle) {
+                CoverArtStyle.HALF -> Card(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 15.dp)
+                        .graphicsLayer {
+                            val scale = lerp(0.85f, 1f, 1f - pageOffset.absoluteValue) * playScale
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = lerp(0.4f, 1f, 1f - pageOffset.absoluteValue)
+                        }
+                ) {
+                    AsyncImage(
+                        modifier = sharedImageModifier.fillMaxSize(),
+                        model = artModel,
+                        contentDescription = stringResource(Res.string.desc_album_cover_art),
+                        contentScale = ContentScale.FillBounds,
+                        placeholder = painterResource(Res.drawable.default_cover),
+                        error = painterResource(Res.drawable.default_cover)
+                    )
+                }
+
+                CoverArtStyle.CIRCLE -> BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp)
+                        .graphicsLayer {
+                            alpha = lerp(0.35f, 1f, 1f - pageOffset.absoluteValue)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    val side = if (maxWidth < maxHeight) maxWidth else maxHeight
+                    Box(modifier = Modifier.size(side), contentAlignment = Alignment.Center) {
+                        // The ring only needs to exist on the page actually being listened
+                        // to - neighbouring pages in the pager don't have live audio data.
+                        if (ringVisualizer && page == pagerState.currentPage) {
+                            PlayerVisualizerRing(viewModel, Modifier.fillMaxSize())
+                        }
+                        AsyncImage(
+                            modifier = sharedImageModifier
+                                .fillMaxSize(if (ringVisualizer) 0.78f else 0.94f)
+                                .graphicsLayer {
+                                    rotationZ = coverAngle
+                                    scaleX = playScale
+                                    scaleY = playScale
+                                }
+                                .clip(CircleShape)
+                                .border(2.dp, Color(darkPaletteColor).copy(alpha = 0.35f), CircleShape),
+                            model = artModel,
+                            contentDescription = stringResource(Res.string.desc_album_cover_art),
+                            contentScale = ContentScale.Crop,
+                            placeholder = painterResource(Res.drawable.default_cover),
+                            error = painterResource(Res.drawable.default_cover)
+                        )
+                    }
+                }
+
+                CoverArtStyle.FULL -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = lerp(0.3f, 1f, 1f - pageOffset.absoluteValue) }
+                ) {
+                    AsyncImage(
+                        modifier = sharedImageModifier.fillMaxSize(),
+                        model = artModel,
+                        contentDescription = stringResource(Res.string.desc_album_cover_art),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(Res.drawable.default_cover),
+                        error = painterResource(Res.drawable.default_cover)
+                    )
+                }
+            }
+        }
+    }
+
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -241,7 +375,9 @@ internal fun SharedTransitionScope.PlayerScreen(
                 )
         )
 
-        Column(
+        // Wrapper carries the drag-to-dismiss offset/scale/gesture so that in Full mode the
+        // background artwork moves together with the controls instead of staying behind.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .offset { IntOffset(0, offsetY.toInt()) }
@@ -288,6 +424,27 @@ internal fun SharedTransitionScope.PlayerScreen(
                     }
                 }
         ) {
+            if (isFull) {
+                // Full screen: swipeable artwork fills the whole screen behind everything,
+                // with a scrim so the title and controls on top stay readable.
+                artPager(Modifier.fillMaxSize())
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0f to Color.Black.copy(alpha = 0.35f),
+                                    0.22f to Color.Transparent,
+                                    0.42f to Color.Transparent,
+                                    0.72f to Color.Black.copy(alpha = 0.78f),
+                                    1f to Color.Black.copy(alpha = 0.94f),
+                                )
+                            )
+                        )
+                )
+            }
+        Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(10.dp))
 
             // Drag handle affordance - a small pill reinforcing that the screen can be
@@ -332,56 +489,18 @@ internal fun SharedTransitionScope.PlayerScreen(
             }
 
             // Album art gets first claim on any extra vertical space: fixed-size text/controls
-            // below keep their natural height, and the pager (weight = 1f) expands to fill
-            // whatever room is left. On a tall/large-screen device that means the artwork
-            // scales up to use the available height instead of sitting at a small fixed size
-            // with empty space beneath it; heightIn keeps it from collapsing too far on short
-            // (e.g. landscape phone) screens.
-            HorizontalPager(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .heightIn(min = 220.dp),
-                state = pagerState,
-                contentPadding = PaddingValues(horizontal = 0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) { page ->
-                val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
-                val pageMusic = audioList.getOrNull(page)
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 15.dp)
-                        .graphicsLayer {
-                            val scale =
-                                lerp(start = 0.85f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
-                            scaleX = scale
-                            scaleY = scale
-                            alpha =
-                                lerp(start = 0.4f, stop = 1f, fraction = 1f - pageOffset.absoluteValue)
-                            translationX =
-                                lerp(start = 0f, stop = 0f, fraction = 1f - pageOffset.absoluteValue)
-                        }
-                ) {
-                    AsyncImage(
-                        modifier = Modifier
-                            .sharedBounds(
-                                sharedContentState = rememberSharedContentState(key = "image-${pageMusic?.songId}"),
-                                animatedVisibilityScope = animatedVisibilityScope,
-                            )
-                            .fillMaxSize(),
-                        model = AlbumArt(
-                            songId = pageMusic?.songId ?: 0L,
-                            contentUri = pageMusic?.contentUri ?: android.net.Uri.EMPTY,
-                            albumId = pageMusic?.albumId ?: 0L,
-                        ),
-                        contentDescription = stringResource(Res.string.desc_album_cover_art),
-                        contentScale = ContentScale.FillBounds,
-                        placeholder = painterResource(Res.drawable.default_cover),
-                        error = painterResource(Res.drawable.default_cover)
-                    )
-                }
+            // below keep their natural height and the art expands to fill what's left (heightIn
+            // keeps it from collapsing on short screens). In Full mode the art is the
+            // background layer instead, so this slot is just flexible empty space.
+            if (isFull) {
+                Spacer(modifier = Modifier.weight(1f))
+            } else {
+                artPager(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .heightIn(min = 220.dp)
+                )
             }
 
             PlayerVisualizerStrip(viewModel)
@@ -401,7 +520,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                     text = currentTrack.songTitle,
                     maxLines = 1,
                     style = TextStyle(
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = primaryText,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center,
@@ -417,7 +536,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                     text = currentTrack.artist,
                     maxLines = 1,
                     style = TextStyle(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = secondaryText,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Normal,
                         textAlign = TextAlign.Center,
@@ -438,7 +557,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                     ),
                     textAlign = TextAlign.Center,
                     style = TextStyle(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = secondaryText,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -497,7 +616,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 CustomButtonGroups(
-                    buttonColor = Color(darkPaletteColor).copy(alpha = 0.05f),
+                    buttonColor = if (isFull) Color.White.copy(alpha = 0.14f) else Color(darkPaletteColor).copy(alpha = 0.05f),
                     repeatModeOne = repeatModeOne,
                     repeatModeAll = repeatModeAll,
                     onRepeatButtonClicked = {
@@ -662,6 +781,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -682,7 +802,11 @@ private fun formatSleepRemaining(millis: Long): String {
 @Composable
 private fun PlayerVisualizerStrip(viewModel: PlayerViewModel) {
     val style by viewModel.visualizerStyle.collectAsStateWithLifecycle()
-    if (style == com.tasnimulhasan.entity.enums.VisualizerStyle.OFF) return
+    // OFF draws nothing; CIRCULAR is drawn as a ring around the (round) cover art instead of
+    // as a strip, so the strip stays out of its way.
+    if (style == com.tasnimulhasan.entity.enums.VisualizerStyle.OFF ||
+        style == com.tasnimulhasan.entity.enums.VisualizerStyle.CIRCULAR
+    ) return
     val bars by viewModel.visualizerBars.collectAsStateWithLifecycle()
     com.tasnimulhasan.ui.visualizer.AudioVisualizer(
         bars = bars,
@@ -691,5 +815,17 @@ private fun PlayerVisualizerStrip(viewModel: PlayerViewModel) {
             .fillMaxWidth()
             .height(56.dp)
             .padding(horizontal = 24.dp, vertical = 8.dp),
+    )
+}
+
+/** The circular visualizer drawn around round cover art. Collects the bar data itself so only
+ * the ring recomposes per frame. */
+@Composable
+private fun PlayerVisualizerRing(viewModel: PlayerViewModel, modifier: Modifier) {
+    val bars by viewModel.visualizerBars.collectAsStateWithLifecycle()
+    com.tasnimulhasan.ui.visualizer.AudioVisualizer(
+        bars = bars,
+        style = com.tasnimulhasan.entity.enums.VisualizerStyle.CIRCULAR,
+        modifier = modifier,
     )
 }

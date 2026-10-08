@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.localusecase.datastore.GetAccentColorUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.CrossfadeSettings
+import com.tasnimulhasan.domain.localusecase.datastore.GetCoverArtStyleUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetCrossfadeSettingsUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.SetCoverArtStyleUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetReplayGainEnabledUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetThemeConfigUseCase
@@ -17,6 +19,7 @@ import com.tasnimulhasan.domain.localusecase.datastore.SetReplayGainEnabledUseCa
 import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.SetThemeConfigUseCase
 import com.tasnimulhasan.entity.enums.AccentColorOption
+import com.tasnimulhasan.entity.enums.CoverArtStyle
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.enums.VisualizerStyle
@@ -42,6 +45,8 @@ class SettingsViewModel @Inject constructor(
     private val setCrossfadeDurationUseCase: SetCrossfadeDurationUseCase,
     private val getVisualizerStyleUseCase: GetVisualizerStyleUseCase,
     private val setVisualizerStyleUseCase: SetVisualizerStyleUseCase,
+    private val getCoverArtStyleUseCase: GetCoverArtStyleUseCase,
+    private val setCoverArtStyleUseCase: SetCoverArtStyleUseCase,
 ) : ViewModel() {
 
     val sortType: StateFlow<SortType> = getSortTypeUseCase()
@@ -61,6 +66,19 @@ class SettingsViewModel @Inject constructor(
 
     val visualizerStyle: StateFlow<VisualizerStyle> = getVisualizerStyleUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VisualizerStyle.OFF)
+
+    val coverArtStyle: StateFlow<CoverArtStyle> = getCoverArtStyleUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoverArtStyle.HALF)
+
+    fun setCoverArtStyle(style: CoverArtStyle) {
+        viewModelScope.launch { setCoverArtStyleUseCase(style) }
+    }
+
+    fun coverArtStyleLabel(style: CoverArtStyle): String = when (style) {
+        CoverArtStyle.HALF -> "Half screen (default)"
+        CoverArtStyle.CIRCLE -> "Circle"
+        CoverArtStyle.FULL -> "Full screen"
+    }
 
     fun setVisualizerStyle(style: VisualizerStyle) {
         viewModelScope.launch { setVisualizerStyleUseCase(style) }
