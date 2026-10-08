@@ -2,20 +2,10 @@ package com.tasnimulhasan.featureplayer.lyrics
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.filled.Translate
-import androidx.compose.material3.FilterChip
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import kotlin.math.abs
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -25,13 +15,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,25 +33,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.entity.lyrics.LyricLine
 import com.tasnimulhasan.entity.lyrics.LyricsUiState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun LyricsRoute(
@@ -125,6 +123,9 @@ fun LyricsRoute(
         onLineClicked = { line -> line.timestampMs?.let { viewModel.seekTo(it) } },
     )
 }
+
+/** How long after the user stops scrolling before the lyrics start following the music again. */
+private const val AUTO_RESUME_FOLLOW_MS = 3_000L
 
 @Composable
 internal fun LyricsScreen(
@@ -251,7 +252,7 @@ private fun PlainLyricsView(lines: List<LyricLine>, translatedLines: List<String
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp)) {
         item {
             // Honest about the limitation: without per-line timestamps there's nothing to
-            // follow the music with, so say so rather than silently not highlighting.
+            // follow the music with, so say rather than silently not highlighting.
             Text(
                 text = "These lyrics aren't time-synced, so lines can't follow the music.",
                 style = MaterialTheme.typography.labelMedium,
@@ -291,9 +292,28 @@ private fun SyncedLyricsList(
     var followCurrentLine by remember { mutableStateOf(true) }
     var isAutoScrolling by remember { mutableStateOf(false) }
 
+    // Scrolling by hand pauses following so the list never fights the user's finger. Once
+    // they let go and leave it alone for a few seconds, following resumes on its own and the
+    // list glides back to the line being sung - so a line that has scrolled out of view
+    // doesn't stay lost until a button is tapped. A new touch cancels the countdown (the
+    // effect restarts whenever isScrollInProgress changes).
     LaunchedEffect(listState.isScrollInProgress) {
-        if (listState.isScrollInProgress && !isAutoScrolling) {
-            followCurrentLine = false
+        if (listState.isScrollInProgress) {
+            if (!isAutoScrolling) followCurrentLine = false
+        } else if (!followCurrentLine) {
+            delay(AUTO_RESUME_FOLLOW_MS.milliseconds)
+            followCurrentLine = true
+        }
+    }
+
+    // Whether the current line is on screen right now, and which way it went if not.
+    val currentLineVisible by remember(currentIndex) {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.any { it.index == currentIndex } }
+    }
+    val currentLineIsAbove by remember(currentIndex) {
+        derivedStateOf {
+            val first = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
+            currentIndex < first
         }
     }
 
@@ -331,10 +351,17 @@ private fun SyncedLyricsList(
             }
         }
 
-        if (!followCurrentLine) {
+        // Only offered while paused AND the current line is actually off-screen; the arrow
+        // points the way back to it.
+        if (!followCurrentLine && currentIndex >= 0 && !currentLineVisible) {
             ExtendedFloatingActionButton(
                 onClick = { followCurrentLine = true },
-                icon = { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null) },
+                icon = {
+                    Icon(
+                        if (currentLineIsAbove) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null
+                    )
+                },
                 text = { Text("Jump to current") },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
