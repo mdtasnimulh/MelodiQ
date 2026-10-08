@@ -13,6 +13,8 @@ import com.tasnimulhasan.data.repoimpl.local.PlaylistRepoImpl
 import com.tasnimulhasan.data.repoimpl.player.PlayerRepositoryImpl
 import com.tasnimulhasan.domain.lyrics.LyricsProvider
 import com.tasnimulhasan.data.lyrics.LrcLibLyricsProvider
+import com.tasnimulhasan.data.lyrics.MlKitLyricsTranslator
+import com.tasnimulhasan.domain.lyrics.LyricsTranslator
 import com.tasnimulhasan.domain.repository.MusicRepository
 import com.tasnimulhasan.domain.repository.PlayerRepository
 import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
@@ -67,4 +69,7 @@ interface RepositoryModule {
 
     @Binds
     fun bindFileManagementRepository(impl: FileManagementRepoImpl): FileManagementRepository
+
+    @Binds
+    fun bindLyricsTranslator(impl: MlKitLyricsTranslator): LyricsTranslator
 }

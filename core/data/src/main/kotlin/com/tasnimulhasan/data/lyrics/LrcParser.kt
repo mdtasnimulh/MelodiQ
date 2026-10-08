@@ -15,11 +15,17 @@ object LrcParser {
 
     private val TIMESTAMP_REGEX = Regex("""\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?]""")
     private val PURE_METADATA_LINE_REGEX = Regex("""^\[[a-zA-Z]+:[^]]*]$""")
+    private val OFFSET_REGEX = Regex("""^\[offset:\s*([+-]?\d+)\s*]$""", RegexOption.IGNORE_CASE)
 
     fun parse(raw: String): List<LyricLine> {
         val rawLines = raw.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
         val synced = mutableListOf<LyricLine>()
         var sawAnyTimestamp = false
+
+        // LRC's [offset:+/-ms] tag shifts every timestamp: a positive value means the lyrics
+        // should appear that much SOONER, so it's subtracted. It used to be skipped as plain
+        // metadata, which left any file that relies on it consistently early/late.
+        val offsetMs = rawLines.firstNotNullOfOrNull { OFFSET_REGEX.find(it)?.groupValues?.get(1)?.toLongOrNull() } ?: 0L
 
         for (line in rawLines) {
             // A pure metadata tag like [ar:Some Artist] or [offset:100] - not a lyric line.
@@ -36,8 +42,11 @@ object LrcParser {
             }
 
             sawAnyTimestamp = true
+            // An empty timestamped line is a deliberate marker (instrumental break / end of
+            // the previous line). Dropping it - as this used to - left the previous lyric
+            // highlighted straight through the break; kept as blank text, the UI can move the
+            // highlight off it and show a music-note interlude instead.
             val text = line.substring(matches.last().range.last + 1).trim()
-            if (text.isEmpty()) continue
 
             for (match in matches) {
                 val minutes = match.groupValues[1].toLongOrNull() ?: continue
@@ -49,7 +58,7 @@ object LrcParser {
                     2 -> fraction.toLong() * 10
                     else -> fraction.take(3).toLong()
                 }
-                val timestampMs = (minutes * 60_000L) + (seconds * 1_000L) + fractionMs
+                val timestampMs = ((minutes * 60_000L) + (seconds * 1_000L) + fractionMs - offsetMs).coerceAtLeast(0L)
                 synced.add(LyricLine(timestampMs = timestampMs, text = text))
             }
         }
@@ -63,5 +72,8 @@ object LrcParser {
         return synced.sortedWith(compareBy(nullsLast()) { it.timestampMs })
     }
 
-    fun isSynced(lines: List<LyricLine>): Boolean = lines.isNotEmpty() && lines.all { it.timestampMs != null }
+    /** Synced if most lines carry a timestamp. This used to demand EVERY line have one, so a
+     * single stray credit line in an otherwise timed file turned off highlighting entirely. */
+    fun isSynced(lines: List<LyricLine>): Boolean =
+        lines.isNotEmpty() && lines.count { it.timestampMs != null } * 2 >= lines.size
 }

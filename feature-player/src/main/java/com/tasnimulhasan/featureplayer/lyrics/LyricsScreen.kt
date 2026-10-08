@@ -1,6 +1,19 @@
 package com.tasnimulhasan.featureplayer.lyrics
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material3.FilterChip
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import kotlin.math.abs
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -54,7 +67,9 @@ fun LyricsRoute(
 ) {
     val song by viewModel.currentSong.collectAsStateWithLifecycle()
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
-    val positionMs by viewModel.positionMs.collectAsStateWithLifecycle()
+    val currentIndex by viewModel.currentLineIndex.collectAsStateWithLifecycle()
+    val detectedLanguage by viewModel.detectedLanguage.collectAsStateWithLifecycle()
+    val translation by viewModel.translation.collectAsStateWithLifecycle()
 
     // Same drag-down-to-dismiss physics as the Player screen, so the gesture feels
     // identical everywhere the user might expect a bottom-sheet-style screen.
@@ -103,7 +118,10 @@ fun LyricsRoute(
         songTitle = song.songTitle,
         artist = song.artist,
         state = lyricsState,
-        positionMs = positionMs,
+        currentIndex = currentIndex,
+        detectedLanguage = detectedLanguage,
+        translation = translation,
+        onToggleTranslation = viewModel::toggleTranslation,
         onLineClicked = { line -> line.timestampMs?.let { viewModel.seekTo(it) } },
     )
 }
@@ -114,13 +132,27 @@ internal fun LyricsScreen(
     songTitle: String,
     artist: String,
     state: LyricsUiState,
-    positionMs: Long,
+    currentIndex: Int,
+    detectedLanguage: DetectedLanguage?,
+    translation: TranslationState,
+    onToggleTranslation: () -> Unit,
     onLineClicked: (LyricLine) -> Unit,
 ) {
+    val translatedLines = (translation as? TranslationState.Showing)?.lines
+
     Column(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)) {
             Text(text = songTitle, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             Text(text = artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
+
+        // Only offered when the lyrics are in a language other than English.
+        if (state is LyricsUiState.Found && detectedLanguage != null) {
+            TranslationBar(
+                detected = detectedLanguage,
+                translation = translation,
+                onToggle = onToggleTranslation,
+            )
         }
 
         when (state) {
@@ -132,10 +164,72 @@ internal fun LyricsScreen(
                 if (state.offline) "Lyrics unavailable offline" else "Lyrics unavailable"
             )
             is LyricsUiState.Found -> if (state.isSynced) {
-                SyncedLyricsList(lines = state.lines, positionMs = positionMs, onLineClicked = onLineClicked)
+                SyncedLyricsList(
+                    lines = state.lines,
+                    translatedLines = translatedLines,
+                    currentIndex = currentIndex,
+                    onLineClicked = onLineClicked,
+                )
             } else {
-                PlainLyricsView(lines = state.lines)
+                PlainLyricsView(lines = state.lines, translatedLines = translatedLines)
             }
+        }
+    }
+}
+
+@Composable
+private fun TranslationBar(
+    detected: DetectedLanguage,
+    translation: TranslationState,
+    onToggle: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) {
+        if (!detected.canTranslate) {
+            Text(
+                text = "${detected.displayName} lyrics can't be translated on this device",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return
+        }
+        val working = translation is TranslationState.Working
+        val showing = translation is TranslationState.Showing
+        FilterChip(
+            selected = showing,
+            onClick = onToggle,
+            enabled = !working,
+            label = {
+                Text(
+                    when {
+                        working -> "Translating\u2026"
+                        showing -> "Showing English"
+                        else -> "Translate ${detected.displayName} to English"
+                    }
+                )
+            },
+            leadingIcon = {
+                if (working) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Filled.Translate, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+            },
+        )
+        if (working) {
+            Text(
+                text = "The first time for a language this downloads a small language pack.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (translation is TranslationState.Failed) {
+            Text(
+                text = translation.message,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -153,14 +247,29 @@ private fun CenteredMessage(message: String) {
 }
 
 @Composable
-private fun PlainLyricsView(lines: List<LyricLine>) {
+private fun PlainLyricsView(lines: List<LyricLine>, translatedLines: List<String>?) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp)) {
-        itemsIndexed(lines) { _, line ->
+        item {
+            // Honest about the limitation: without per-line timestamps there's nothing to
+            // follow the music with, so say so rather than silently not highlighting.
             Text(
-                text = line.text,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(vertical = 4.dp),
+                text = "These lyrics aren't time-synced, so lines can't follow the music.",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp),
             )
+        }
+        itemsIndexed(lines) { index, line ->
+            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                Text(text = line.text, style = MaterialTheme.typography.bodyLarge)
+                translatedLines?.getOrNull(index)?.takeIf { it.isNotBlank() && it != line.text }?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }
@@ -168,13 +277,11 @@ private fun PlainLyricsView(lines: List<LyricLine>) {
 @Composable
 private fun SyncedLyricsList(
     lines: List<LyricLine>,
-    positionMs: Long,
+    translatedLines: List<String>?,
+    currentIndex: Int,
     onLineClicked: (LyricLine) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val currentIndex by remember(positionMs) {
-        derivedStateOf { currentLyricLineIndex(lines, positionMs) }
-    }
 
     // The user gets full control the moment they scroll - auto-scroll only resumes once
     // they explicitly tap "Jump to current", never on its own after a manual scroll.
@@ -193,8 +300,14 @@ private fun SyncedLyricsList(
     LaunchedEffect(currentIndex, followCurrentLine) {
         if (followCurrentLine && currentIndex >= 0) {
             isAutoScrolling = true
-            listState.animateScrollToItem(index = currentIndex.coerceIn(0, lines.lastIndex))
-            isAutoScrolling = false
+            try {
+                // Negative offset leaves the current line about a third of the way down the
+                // screen (where the eye rests) instead of pinned to the very top.
+                val offset = -(listState.layoutInfo.viewportSize.height / 3)
+                listState.animateScrollToItem(index = currentIndex.coerceIn(0, lines.lastIndex), scrollOffset = offset)
+            } finally {
+                isAutoScrolling = false
+            }
         }
     }
 
@@ -205,20 +318,15 @@ private fun SyncedLyricsList(
             contentPadding = PaddingValues(vertical = 120.dp, horizontal = 24.dp),
         ) {
             itemsIndexed(lines) { index, line ->
-                val isCurrent = index == currentIndex
-                Text(
-                    text = line.text,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = if (isCurrent) 22.sp else 18.sp,
-                    ),
-                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp)
-                        .pointerInput(line) {
-                            detectTapGestures { onLineClicked(line) }
-                        },
+                LyricLineItem(
+                    line = line,
+                    translation = translatedLines?.getOrNull(index),
+                    isCurrent = index == currentIndex,
+                    distanceFromCurrent = if (currentIndex < 0) 3 else abs(index - currentIndex),
+                    onClick = {
+                        followCurrentLine = true
+                        onLineClicked(line)
+                    },
                 )
             }
         }
@@ -231,6 +339,71 @@ private fun SyncedLyricsList(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp),
+            )
+        }
+    }
+}
+
+/**
+ * One lyric line. The "current" look is color + a springy scale + full opacity, with lines
+ * fading the farther they are from the current one. Deliberately NOT a font-size/weight
+ * change: that re-flows the text and shifts every line below it each time the highlight
+ * moves, which is what made the old version jump around. Scale/alpha are layer properties,
+ * so they animate without any relayout.
+ */
+@Composable
+private fun LyricLineItem(
+    line: LyricLine,
+    translation: String?,
+    isCurrent: Boolean,
+    distanceFromCurrent: Int,
+    onClick: () -> Unit,
+) {
+    val targetAlpha = when {
+        isCurrent -> 1f
+        distanceFromCurrent == 1 -> 0.62f
+        distanceFromCurrent == 2 -> 0.46f
+        else -> 0.34f
+    }
+    val alpha by animateFloatAsState(targetAlpha, spring(stiffness = Spring.StiffnessMediumLow), label = "lyricAlpha")
+    val scale by animateFloatAsState(
+        targetValue = if (isCurrent) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "lyricScale"
+    )
+    val color by animateColorAsState(
+        targetValue = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        animationSpec = tween(250),
+        label = "lyricColor"
+    )
+
+    // An empty timestamped line is an instrumental break - shown as a note so the highlight
+    // has somewhere to go during it instead of lingering on the last sung line.
+    val isInterlude = line.text.isBlank()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                this.alpha = alpha
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0f, 0.5f)
+            }
+            .padding(vertical = 10.dp)
+            .pointerInput(line) { detectTapGestures { onClick() } },
+    ) {
+        Text(
+            text = if (isInterlude) "\u266A" else line.text,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = color,
+        )
+        translation?.takeIf { it.isNotBlank() && it != line.text }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyLarge,
+                color = color.copy(alpha = 0.8f),
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
     }
