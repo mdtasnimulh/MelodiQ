@@ -1,7 +1,6 @@
 package com.tasnimulhasan.featureplayer
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -13,13 +12,6 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.withFrameNanos
-import com.tasnimulhasan.entity.enums.CoverArtStyle
-import com.tasnimulhasan.entity.enums.VisualizerStyle
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -28,11 +20,13 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -43,11 +37,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -60,10 +65,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,9 +82,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,13 +99,18 @@ import com.tasnimulhasan.designsystem.theme.LightOrange
 import com.tasnimulhasan.designsystem.theme.MythicGreen
 import com.tasnimulhasan.designsystem.theme.PeaceOrange
 import com.tasnimulhasan.designsystem.theme.PeachYellow
-import com.tasnimulhasan.featureplayer.components.CustomButtonGroups
+import com.tasnimulhasan.entity.enums.CoverArtStyle
+import com.tasnimulhasan.entity.enums.VisualizerStyle
 import com.tasnimulhasan.featureplayer.components.CustomWaveProgressBar
-import com.tasnimulhasan.featureplayer.components.PlayPauseControlButton
+import com.tasnimulhasan.featureplayer.components.ExpressiveTransportControls
+import com.tasnimulhasan.featureplayer.components.FavoriteButton
+import com.tasnimulhasan.featureplayer.components.PlayerAction
+import com.tasnimulhasan.featureplayer.components.PlayerActionChips
+import com.tasnimulhasan.featureplayer.components.PlayerTopBar
 import com.tasnimulhasan.featureplayer.components.SleepTimerBottomSheet
 import com.tasnimulhasan.featureplayer.components.SleepTimerOption
+import com.tasnimulhasan.featureplayer.components.expressiveEntrance
 import com.tasnimulhasan.ui.image.AlbumArt
-import com.tasnimulhasan.ui.image.rememberPaletteThumbnail
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -107,7 +118,6 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 import com.tasnimulhasan.designsystem.R as Res
-import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -132,17 +142,6 @@ internal fun SharedTransitionScope.PlayerScreen(
     val sortType by viewModel.sortType.collectAsStateWithLifecycle()
     val repeatModeOff by viewModel.repeatModeOff.collectAsStateWithLifecycle()
     val volume by viewModel.volume.collectAsStateWithLifecycle()
-
-    // Cover art presentation + how the visualizer should fit it. The ring visualizer only
-    // makes sense around round art (Settings enforces that pairing; this just guards the
-    // render so a stale saved combo can never draw a ring around a rectangle).
-    val coverArtStyle by viewModel.coverArtStyle.collectAsStateWithLifecycle()
-    val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
-    val isFull = coverArtStyle == CoverArtStyle.FULL
-    val isCircle = coverArtStyle == CoverArtStyle.CIRCLE
-    val ringVisualizer = isCircle && visualizerStyle == VisualizerStyle.CIRCULAR
-    val primaryText = if (isFull) Color.White else MaterialTheme.colorScheme.onSurface
-    val secondaryText = if (isFull) Color.White.copy(alpha = 0.78f) else MaterialTheme.colorScheme.onSurfaceVariant
 
     // Start the pager on the song this screen was opened for. Starting at page 0 (the
     // default) and only scrolling later is what made the old code think the user had swiped
@@ -169,40 +168,12 @@ internal fun SharedTransitionScope.PlayerScreen(
     val sleepTimerRunning by viewModel.sleepTimerActive.collectAsStateWithLifecycle()
     val sleepTimerRemainingMillis by viewModel.sleepTimerRemainingMillis.collectAsStateWithLifecycle()
 
-    // ViewModel -> Pager: keep the pager visually on the current song (next/previous
-    // buttons, auto-advance, notification controls). Never triggers playback changes.
-    LaunchedEffect(currentSelectedAudio.songId, audioList) {
-        val targetIndex = audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
-        if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
-            pagerState.scrollToPage(targetIndex)
-        }
-    }
-
     // Pager -> ViewModel: ONLY when the user physically drags the pager. Any other page
     // change (initial position, programmatic sync, next/previous buttons) is a reflection
     // of the player's state and must never change what is playing or start playback.
     val latestAudioList by rememberUpdatedState(audioList)
     val latestCurrentSongId by rememberUpdatedState(currentSelectedAudio.songId)
     var userDraggedPager by remember { mutableStateOf(false) }
-
-    LaunchedEffect(pagerState) {
-        pagerState.interactionSource.interactions.collect { interaction ->
-            if (interaction is DragInteraction.Start) userDraggedPager = true
-        }
-    }
-
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }
-            .drop(1)
-            .collect { page ->
-                if (!userDraggedPager) return@collect
-                userDraggedPager = false
-                val settledSongId = latestAudioList.getOrNull(page)?.songId ?: return@collect
-                if (settledSongId != latestCurrentSongId) {
-                    viewModel.onUiEvents(UIEvents.SelectedAudioChange(page))
-                }
-            }
-    }
 
     val currentPage = pagerState.currentPage
     val currentMusic = audioList.getOrNull(currentPage)
@@ -228,6 +199,50 @@ internal fun SharedTransitionScope.PlayerScreen(
                 ?: palette.dominantSwatch?.rgb
                 ?: PeaceOrange.toArgb()
         } ?: PeaceOrange.toArgb()
+    }
+
+    // Cover art presentation + how the visualizer should fit it. The ring visualizer only
+    // makes sense around round art (Settings enforces that pairing; this just guards the
+    // render so a stale saved combo can never draw a ring around a rectangle).
+    val coverArtStyle by viewModel.coverArtStyle.collectAsStateWithLifecycle()
+    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
+    val isFull = coverArtStyle == CoverArtStyle.FULL
+    val isCircle = coverArtStyle == CoverArtStyle.CIRCLE
+    val ringVisualizer = isCircle && visualizerStyle == VisualizerStyle.CIRCULAR
+    // In Full mode the controls sit on a dark translucent panel, where the (dark) palette
+    // color would vanish - so the accent flips to white with dark content on top of it.
+    val accent = if (isFull) Color.White else Color(darkPaletteColor)
+    val onAccent = if (isFull) Color.Black.copy(alpha = 0.87f) else Color.White
+    val primaryText = if (isFull) Color.White else MaterialTheme.colorScheme.onSurface
+    val secondaryText = if (isFull) Color.White.copy(alpha = 0.78f) else MaterialTheme.colorScheme.onSurfaceVariant
+
+    // ViewModel -> Pager: keep the pager visually on the current song (next/previous
+    // buttons, auto-advance, notification controls). Never triggers playback changes.
+    LaunchedEffect(currentSelectedAudio.songId, audioList) {
+        val targetIndex = audioList.indexOfFirst { it.songId == currentSelectedAudio.songId }
+        if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
+            pagerState.scrollToPage(targetIndex)
+        }
+    }
+
+    LaunchedEffect(pagerState) {
+        pagerState.interactionSource.interactions.collect { interaction ->
+            if (interaction is DragInteraction.Start) userDraggedPager = true
+        }
+    }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }
+            .drop(1)
+            .collect { page ->
+                if (!userDraggedPager) return@collect
+                userDraggedPager = false
+                val settledSongId = latestAudioList.getOrNull(page)?.songId ?: return@collect
+                if (settledSongId != latestCurrentSongId) {
+                    viewModel.onUiEvents(UIEvents.SelectedAudioChange(page))
+                }
+            }
     }
 
     fun resolveSleepTimerMillis(option: SleepTimerOption): Long = when (option) {
@@ -460,7 +475,18 @@ internal fun SharedTransitionScope.PlayerScreen(
                     )
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            PlayerTopBar(
+                albumName = currentMusic?.album.orEmpty(),
+                onClose = onNavigateUp,
+                onQueue = { navigateToQueue.invoke() },
+                onDark = isFull,
+                accent = Color(darkPaletteColor),
+                modifier = Modifier.expressiveEntrance(0),
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             AnimatedVisibility(
                 visible = sleepTimerRunning,
@@ -508,145 +534,203 @@ internal fun SharedTransitionScope.PlayerScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             currentMusic?.let { currentTrack ->
-                Text(
-                    modifier = Modifier
-                        .sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = "title-${currentTrack.songId}"),
-                            animatedVisibilityScope = animatedVisibilityScope,
+                val panelModifier = if (isFull) {
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Black.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.72f))
+                            )
                         )
+                        .padding(top = 24.dp, bottom = 20.dp)
+                } else {
+                    Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .basicMarquee(),
-                    text = currentTrack.songTitle,
-                    maxLines = 1,
-                    style = TextStyle(
-                        color = primaryText,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                    ),
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    text = currentTrack.artist,
-                    maxLines = 1,
-                    style = TextStyle(
-                        color = secondaryText,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal,
-                        textAlign = TextAlign.Center,
-                    ),
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            viewModel.toggleTimeDisplay()
-                        },
-                    text = "$progressString / " + viewModel.convertLongToReadableDateTime(
-                        currentTrack.duration.toLong(),
-                        "mm:ss"
-                    ),
-                    textAlign = TextAlign.Center,
-                    style = TextStyle(
-                        color = secondaryText,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val amplitudes = remember { List(60) { Random.nextFloat() } }
-                    val normalizedProgress = progress / 100f
-
-                    CustomWaveProgressBar(
-                        amplitudes = amplitudes,
-                        currentProgress = normalizedProgress.coerceIn(0f, 1f),
-                        isPlaying = isPlaying,
-                        barColor = Color(darkPaletteColor).copy(alpha = 0.25f),
-                        playedColor = Color(darkPaletteColor),
-                        onSeek = { normalized ->
-                            val seekPosition = normalized * 100f
-                            viewModel.onUiEvents(UIEvents.SeekTo(seekPosition))
-                        }
-                    )
+                        .padding(bottom = 20.dp)
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Column(modifier = panelModifier) {
+                    // Title / artist on the left, favorite on the right.
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .expressiveEntrance(1),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                modifier = Modifier
+                                    .sharedBounds(
+                                        sharedContentState = rememberSharedContentState(key = "title-${currentTrack.songId}"),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                    )
+                                    .fillMaxWidth()
+                                    .basicMarquee(),
+                                text = currentTrack.songTitle,
+                                maxLines = 1,
+                                style = TextStyle(
+                                    color = primaryText,
+                                    fontSize = 26.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = currentTrack.artist,
+                                maxLines = 1,
+                                style = TextStyle(
+                                    color = secondaryText,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Normal,
+                                ),
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        FavoriteButton(
+                            isFavorite = favorites.contains(currentTrack.songId),
+                            onClick = { viewModel.toggleFavorite(currentTrack.songId) },
+                            onDark = isFull,
+                            accent = Color(darkPaletteColor),
+                        )
+                    }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    PlayPauseControlButton(
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                            .padding(horizontal = 8.dp)
+                            .expressiveEntrance(2),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val amplitudes = remember { List(60) { Random.nextFloat() } }
+                        val normalizedProgress = progress / 100f
+
+                        CustomWaveProgressBar(
+                            amplitudes = amplitudes,
+                            currentProgress = normalizedProgress.coerceIn(0f, 1f),
+                            isPlaying = isPlaying,
+                            barColor = if (isFull) Color.White.copy(alpha = 0.3f) else Color(darkPaletteColor).copy(alpha = 0.25f),
+                            playedColor = accent,
+                            onSeek = { normalized ->
+                                val seekPosition = normalized * 100f
+                                viewModel.onUiEvents(UIEvents.SeekTo(seekPosition))
+                            }
+                        )
+                    }
+
+                    // Elapsed on the left, total on the right (tap to toggle the display mode).
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .expressiveEntrance(2),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            modifier = Modifier.clickable { viewModel.toggleTimeDisplay() },
+                            text = progressString,
+                            style = TextStyle(color = secondaryText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        )
+                        Text(
+                            text = viewModel.convertLongToReadableDateTime(currentTrack.duration.toLong(), "mm:ss"),
+                            style = TextStyle(color = secondaryText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    ExpressiveTransportControls(
                         isPlaying = isPlaying,
-                        playButtonColor = Color(darkPaletteColor),
-                        onPreviousClick = {
+                        accent = accent,
+                        onAccent = onAccent,
+                        onDark = isFull,
+                        modifier = Modifier.expressiveEntrance(3),
+                        onPrevious = {
                             scope.launch { if (currentPage > 0) pagerState.animateScrollToPage(currentPage - 1) else pagerState.animateScrollToPage(audioList.size - 1) }
                             viewModel.onUiEvents(UIEvents.SeekToPrevious)
                         },
-                        onPlayPauseClick = { viewModel.onUiEvents(UIEvents.PlayPause) },
-                        onNextClick = {
+                        onPlayPause = { viewModel.onUiEvents(UIEvents.PlayPause) },
+                        onNext = {
                             scope.launch { if (currentPage == audioList.size - 1) pagerState.animateScrollToPage(0) else pagerState.animateScrollToPage(currentPage + 1) }
                             viewModel.onUiEvents(UIEvents.SeekToNext)
                         },
-                        onSeekNextClick = { viewModel.onUiEvents(UIEvents.Forward) },
-                        onSeekPreviousClick = { viewModel.onUiEvents(UIEvents.Backward) }
+                        onSeekForward = { viewModel.onUiEvents(UIEvents.Forward) },
+                        onSeekBack = { viewModel.onUiEvents(UIEvents.Backward) },
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    PlayerActionChips(
+                        accent = accent,
+                        onAccent = onAccent,
+                        onDark = isFull,
+                        modifier = Modifier.expressiveEntrance(4),
+                        actions = listOf(
+                            PlayerAction(
+                                icon = when {
+                                    repeatModeAll -> Icons.Default.AllInclusive
+                                    repeatModeOne -> Icons.Default.RepeatOne
+                                    else -> Icons.Default.Repeat
+                                },
+                                label = when {
+                                    repeatModeAll -> "Repeat all"
+                                    repeatModeOne -> "Repeat one"
+                                    else -> "Repeat"
+                                },
+                                active = repeatModeAll || repeatModeOne,
+                                onClick = {
+                                    if (repeatModeOff && !repeatModeOne && !repeatModeAll) {
+                                        viewModel.onUiEvents(UIEvents.RepeatOne)
+                                        Toast.makeText(context, Res.string.msg_repeat_one, Toast.LENGTH_SHORT).show()
+                                    } else if (!repeatModeOff && repeatModeOne && !repeatModeAll) {
+                                        viewModel.onUiEvents(UIEvents.RepeatAll)
+                                        Toast.makeText(context, Res.string.msg_repeat_all, Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        viewModel.onUiEvents(UIEvents.RepeatOff)
+                                        Toast.makeText(context, Res.string.msg_repeat_off, Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                            ),
+                            PlayerAction(
+                                icon = Icons.AutoMirrored.Filled.Article,
+                                label = "Lyrics",
+                                onClick = { navigateToLyrics.invoke() },
+                            ),
+                            PlayerAction(
+                                icon = Icons.Default.Timer,
+                                label = if (sleepTimerRunning) formatSleepRemaining(sleepTimerRemainingMillis) else "Sleep timer",
+                                active = sleepTimerRunning,
+                                onClick = { showBottomSheet.value = true },
+                            ),
+                            PlayerAction(
+                                icon = Icons.Default.GraphicEq,
+                                label = "Equalizer",
+                                onClick = { navigateToEqualizerScreen.invoke() },
+                            ),
+                            PlayerAction(
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
+                                label = "Volume boost",
+                                onClick = { showVolumeBoostDialog.value = true },
+                            ),
+                            PlayerAction(
+                                icon = Icons.Default.Share,
+                                label = "Share",
+                                onClick = {
+                                    val shareIntent = Intent().also {
+                                        it.action = Intent.ACTION_SEND
+                                        it.type = "audio/*"
+                                        it.putExtra(Intent.EXTRA_STREAM, currentTrack.contentUri)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
+                                },
+                            ),
+                        ),
                     )
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                CustomButtonGroups(
-                    buttonColor = if (isFull) Color.White.copy(alpha = 0.14f) else Color(darkPaletteColor).copy(alpha = 0.05f),
-                    repeatModeOne = repeatModeOne,
-                    repeatModeAll = repeatModeAll,
-                    onRepeatButtonClicked = {
-                        if (repeatModeOff && !repeatModeOne && !repeatModeAll) {
-                            viewModel.onUiEvents(UIEvents.RepeatOne)
-                            Toast.makeText(context, Res.string.msg_repeat_one, Toast.LENGTH_SHORT).show()
-                        } else if (!repeatModeOff && repeatModeOne && !repeatModeAll) {
-                            viewModel.onUiEvents(UIEvents.RepeatAll)
-                            Toast.makeText(context, Res.string.msg_repeat_all, Toast.LENGTH_SHORT).show()
-                        } else {
-                            viewModel.onUiEvents(UIEvents.RepeatOff)
-                            Toast.makeText(context, Res.string.msg_repeat_off, Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onEQButtonClicked = { navigateToEqualizerScreen.invoke() },
-                    onLyricsButtonClicked = { navigateToLyrics.invoke() },
-                    onQueueButtonClicked = { navigateToQueue.invoke() },
-                    onSleepButtonClicked = { showBottomSheet.value = true },
-                    onShareButtonClicked = {
-                        val shareIntent = Intent().also {
-                            it.action = Intent.ACTION_SEND
-                            it.type = "audio/*"
-                            it.putExtra(Intent.EXTRA_STREAM, currentTrack.contentUri)
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "Sharing ${currentTrack.songTitle}"))
-                    },
-                    onVolumeBoostClicked = { showVolumeBoostDialog.value = true },
-                    sleepTimerActive = sleepTimerRunning,
-                    sleepTimerRemainingMillis = sleepTimerRemainingMillis
-                )
 
                 if (showBottomSheet.value) {
                     SleepTimerBottomSheet(

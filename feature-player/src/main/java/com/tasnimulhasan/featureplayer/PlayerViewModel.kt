@@ -35,6 +35,8 @@ class PlayerViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
     private val getVisualizerStyleUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetVisualizerStyleUseCase,
     private val getCoverArtStyleUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetCoverArtStyleUseCase,
+    private val observeFavouriteIdsUseCase: com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase,
+    private val toggleFavouriteUseCase: com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val exoPlayer: ExoPlayer, // volume-boost only
     private val sleepTimerController: SleepTimerController,
@@ -100,6 +102,13 @@ class PlayerViewModel @Inject constructor(
     val visualizerStyle: StateFlow<com.tasnimulhasan.entity.enums.VisualizerStyle> = getVisualizerStyleUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.VisualizerStyle.OFF)
     val visualizerBars: StateFlow<FloatArray> = playerUseCases.observeVisualizer.bars
+    val favorites: StateFlow<Set<Long>> = observeFavouriteIdsUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    fun toggleFavorite(songId: Long) {
+        viewModelScope.launch { toggleFavouriteUseCase(songId) }
+    }
+
     val coverArtStyle: StateFlow<com.tasnimulhasan.entity.enums.CoverArtStyle> = getCoverArtStyleUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.CoverArtStyle.HALF)
 
@@ -139,7 +148,7 @@ class PlayerViewModel @Inject constructor(
         // navigating here, only when the tapped song is actually different from what's
         // currently loaded. Re-deriving and re-applying "the right song" again here raced
         // against that first call and could misfire - e.g. opening the player for the
-        // already-selected-but-paused song would sometimes force it back to playing,
+        // already-selected-but-paused song would sometimes force it back to play,
         // because this block ran before the original selection had taken effect and
         // concluded (incorrectly) that a re-selection was needed. The player screen should
         // only ever reflect state, never decide on its own to change what's playing.
