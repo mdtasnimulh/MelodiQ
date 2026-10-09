@@ -55,14 +55,14 @@ class MelodiqNotificationAdapter(
 
     private fun loadArtwork(contentUri: Uri): Bitmap? {
         runCatching {
-            return context.contentResolver.loadThumbnail(contentUri, Size(256, 256), null)
+            return context.contentResolver.loadThumbnail(contentUri, Size(1024, 1024), null)
         }
 
         return runCatching {
             val retriever = MediaMetadataRetriever()
             try {
                 retriever.setDataSource(context, contentUri)
-                retriever.embeddedPicture?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                retriever.embeddedPicture?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }?.let { if (maxOf(it.width, it.height) > 1024) Bitmap.createScaledBitmap(it, 1024, 1024 * it.height / it.width.coerceAtLeast(1), true) else it }
             } finally {
                 retriever.release()
             }

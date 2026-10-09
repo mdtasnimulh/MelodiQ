@@ -7,6 +7,9 @@ import android.content.Context
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import android.app.PendingIntent
+import android.content.Intent
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -62,7 +65,7 @@ class MelodiqNotificationManager @Inject constructor(
         // crash for another right at the most crash-sensitive point in the app.
         val notification = Notification.Builder(context, NOTIFICATION_CHANNEL_ID)
             .setCategory(Notification.CATEGORY_SERVICE)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_stat_music)
             .setContentTitle("MelodiQ")
             .build()
         mediaSessionService.startForeground(NOTIFICATION_ID, notification)
@@ -81,7 +84,8 @@ class MelodiqNotificationManager @Inject constructor(
                     pendingIntent = mediaSession.sessionActivity
                 )
             )
-            .setSmallIconResourceId(R.drawable.ic_android)
+            .setSmallIconResourceId(R.drawable.ic_stat_music)
+            .setCustomActionReceiver(repeatReceiver)
             .build()
             .also {
                 it.setMediaSessionToken(mediaSession.platformToken)
@@ -90,7 +94,54 @@ class MelodiqNotificationManager @Inject constructor(
                 it.setUseNextActionInCompactView(true)
                 it.setPriority(NotificationCompat.PRIORITY_LOW)
                 it.setPlayer(exoPlayer)
+                exoPlayer.addListener(object : Player.Listener {
+                    override fun onRepeatModeChanged(repeatMode: Int) = it.invalidate()
+                })
             }
+
+    private val repeatReceiver = @OptIn(UnstableApi::class) object : PlayerNotificationManager.CustomActionReceiver {
+        override fun createCustomActions(
+            context: Context,
+            instanceId: Int
+        ): MutableMap<String, NotificationCompat.Action> {
+            fun action(key: String, icon: Int, title: String) = NotificationCompat.Action(
+                icon, title,
+                PendingIntent.getBroadcast(
+                    context, instanceId,
+                    Intent(key).setPackage(context.packageName).putExtra(PlayerNotificationManager.EXTRA_INSTANCE_ID, instanceId),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            )
+            return mutableMapOf(
+                ACTION_REPEAT_OFF to action(ACTION_REPEAT_OFF, R.drawable.ic_notif_repeat_off, "Repeat off"),
+                ACTION_REPEAT_ALL to action(ACTION_REPEAT_ALL, R.drawable.ic_notif_repeat_all, "Repeat all"),
+                ACTION_REPEAT_ONE to action(ACTION_REPEAT_ONE, R.drawable.ic_notif_repeat_one, "Repeat one"),
+            )
+        }
+
+        // Shows the button for the CURRENT state; tapping advances OFF -> ALL -> ONE -> OFF.
+        override fun getCustomActions(player: Player): MutableList<String> = mutableListOf(
+            when (player.repeatMode) {
+                Player.REPEAT_MODE_ALL -> ACTION_REPEAT_ALL
+                Player.REPEAT_MODE_ONE -> ACTION_REPEAT_ONE
+                else -> ACTION_REPEAT_OFF
+            }
+        )
+
+        override fun onCustomAction(player: Player, action: String, intent: Intent) {
+            player.repeatMode = when (action) {
+                ACTION_REPEAT_OFF -> Player.REPEAT_MODE_ALL
+                ACTION_REPEAT_ALL -> Player.REPEAT_MODE_ONE
+                else -> Player.REPEAT_MODE_OFF
+            }
+        }
+    }
+
+    private companion object {
+        const val ACTION_REPEAT_OFF = "com.tasnimulhasan.melodiq.REPEAT_OFF"
+        const val ACTION_REPEAT_ALL = "com.tasnimulhasan.melodiq.REPEAT_ALL"
+        const val ACTION_REPEAT_ONE = "com.tasnimulhasan.melodiq.REPEAT_ONE"
+    }
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(

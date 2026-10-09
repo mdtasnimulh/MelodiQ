@@ -131,6 +131,18 @@ class PlayerViewModel @Inject constructor(
 
     private var isSeekingFromSlider = false
 
+    // The notification's repeat button changes ExoPlayer.repeatMode directly, so the UI
+    // flags must follow the player rather than only the in-app button.
+    private fun syncRepeatFlags(mode: Int) {
+        _repeatModeOne.value = mode == androidx.media3.common.Player.REPEAT_MODE_ONE
+        _repeatModeAll.value = mode == androidx.media3.common.Player.REPEAT_MODE_ALL
+        _repeatModeOff.value = mode == androidx.media3.common.Player.REPEAT_MODE_OFF
+    }
+
+    private val repeatListener = object : androidx.media3.common.Player.Listener {
+        override fun onRepeatModeChanged(repeatMode: Int) = syncRepeatFlags(repeatMode)
+    }
+
     val sleepTimerActive: StateFlow<Boolean> = sleepTimerController.isRunning
     val sleepTimerRemainingMillis: StateFlow<Long> = sleepTimerController.remainingMillis
 
@@ -138,6 +150,8 @@ class PlayerViewModel @Inject constructor(
     val uIState: StateFlow<UIState> = _uIState.asStateFlow()
 
     init {
+        syncRepeatFlags(exoPlayer.repeatMode)
+        exoPlayer.addListener(repeatListener)
         viewModelScope.launch {
             getSortTypeUseCase().collectLatest { persistedSortType ->
                 _sortType.value = persistedSortType
@@ -348,6 +362,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        exoPlayer.removeListener(repeatListener)
         loudnessEnhancer?.release()
         super.onCleared()
     }
