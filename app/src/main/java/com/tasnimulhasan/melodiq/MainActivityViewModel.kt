@@ -7,12 +7,14 @@ import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.designsystem.theme.fixedSeedColorOrNull
 import com.tasnimulhasan.domain.localusecase.datastore.GetAccentColorUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetThemeConfigUseCase
+import com.tasnimulhasan.domain.localusecase.library.ScanLibraryUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.ui.image.AlbumArtAccentExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -26,6 +28,7 @@ class MainActivityViewModel @Inject constructor(
     getThemeConfigUseCase: GetThemeConfigUseCase,
     getAccentColorUseCase: GetAccentColorUseCase,
     playerUseCases: PlayerUseCases,
+    private val scanLibraryUseCase: ScanLibraryUseCase,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -60,4 +63,14 @@ class MainActivityViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * The very first library scan runs when the app process starts - before the user has
+     * answered the permission dialog - so it finds nothing and is never retried. That left
+     * a black screen / endless loader after the first grant. Scanning again right after the
+     * permission is granted fills Room, and every list updates by itself from there.
+     */
+    fun onStoragePermissionGranted() {
+        viewModelScope.launch { runCatching { scanLibraryUseCase(force = true) } }
+    }
 }
