@@ -47,6 +47,8 @@ class SettingsViewModel @Inject constructor(
     private val setVisualizerStyleUseCase: SetVisualizerStyleUseCase,
     private val getCoverArtStyleUseCase: GetCoverArtStyleUseCase,
     private val setCoverArtStyleUseCase: SetCoverArtStyleUseCase,
+    private val getMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetMiniPlayerPositionUseCase,
+    private val setMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetMiniPlayerPositionUseCase,
 ) : ViewModel() {
 
     val sortType: StateFlow<SortType> = getSortTypeUseCase()
@@ -69,6 +71,20 @@ class SettingsViewModel @Inject constructor(
 
     val coverArtStyle: StateFlow<CoverArtStyle> = getCoverArtStyleUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoverArtStyle.HALF)
+
+    val miniPlayerPosition: StateFlow<com.tasnimulhasan.entity.enums.MiniPlayerPosition> = getMiniPlayerPositionUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.MiniPlayerPosition.BOTTOM_END)
+
+    fun setMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition) {
+        viewModelScope.launch { setMiniPlayerPositionUseCase(position) }
+    }
+
+    fun miniPlayerPositionLabel(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition): String = when (position) {
+        com.tasnimulhasan.entity.enums.MiniPlayerPosition.BOTTOM_END -> "Bottom right (default)"
+        com.tasnimulhasan.entity.enums.MiniPlayerPosition.BOTTOM_START -> "Bottom left"
+        com.tasnimulhasan.entity.enums.MiniPlayerPosition.TOP_END -> "Top right"
+        com.tasnimulhasan.entity.enums.MiniPlayerPosition.TOP_START -> "Top left"
+    }
 
     fun setCoverArtStyle(style: CoverArtStyle) {
         viewModelScope.launch { setCoverArtStyleUseCase(style) }

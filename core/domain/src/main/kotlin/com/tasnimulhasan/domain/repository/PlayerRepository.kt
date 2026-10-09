@@ -64,5 +64,6 @@ interface PlayerRepository {
     suspend fun repeatTrackAll()
     suspend fun repeatTrackOff()
     fun isPlaybackServiceRunning(): Boolean
+    suspend fun stopPlayback()
     fun ensurePlaybackServiceStarted()
 }

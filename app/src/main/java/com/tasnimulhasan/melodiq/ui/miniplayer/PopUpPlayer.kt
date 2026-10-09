@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Forward5
 import androidx.compose.material.icons.filled.Replay5
 import androidx.compose.material3.Card
@@ -71,6 +72,7 @@ fun PopUpPlayer(
     onSeekPreviousClick: () -> Unit,
     onSeekNextClick: () -> Unit,
     onImageClick: () -> Unit,
+    onCloseClick: () -> Unit = {},
     visualizerStyle: VisualizerStyle = VisualizerStyle.OFF,
     visualizerBars: FloatArray = FloatArray(0),
 ) {
@@ -115,7 +117,7 @@ fun PopUpPlayer(
                 .wrapContentHeight()
                 .padding(8.dp),
         ) {
-            val (coverArt, title, slider, playPauseBtn, nextBtn, previousBtn, seek5SecForward, seek5SecBackward, progressStringTv) = createRefs()
+            val (coverArt, title, slider, playPauseBtn, nextBtn, previousBtn, seek5SecForward, seek5SecBackward, progressStringTv, closeBtn) = createRefs()
 
             AsyncImage(
                 modifier = Modifier
@@ -160,7 +162,7 @@ fun PopUpPlayer(
                     .constrainAs(title) {
                         top.linkTo(coverArt.top, margin = 8.dp)
                         start.linkTo(coverArt.end, margin = 8.dp)
-                        end.linkTo(parent.end)
+                        end.linkTo(closeBtn.start, margin = 4.dp)
                         width = Dimension.fillToConstraints
                         height = Dimension.wrapContent
                     }
@@ -177,6 +179,24 @@ fun PopUpPlayer(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
+            // Closes the player completely: stops audio, removes the notification and
+            // forgets the "last played" song.
+            IconButton(
+                modifier = Modifier
+                    .size(36.dp)
+                    .constrainAs(closeBtn) {
+                        top.linkTo(parent.top)
+                        end.linkTo(parent.end)
+                    },
+                onClick = onCloseClick
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Stop playback and close player",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
 
             Text(
                 modifier = Modifier

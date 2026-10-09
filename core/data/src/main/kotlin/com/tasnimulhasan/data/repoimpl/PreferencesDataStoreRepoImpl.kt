@@ -218,7 +218,33 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
         }
     }
 
+    override suspend fun clearLastPlayedTrack() {
+        tryIt {
+            dataStorePreferences.edit { preferences ->
+                preferences.remove(PreferencesKeys.lastPlayedSongId)
+                preferences.remove(PreferencesKeys.lastPlayedPositionMs)
+            }
+        }
+    }
+
+    override suspend fun saveMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.miniPlayerPosition] = position.name }
+        }
+    }
+
+    override fun getMiniPlayerPosition(): Flow<com.tasnimulhasan.entity.enums.MiniPlayerPosition> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                val name = preferences[PreferencesKeys.miniPlayerPosition]
+                com.tasnimulhasan.entity.enums.MiniPlayerPosition.entries.find { it.name == name }
+                    ?: com.tasnimulhasan.entity.enums.MiniPlayerPosition.BOTTOM_END
+            }
+            .distinctUntilChanged()
+    }
+
     private object PreferencesKeys {
+        val miniPlayerPosition = stringPreferencesKey("mini_player_position")
         val eqType = stringPreferencesKey(name = "eq_type")
         val enableEqualizer = booleanPreferencesKey(name = "enable_equalizer")
         val sortType = stringPreferencesKey("sort_type")

@@ -94,10 +94,15 @@ class MelodiqNotificationManager @Inject constructor(
                 it.setUseNextActionInCompactView(true)
                 it.setPriority(NotificationCompat.PRIORITY_LOW)
                 it.setPlayer(exoPlayer)
-                exoPlayer.addListener(object : Player.Listener {
-                    override fun onRepeatModeChanged(repeatMode: Int) = it.invalidate()
-                })
+                exoPlayer.removeListener(repeatInvalidateListener)
+                exoPlayer.addListener(repeatInvalidateListener)
             }
+
+    private val repeatInvalidateListener = object : Player.Listener {
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            playerNotificationManager?.invalidate()
+        }
+    }
 
     private val repeatReceiver = @OptIn(UnstableApi::class) object : PlayerNotificationManager.CustomActionReceiver {
         override fun createCustomActions(

@@ -29,7 +29,16 @@ class MainViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val getVisualizerStyleUseCase: GetVisualizerStyleUseCase,
+    getMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetMiniPlayerPositionUseCase,
+    private val setMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetMiniPlayerPositionUseCase,
 ) : BaseViewModel() {
+    val miniPlayerPosition: StateFlow<com.tasnimulhasan.entity.enums.MiniPlayerPosition> = getMiniPlayerPositionUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.MiniPlayerPosition.BOTTOM_END)
+
+    fun setMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition) {
+        viewModelScope.launch { setMiniPlayerPositionUseCase(position) }
+    }
+
     val visualizerStyle: StateFlow<VisualizerStyle> = getVisualizerStyleUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VisualizerStyle.OFF)
     val visualizerBars: StateFlow<FloatArray> = playerUseCases.observeVisualizer.bars
@@ -123,6 +132,7 @@ class MainViewModel @Inject constructor(
             is UiEvent.SelectedAudioChange -> playerUseCases.selectAudioChange(uiEvents.index)
             is UiEvent.UpdateProgress -> playerUseCases.updateProgress(uiEvents.newProgress)
             UiEvent.SeekToPrevious -> playerUseCases.previous()
+            UiEvent.StopPlayback -> playerUseCases.stopPlayback()
         }
     }
 
@@ -156,6 +166,7 @@ sealed class UiEvent {
     data object SeekToPrevious : UiEvent()
     data object Backward : UiEvent()
     data object Forward : UiEvent()
+    data object StopPlayback : UiEvent()
     data class UpdateProgress(val newProgress: Float) : UiEvent()
 }
 

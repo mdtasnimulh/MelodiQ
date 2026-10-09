@@ -42,6 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
+import com.tasnimulhasan.entity.enums.MiniPlayerPosition
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalConfiguration
@@ -112,6 +118,7 @@ internal fun MmApp(
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
     var showPopUpPlayer by remember { mutableStateOf(false) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
     val currentDestination = appState.currentDestination
 
@@ -246,16 +253,53 @@ internal fun MmApp(
             Box(
                 modifier
                     .fillMaxSize()
+                    .onSizeChanged { containerSize = it }
                     .background(color = MaterialTheme.colorScheme.background)
                     .padding(padding)
                     .consumeWindowInsets(padding)
             ) {
                 GetContent(appState = appState)
 
+                val miniPosition by viewModel.miniPlayerPosition.collectAsStateWithLifecycle()
+                var miniDrag by remember { mutableStateOf(Offset.Zero) }
+                val miniAlignment = when (miniPosition) {
+                    MiniPlayerPosition.BOTTOM_END -> Alignment.BottomEnd
+                    MiniPlayerPosition.BOTTOM_START -> Alignment.BottomStart
+                    MiniPlayerPosition.TOP_END -> Alignment.TopEnd
+                    MiniPlayerPosition.TOP_START -> Alignment.TopStart
+                }
+
                 if (currentDestination?.route != PlayerRoute::class.qualifiedName.plus("/{musicId}")) {
                     AnimatedVisibility(
-                        modifier = Modifier.align(Alignment.BottomEnd),
-                        visible = (isPlaying || viewModel.isPlaybackServiceRunning()) && currentSelectedAudio.songId != 0L && !showPopUpPlayer,
+                        modifier = Modifier
+                            .align(miniAlignment)
+                            .offset { IntOffset(miniDrag.x.roundToInt(), miniDrag.y.roundToInt()) }
+                            .pointerInput(miniPosition, containerSize) {
+                                detectDragGestures(
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        miniDrag += amount
+                                    },
+                                    onDragEnd = {
+                                        // Snap to whichever corner it was dropped nearest to.
+                                        val startsEnd = miniPosition.name.endsWith("END")
+                                        val startsBottom = miniPosition.name.startsWith("BOTTOM")
+                                        val toEnd = if (startsEnd) miniDrag.x > -containerSize.width / 4f else miniDrag.x > containerSize.width / 4f
+                                        val toBottom = if (startsBottom) miniDrag.y > -containerSize.height / 4f else miniDrag.y > containerSize.height / 4f
+                                        miniDrag = Offset.Zero
+                                        viewModel.setMiniPlayerPosition(
+                                            when {
+                                                toBottom && toEnd -> MiniPlayerPosition.BOTTOM_END
+                                                toBottom -> MiniPlayerPosition.BOTTOM_START
+                                                toEnd -> MiniPlayerPosition.TOP_END
+                                                else -> MiniPlayerPosition.TOP_START
+                                            }
+                                        )
+                                    },
+                                    onDragCancel = { miniDrag = Offset.Zero },
+                                )
+                            },
+                        visible = currentSelectedAudio.songId != 0L && !showPopUpPlayer,
                         enter = scaleIn(
                             animationSpec = tween(durationMillis = 500),
                             transformOrigin = TransformOrigin(
@@ -328,6 +372,10 @@ internal fun MmApp(
                             onSeekNextClick = { viewModel.onUiEvents(UiEvent.Forward) },
                             onSeekPreviousClick = { viewModel.onUiEvents(UiEvent.Backward) },
                             onImageClick = { showPopUpPlayer = !showPopUpPlayer },
+                            onCloseClick = {
+                                showPopUpPlayer = false
+                                viewModel.onUiEvents(UiEvent.StopPlayback)
+                            },
                             visualizerStyle = visualizerStyle,
                             visualizerBars = visualizerBars,
                         )

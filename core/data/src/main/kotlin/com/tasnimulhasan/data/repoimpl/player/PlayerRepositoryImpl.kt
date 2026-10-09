@@ -67,8 +67,16 @@ class PlayerRepositoryImpl @Inject constructor(
 
     private val _currentIndex = MutableStateFlow(-1)
 
+    // False on a fresh install / after "close player": the queue is loaded in ExoPlayer but
+    // nothing counts as "the current song" (no mini player, no highlight, nothing saved as
+    // last played). Becomes true once something is restored from a saved last-played track
+    // or the user actually starts playing.
+    private val _sessionActive = MutableStateFlow(false)
+
     override val currentSelectedAudio: StateFlow<MusicEntity?> =
-        combine(_activeQueue, _currentIndex) { list, index -> list.getOrNull(index) }
+        combine(_activeQueue, _currentIndex, _sessionActive) { list, index, active ->
+            if (active) list.getOrNull(index) else null
+        }
             .stateIn(repositoryScope, SharingStarted.Eagerly, null)
 
     override val isPlaying: StateFlow<Boolean> = serviceHandler.isPlayingState
@@ -124,7 +132,10 @@ class PlayerRepositoryImpl @Inject constructor(
         // playing - nothing else restarted it until the user tapped a song.
         repositoryScope.launch {
             serviceHandler.isPlayingState.collect { playing ->
-                if (playing) runCatching { ensurePlaybackServiceStarted() }
+                if (playing) {
+                    _sessionActive.value = true
+                    runCatching { ensurePlaybackServiceStarted() }
+                }
             }
         }
 
@@ -182,6 +193,9 @@ class PlayerRepositoryImpl @Inject constructor(
 
 
     private suspend fun persistCurrentPlaybackPosition() {
+        // Never record anything while there is no active session (fresh install, or the user
+        // closed the player) - otherwise index 0 would be saved as a "last played" song.
+        if (!_sessionActive.value) return
         val songId = serviceHandler.audioList.value
             .getOrNull(serviceHandler.getCurrentMediaItemIndex())?.songId ?: return
         preferencesDataStoreRepository.saveLastPlayedTrack(songId, serviceHandler.getCurrentDuration())
@@ -233,6 +247,9 @@ class PlayerRepositoryImpl @Inject constructor(
                 restorePositionMs = lastPlayed?.positionMs ?: 0L,
                 prebuiltItems = mediaItems,
             )
+            if (lastPlayed != null && musicList.any { it.songId == lastPlayed.songId }) {
+                _sessionActive.value = true
+            }
         } else {
             serviceHandler.updateMediaItemsWithCurrentTrack(musicList, sortType, prebuiltItems = mediaItems)
         }
@@ -250,6 +267,7 @@ class PlayerRepositoryImpl @Inject constructor(
         // what's actually loaded into the player.
         _activeQueue.value = musicList
         curatedQueueActive = true
+        _sessionActive.value = true
         serviceHandler.playCuratedQueue(
             audioList = musicList,
             sortType = serviceHandler.sortType.value,
@@ -298,6 +316,7 @@ class PlayerRepositoryImpl @Inject constructor(
     override fun getSeekStepMs(): Long = serviceHandler.seekStepMs
 
     override suspend fun play() {
+        _sessionActive.value = true
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.Play)
     }
 
@@ -317,10 +336,12 @@ class PlayerRepositoryImpl @Inject constructor(
     }
 
     override suspend fun next() {
+        _sessionActive.value = true
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SkipNext)
     }
 
     override suspend fun previous() {
+        _sessionActive.value = true
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SkipPrevious)
     }
 
@@ -344,7 +365,17 @@ class PlayerRepositoryImpl @Inject constructor(
             _activeQueue.value = _audioList.value
             curatedQueueActive = false
         }
+        _sessionActive.value = true
         serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SelectAudioChange, selectedAudionIndex = index)
+    }
+
+    override suspend fun stopPlayback() {
+        // Order matters: drop the session first so nothing below (pause/seek triggers a
+        // persist) can write the song back as "last played".
+        _sessionActive.value = false
+        serviceHandler.stopForClose()
+        preferencesDataStoreRepository.clearLastPlayedTrack()
+        runCatching { context.stopService(Intent(context, MelodiqPlayerService::class.java)) }
     }
 
     override suspend fun updateProgress(progress: Float) {

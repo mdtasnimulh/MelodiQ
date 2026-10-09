@@ -54,7 +54,9 @@ class MelodiqPlayerService : MediaSessionService() {
 
     override fun onDestroy() {
         notificationManager.release()
-        mediaSession.release()
+        // The MediaSession is a process-wide singleton shared with the player: releasing it
+        // here broke playback after "close player" stopped this service and a song was
+        // started again in the same process.
         releaseVolumeBoost()
         super.onDestroy()
     }

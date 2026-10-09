@@ -61,6 +61,7 @@ internal fun SettingsRoute(
     val crossfadeSettings by viewModel.crossfadeSettings.collectAsStateWithLifecycle()
     val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
     val coverArtStyle by viewModel.coverArtStyle.collectAsStateWithLifecycle()
+    val miniPlayerPosition by viewModel.miniPlayerPosition.collectAsStateWithLifecycle()
 
     // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
     // this app's own playback, not the microphone). Asked for only at the moment the user
@@ -104,6 +105,9 @@ internal fun SettingsRoute(
         visualizerStyleLabel = viewModel::visualizerStyleLabel,
         coverArtStyle = coverArtStyle,
         coverArtStyleLabel = viewModel::coverArtStyleLabel,
+        miniPlayerPosition = miniPlayerPosition,
+        miniPlayerPositionLabel = viewModel::miniPlayerPositionLabel,
+        onMiniPlayerPositionSelected = viewModel::setMiniPlayerPosition,
         onCoverArtStyleSelected = { style ->
             // The circular visualizer is a ring drawn around round artwork - on any other
             // cover style it has nothing to wrap, so switching away from Circle while it's
@@ -163,6 +167,9 @@ internal fun SettingsScreen(
     coverArtStyle: CoverArtStyle,
     coverArtStyleLabel: (CoverArtStyle) -> String,
     onCoverArtStyleSelected: (CoverArtStyle) -> Unit,
+    miniPlayerPosition: com.tasnimulhasan.entity.enums.MiniPlayerPosition,
+    miniPlayerPositionLabel: (com.tasnimulhasan.entity.enums.MiniPlayerPosition) -> String,
+    onMiniPlayerPositionSelected: (com.tasnimulhasan.entity.enums.MiniPlayerPosition) -> Unit,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         item { SectionHeader("Sort songs by") }
@@ -204,6 +211,17 @@ internal fun SettingsScreen(
                 label = coverArtStyleLabel(option),
                 selected = option == coverArtStyle,
                 onClick = { onCoverArtStyleSelected(option) },
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+        item { SectionHeader("Mini player position") }
+        items(com.tasnimulhasan.entity.enums.MiniPlayerPosition.entries.toList()) { option ->
+            SettingsRadioRow(
+                label = miniPlayerPositionLabel(option),
+                selected = option == miniPlayerPosition,
+                onClick = { onMiniPlayerPositionSelected(option) },
             )
         }
 

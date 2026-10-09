@@ -247,6 +247,16 @@ class MelodiqServiceHandler @Inject constructor(
 
     fun getCurrentDuration(): Long = exoPlayer.currentPosition
 
+    /** Silences everything for "close player": pause, rewind, stop the progress ticker and
+     * visualizer. The queue stays loaded so tapping any song later just works. */
+    fun stopForClose() {
+        stopProgressUpdate()
+        exoPlayer.pause()
+        exoPlayer.seekTo(0L)
+        _isPlayingState.value = false
+        releaseVisualizer()
+    }
+
     fun onPlayerEvents(
         playerEvent: MelodiqPlayerEvent,
         selectedAudionIndex: Int = -1,

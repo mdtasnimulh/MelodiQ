@@ -41,4 +41,8 @@ interface PreferencesDataStoreRepository {
 
     suspend fun saveLastPlayedTrack(songId: Long, positionMs: Long)
     suspend fun getLastPlayedTrack(): LastPlayedTrack?
+    suspend fun clearLastPlayedTrack()
+
+    suspend fun saveMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition)
+    fun getMiniPlayerPosition(): Flow<com.tasnimulhasan.entity.enums.MiniPlayerPosition>
 }

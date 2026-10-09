@@ -1,3 +1,4 @@
+// app/src/main/java/com/tasnimulhasan/melodiq/MainActivity.kt
 package com.tasnimulhasan.melodiq
 
 import android.Manifest

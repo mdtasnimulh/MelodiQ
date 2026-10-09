@@ -33,5 +33,6 @@ data class PlayerUseCases(
     val ensurePlaybackServiceStarted: EnsurePlaybackServiceStartedUseCase,
     val repeatTrackOneUseCase: RepeatTrackOneUseCase,
     val repeatTrackAllUseCase: RepeatTrackAllUseCase,
-    val repeatTrackOffUseCase: RepeatTrackOffUseCase
+    val repeatTrackOffUseCase: RepeatTrackOffUseCase,
+    val stopPlayback: StopPlaybackUseCase
 )

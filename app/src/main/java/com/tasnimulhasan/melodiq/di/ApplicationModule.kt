@@ -180,7 +180,8 @@ object ApplicationModule {
         ensurePlaybackServiceStarted: EnsurePlaybackServiceStartedUseCase,
         repeatTrackOneUseCase: RepeatTrackOneUseCase,
         repeatTrackAllUseCase: RepeatTrackAllUseCase,
-        repeatTrackOffUseCase: RepeatTrackOffUseCase
+        repeatTrackOffUseCase: RepeatTrackOffUseCase,
+        stopPlayback: com.tasnimulhasan.domain.localusecase.player.StopPlaybackUseCase
     ): PlayerUseCases = PlayerUseCases(
         loadPlaylist = loadPlaylist,
         playCuratedQueue = playCuratedQueue,
@@ -214,7 +215,8 @@ object ApplicationModule {
         backwardTrackUseCase = backward,
         repeatTrackOneUseCase = repeatTrackOneUseCase,
         repeatTrackAllUseCase = repeatTrackAllUseCase,
-        repeatTrackOffUseCase = repeatTrackOffUseCase
+        repeatTrackOffUseCase = repeatTrackOffUseCase,
+        stopPlayback = stopPlayback
 
     )
 
