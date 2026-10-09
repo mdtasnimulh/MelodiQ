@@ -14,6 +14,7 @@ dependencies {
     implementation(projects.core.di)
     implementation(projects.core.database)
     implementation(projects.core.common)
+    implementation(projects.core.designSystem)
     implementation(projects.core.model.entity)
     implementation(projects.core.model.apiResponse)
     implementation(projects.core.notifications)

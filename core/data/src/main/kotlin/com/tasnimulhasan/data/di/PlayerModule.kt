@@ -46,9 +46,11 @@ object PlayerModule {
 
     @Provides
     @Singleton
+    @OptIn(UnstableApi::class)
     fun provideMediaSession(
         @ApplicationContext context: Context,
         player: ExoPlayer,
+        favouriteRepository: com.tasnimulhasan.domain.repository.local.FavouriteRepository,
     ): MediaSession {
         val sessionActivityIntent = context.packageManager
             .getLaunchIntentForPackage(context.packageName)
@@ -64,9 +66,13 @@ object PlayerModule {
             sessionActivityIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val callback = com.tasnimulhasan.data.player.MelodiqSessionCallback(player, favouriteRepository)
         return MediaSession.Builder(context, player)
             .setSessionActivity(sessionActivityPendingIntent)
+            .setCallback(callback)
+            .setBitmapLoader(com.tasnimulhasan.data.player.MelodiqBitmapLoader(context))
             .build()
+            .also { callback.attach(it) }
     }
 
     @Provides

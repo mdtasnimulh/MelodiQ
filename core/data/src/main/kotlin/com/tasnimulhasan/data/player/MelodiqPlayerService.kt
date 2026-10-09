@@ -1,10 +1,14 @@
 package com.tasnimulhasan.data.player
 
 import android.content.Intent
-import android.media.audiofx.LoudnessEnhancer
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.tasnimulhasan.common.constant.AppConstants
 import com.tasnimulhasan.common.notification.MelodiqNotificationManager
+import com.tasnimulhasan.designsystem.R
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -17,25 +21,38 @@ class MelodiqPlayerService : MediaSessionService() {
     @Inject
     lateinit var notificationManager: MelodiqNotificationManager
 
-    private var loudnessEnhancer: LoudnessEnhancer? = null
-
+    @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
-        // MUST call startForeground() here, synchronously, regardless of playback state.
-        //
-        // ensurePlaybackServiceStarted() calls Context.startForegroundService() the moment
-        // the user taps a song - before ExoPlayer has prepared anything, let alone started
-        // playing. Android enforces a hard timeout on that call: if startForeground() isn't
-        // reached in time, the OS kills the whole process with
-        // ForegroundServiceDidNotStartInTimeException, a FATAL crash. Media3's own
-        // automatic notification promotion only happens once the player is genuinely
-        // playing - which never happens in time on a slow prepare, and never happens at all
-        // if playback fails outright (e.g. an unreadable file) - so relying on it alone left
-        // a real window where this crashed on every single tap. Calling this immediately,
-        // unconditionally, with whatever notification is available right now closes that
-        // window; the notification's content is then kept live by the same
-        // PlayerNotificationManager for the rest of playback.
-        notificationManager.startNotificationService(this, mediaSession)
+        // MUST call startForeground() here, synchronously (see the OS timeout for
+        // startForegroundService); Media3 swaps in the real notification right after.
+        notificationManager.startForegroundPlaceholder(this)
+
+        // Media3 builds the playback notification itself. Pointing it at our channel/id (the
+        // same ones as the placeholder) makes it replace the placeholder, and gives it our
+        // small icon instead of its generic default.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .setNotificationId(AppConstants.NOTIFICATION_ID)
+                .setChannelId(AppConstants.NOTIFICATION_CHANNEL_ID)
+                .setChannelName(R.string.app_name)
+                .build()
+                .also { it.setSmallIcon(R.drawable.ic_stat_music) }
+        )
+        // This service is started directly (nothing binds a MediaController to it), so the
+        // session has to be registered by hand or Media3 never posts a notification for it.
+        addSession(mediaSession)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_CLOSE) {
+            // "Close player": drop out of the foreground and remove the notification, but
+            // keep the service object alive - destroying it from here crashed/closed the app.
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            notificationManager.cancel()
+            return START_NOT_STICKY
+        }
+        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
@@ -47,22 +64,14 @@ class MelodiqPlayerService : MediaSessionService() {
             stopSelf()
             super.onTaskRemoved(rootIntent)
         }
-        // Music IS playing: deliberately do NOT call super. Its default handling may stop the
-        // service when the task is swiped away, which is what removed the notification while
-        // the song kept playing.
+        // Music IS playing: deliberately do NOT call super, which may stop the service when
+        // the task is swiped away.
     }
 
-    override fun onDestroy() {
-        notificationManager.release()
-        // The MediaSession is a process-wide singleton shared with the player: releasing it
-        // here broke playback after "close player" stopped this service and a song was
-        // started again in the same process.
-        releaseVolumeBoost()
-        super.onDestroy()
-    }
+    // The MediaSession is a process-wide singleton shared with the player, so it is not
+    // released here.
 
-    fun releaseVolumeBoost() {
-        loudnessEnhancer?.release()
-        loudnessEnhancer = null
+    companion object {
+        const val ACTION_CLOSE = "com.tasnimulhasan.melodiq.action.CLOSE_PLAYER"
     }
 }

@@ -536,6 +536,8 @@ class MelodiqServiceHandler @Inject constructor(
                     .setAlbumArtist(audio.artist)
                     .setDisplayTitle(audio.songTitle)
                     .setSubtitle(audio.album)
+                    // Lets Media3's notification / lock screen ask the BitmapLoader for cover art.
+                    .setArtworkUri(audio.contentUri)
                     .build()
             )
             .build()

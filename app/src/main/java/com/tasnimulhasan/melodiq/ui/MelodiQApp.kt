@@ -362,7 +362,9 @@ internal fun MmApp(
                             onProgress = { seekPosition -> viewModel.onUiEvents(UiEvent.SeekTo(seekPosition)) },
                             isPlaying = isPlaying,
                             progressString = "$progressString / " + viewModel.convertLongToReadableDateTime(
-                                currentSelectedAudio.duration.toLong(),
+                                // duration is "" on the placeholder song that is briefly shown while the popup
+                                // plays its exit animation after "close player" - toLong() crashed on it.
+                                currentSelectedAudio.duration.toLongOrNull() ?: 0L,
                                 "mm:ss"
                             ),
                             onMiniPlayerClick = { appState.navigateToPlayer(currentSelectedAudio.songId.toString()) },

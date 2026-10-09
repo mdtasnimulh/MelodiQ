@@ -375,7 +375,14 @@ class PlayerRepositoryImpl @Inject constructor(
         _sessionActive.value = false
         serviceHandler.stopForClose()
         preferencesDataStoreRepository.clearLastPlayedTrack()
-        runCatching { context.stopService(Intent(context, MelodiqPlayerService::class.java)) }
+        closedByUser = true
+        if (isPlaybackServiceRunning()) {
+            runCatching {
+                context.startService(
+                    Intent(context, MelodiqPlayerService::class.java).setAction(MelodiqPlayerService.ACTION_CLOSE)
+                )
+            }
+        }
     }
 
     override suspend fun updateProgress(progress: Float) {
@@ -405,7 +412,17 @@ class PlayerRepositoryImpl @Inject constructor(
             .any { it.service.className == MelodiqPlayerService::class.java.name }
     }
 
+    // True after "close player" took the notification down while leaving the service object
+    // running, so the next playback must explicitly bring the notification back.
+    private var closedByUser = false
+
     override fun ensurePlaybackServiceStarted() {
+        if (closedByUser) {
+            // The service is still running after "close player"; Media3 puts the notification
+            // back by itself as soon as playback starts, so nothing needs (re)starting.
+            closedByUser = false
+            if (isPlaybackServiceRunning()) return
+        }
         if (!isPlaybackServiceRunning()) {
             val intent = Intent(context, MelodiqPlayerService::class.java)
             ContextCompat.startForegroundService(context, intent)
