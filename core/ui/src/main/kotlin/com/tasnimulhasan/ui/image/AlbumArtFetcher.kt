@@ -31,8 +31,17 @@ data class AlbumArt(
     val albumId: Long,
 )
 
+/** Bumped after a file's tags/name change so Coil stops serving the art it cached earlier. */
+object AlbumArtVersion {
+    @Volatile
+    var value: Int = 0
+        private set
+
+    fun bump() { value += 1 }
+}
+
 class AlbumArtKeyer : Keyer<AlbumArt> {
-    override fun key(data: AlbumArt, options: Options): String = "album_art_${data.songId}"
+    override fun key(data: AlbumArt, options: Options): String = "album_art_${data.songId}_v${AlbumArtVersion.value}"
 }
 
 class AlbumArtFetcher(

@@ -86,9 +86,12 @@ class SongDetailsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isSaving = true, message = null)
         viewModelScope.launch {
             when (val result = saveMetadata(songId, metadata)) {
-                MetadataEditResult.Success -> _uiState.value = _uiState.value.copy(
+                MetadataEditResult.Success -> {
+                    com.tasnimulhasan.ui.image.AlbumArtVersion.bump()
+                    _uiState.value = _uiState.value.copy(
                     isSaving = false, metadata = metadata, message = "Saved"
-                )
+                    )
+                }
                 is MetadataEditResult.NeedsPermission -> {
                     pendingRetry = PendingRetry.Save(metadata)
                     _uiState.value = _uiState.value.copy(isSaving = false)
@@ -120,7 +123,20 @@ class SongDetailsViewModel @Inject constructor(
     fun rename(newName: String) {
         viewModelScope.launch {
             when (val result = renameSong(songId, newName)) {
-                FileOpResult.Success -> _uiState.value = _uiState.value.copy(message = "Renamed")
+                FileOpResult.Success -> {
+                    com.tasnimulhasan.ui.image.AlbumArtVersion.bump()
+                    val current = _uiState.value.metadata
+                    val baseName = newName.substringBeforeLast('.', newName)
+                    if (current != null && _uiState.value.writeSupport != TagWriteSupport.UNSUPPORTED &&
+                        current.title != baseName
+                    ) {
+                        // The list shows the TITLE tag, not the file name - rename both so the
+                        // change is actually visible. The tag writer keeps the embedded cover.
+                        save(current.copy(title = baseName, newArtwork = null))
+                    } else {
+                        _uiState.value = _uiState.value.copy(message = "Renamed")
+                    }
+                }
                 is FileOpResult.NeedsPermission -> {
                     pendingRetry = PendingRetry.Rename(newName)
                     _pendingConsent.value = result.intentSender

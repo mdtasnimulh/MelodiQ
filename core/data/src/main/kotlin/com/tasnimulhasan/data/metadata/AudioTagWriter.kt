@@ -61,7 +61,7 @@ class AudioTagWriter @Inject constructor(@ApplicationContext private val context
             if (!copied || backup.length() == 0L) return false
 
             val newTagBytes = when (support) {
-                TagWriteSupport.MP3 -> buildId3v2Tag(metadata)
+                TagWriteSupport.MP3 -> buildId3v2Tag(metadata, readExistingApicFrames(backup))
                 TagWriteSupport.FLAC -> buildFlacHeader({ backup.inputStream() }, metadata) ?: return false
                 TagWriteSupport.UNSUPPORTED -> return false
             }
@@ -154,7 +154,7 @@ class AudioTagWriter @Inject constructor(@ApplicationContext private val context
 
     // --- Step 2: build the new metadata region. ---
 
-    private fun buildId3v2Tag(metadata: EditableMetadata): ByteArray {
+    private fun buildId3v2Tag(metadata: EditableMetadata, existingApic: List<ByteArray>): ByteArray {
         val frames = ByteArrayOutputStream()
         writeTextFrame(frames, "TIT2", metadata.title)
         writeTextFrame(frames, "TPE1", metadata.artist)
@@ -164,7 +164,10 @@ class AudioTagWriter @Inject constructor(@ApplicationContext private val context
         writeTextFrame(frames, "TYER", metadata.year)
         writeTextFrame(frames, "TRCK", metadata.trackNumber)
         writeTextFrame(frames, "TPOS", metadata.discNumber)
-        metadata.newArtwork?.let { art -> writeApicFrame(frames, art) }
+        // Rebuilding the tag from scratch used to drop the embedded cover. Keep the file's
+        // existing picture frames unless the user picked a replacement.
+        if (metadata.newArtwork != null) writeApicFrame(frames, metadata.newArtwork!!)
+        else existingApic.forEach { frames.write(it) }
 
         val frameBytes = frames.toByteArray()
         val header = ByteArrayOutputStream()
@@ -173,6 +176,63 @@ class AudioTagWriter @Inject constructor(@ApplicationContext private val context
         header.write(0) // flags
         header.write(intToSynchsafe(frameBytes.size))
         return header.toByteArray() + frameBytes
+    }
+
+    /** Returns every APIC frame of the file's ID3v2.3/2.4 tag, re-encoded as complete
+     * ID3v2.3 frames (big-endian size, zeroed flags) ready to be written back verbatim. */
+    private fun readExistingApicFrames(file: File): List<ByteArray> {
+        val result = mutableListOf<ByteArray>()
+        try {
+            file.inputStream().buffered().use { input ->
+                val header = ByteArray(10)
+                if (input.read(header) != 10 || header[0] != 'I'.code.toByte() ||
+                    header[1] != 'D'.code.toByte() || header[2] != '3'.code.toByte()) return emptyList()
+                val major = header[3].toInt()
+                if (major != 3 && major != 4) return emptyList()
+                // Whole-tag unsynchronisation would corrupt a verbatim copy - leave it alone.
+                if (major == 3 && (header[5].toInt() and 0x80) != 0) return emptyList()
+                if (major == 4 && (header[5].toInt() and 0x80) != 0) return emptyList()
+                val tagSize = synchsafeToInt(header[6], header[7], header[8], header[9])
+                val body = ByteArray(tagSize)
+                var read = 0
+                while (read < tagSize) {
+                    val n = input.read(body, read, tagSize - read)
+                    if (n <= 0) break
+                    read += n
+                }
+                var offset = 0
+                // Skip an extended header if flagged.
+                if ((header[5].toInt() and 0x40) != 0 && read >= 4) {
+                    offset = if (major == 4) synchsafeToInt(body[0], body[1], body[2], body[3])
+                    else 4 + ((body[0].toInt() and 0xFF shl 24) or (body[1].toInt() and 0xFF shl 16) or
+                        (body[2].toInt() and 0xFF shl 8) or (body[3].toInt() and 0xFF))
+                }
+                while (offset + 10 <= read) {
+                    val id = String(body, offset, 4, Charsets.US_ASCII)
+                    if (id[0] == '\u0000') break
+                    val size = if (major == 4) synchsafeToInt(body[offset + 4], body[offset + 5], body[offset + 6], body[offset + 7])
+                    else (body[offset + 4].toInt() and 0xFF shl 24) or (body[offset + 5].toInt() and 0xFF shl 16) or
+                        (body[offset + 6].toInt() and 0xFF shl 8) or (body[offset + 7].toInt() and 0xFF)
+                    val start = offset + 10
+                    if (size <= 0 || start + size > read) break
+                    val flagsB = body[offset + 9].toInt()
+                    // v2.4 format flags: 0x02 unsync, 0x01 data-length indicator, 0x08 compression/0x04 encryption
+                    val unusable = major == 4 && (flagsB and 0x0F) != 0
+                    if (id == "APIC" && !unusable) {
+                        val frame = ByteArrayOutputStream()
+                        frame.write("APIC".toByteArray(Charsets.US_ASCII))
+                        frame.write(intToBigEndian(size))
+                        frame.write(0); frame.write(0)
+                        frame.write(body, start, size)
+                        result.add(frame.toByteArray())
+                    }
+                    offset = start + size
+                }
+            }
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        return result
     }
 
     private fun writeTextFrame(out: ByteArrayOutputStream, frameId: String, value: String) {
