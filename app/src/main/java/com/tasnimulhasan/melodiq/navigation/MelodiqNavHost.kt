@@ -79,6 +79,7 @@ fun MelodiQNavHost(
             navController = navController,
             navigateToPlayer = navigateToPlayer,
             navigateBack = navigateBack,
+            navigateToAlbums = { appState.navigateToAlbumsList() },
         )
         aboutScreen()
         feedbackScreen()

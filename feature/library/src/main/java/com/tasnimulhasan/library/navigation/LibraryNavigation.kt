@@ -45,6 +45,7 @@ fun NavGraphBuilder.libraryScreens(
     navController: NavController,
     navigateToPlayer: (musicId: String) -> Unit,
     navigateBack: () -> Unit,
+    navigateToAlbums: () -> Unit,
 ) {
     composable<LibraryHubNavRoute>(
         enterTransition = { MelodiqMotion.pushEnter() },
@@ -59,6 +60,7 @@ fun NavGraphBuilder.libraryScreens(
             navigateToRecentlyPlayed = { navController.navigateToRecentlyPlayed() },
             navigateToSearch = { navController.navigateToSearch() },
             navigateToNeverPlayed = { navController.navigateToNeverPlayed() },
+            navigateToAlbums = navigateToAlbums,
         )
     }
 

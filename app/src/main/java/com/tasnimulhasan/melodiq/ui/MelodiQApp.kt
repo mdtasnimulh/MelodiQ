@@ -68,6 +68,7 @@ import com.tasnimulhasan.designsystem.component.MelodiqTopAppBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 import com.tasnimulhasan.eqalizer.navigation.EqualizerRoute
 import com.tasnimulhasan.featureabout.navigation.AboutRoute
+import com.tasnimulhasan.library.navigation.LibraryHubNavRoute
 import com.tasnimulhasan.featurefavourite.navigation.FavouriteRoute
 import com.tasnimulhasan.featurefeedback.navigation.FeedbackRoute
 import com.tasnimulhasan.featureplayer.navigation.PlayerRoute
@@ -122,14 +123,15 @@ internal fun MmApp(
 
     val currentDestination = appState.currentDestination
 
-    val isTopLevelDestination = appState.topLevelDestination.any { destination ->
-        currentDestination?.route?.contains(destination.name, true) == true
-    }
+    // Matches the real route, not a substring of its name: package names such as
+    // "...library.navigation" would otherwise make every Library sub-screen look top-level.
+    val isTopLevelDestination = appState.currentTopLevelDestination != null
 
     val currentTitleRes = when (currentDestination?.route) {
         HomeRoute::class.qualifiedName -> Res.string.app_name
         SongsRoute::class.qualifiedName -> Res.string.title_songs
         AlbumRoute::class.qualifiedName -> Res.string.title_albums
+        LibraryHubNavRoute::class.qualifiedName -> Res.string.title_library
         PlaylistsRoute::class.qualifiedName -> Res.string.title_playlists
         EqualizerRoute::class.qualifiedName -> Res.string.equalizer_title_text
         SettingsRoute::class.qualifiedName -> Res.string.title_settings
@@ -196,7 +198,7 @@ internal fun MmApp(
             onAboutClick = { appState.navigateToAbout() },
             onFeedBackClick = { appState.navigateToFeedBack() },
             onFavouriteClick = { appState.navigateToFavourite() },
-            onLibraryClick = { appState.navigateToLibraryHub() },
+            onLibraryClick = { appState.navigateToTopLevelDestination(com.tasnimulhasan.melodiq.navigation.TopLevelDestination.LIBRARY) },
             onSettingsClick = { appState.navigateToSettings() }
         )
         Scaffold(

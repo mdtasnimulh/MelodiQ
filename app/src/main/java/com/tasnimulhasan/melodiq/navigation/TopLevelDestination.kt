@@ -2,9 +2,9 @@ package com.tasnimulhasan.melodiq.navigation
 
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.tasnimulhasan.albums.navigation.AlbumRoute
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 import com.tasnimulhasan.home.navigation.HomeRoute
+import com.tasnimulhasan.library.navigation.LibraryHubNavRoute
 import com.tasnimulhasan.playlists.navigation.PlaylistsRoute
 import com.tasnimulhasan.songs.navigation.SongsRoute
 import kotlin.reflect.KClass
@@ -33,12 +33,12 @@ enum class TopLevelDestination(
         route = SongsRoute::class
     ),
 
-    ALBUMS(
-        selectedIcon = MelodiqIcons.Album,
-        unSelectedIcon = MelodiqIcons.AlbumOutline,
-        iconTextId = Res.string.title_albums,
-        titleTextId = Res.string.title_albums,
-        route = AlbumRoute::class
+    LIBRARY(
+        selectedIcon = MelodiqIcons.Library,
+        unSelectedIcon = MelodiqIcons.LibraryOutline,
+        iconTextId = Res.string.title_library,
+        titleTextId = Res.string.title_library,
+        route = LibraryHubNavRoute::class
     ),
 
     PLAYLISTS(

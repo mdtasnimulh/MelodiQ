@@ -13,7 +13,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
 import com.tasnimulhasan.albums.navigation.AlbumRoute
 import com.tasnimulhasan.albums.navigation.navigateToAlbumDetails
-import com.tasnimulhasan.albums.navigation.navigateToAlbums
 import com.tasnimulhasan.eqalizer.navigation.navigateToEqualizer
 import com.tasnimulhasan.featureabout.navigation.navigateToAbout
 import com.tasnimulhasan.featurefavourite.navigation.navigateToFavourite
@@ -77,7 +76,11 @@ class MelodiQAppState(
         when (topLevelDestination) {
             TopLevelDestination.HOME -> navController.navigateToHome(topLevelNavOptions)
             TopLevelDestination.SONGS -> navController.navigateToSongs(topLevelNavOptions)
-            TopLevelDestination.ALBUMS -> navController.navigateToAlbums(topLevelNavOptions)
+            TopLevelDestination.LIBRARY -> navController.navigateToLibraryHub {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
             TopLevelDestination.PLAYLISTS -> navController.navigateToPlaylists(topLevelNavOptions)
         }
     }
@@ -88,7 +91,7 @@ class MelodiQAppState(
 
     fun navigateToFavourite() = navController.navigateToFavourite()
 
-    fun navigateToLibraryHub() = navController.navigateToLibraryHub()
+    fun navigateToAlbumsList() = navController.navigate(AlbumRoute)
 
     fun navigateToAbout() = navController.navigateToAbout()
 

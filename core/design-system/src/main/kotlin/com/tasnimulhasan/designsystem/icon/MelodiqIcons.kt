@@ -4,6 +4,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Segment
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.filled.CandlestickChart
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -28,6 +30,9 @@ object MelodiqIcons {
 
     val Album = Icons.Filled.Album
     val AlbumOutline = Icons.Outlined.Album
+
+    val Library = Icons.Filled.Category
+    val LibraryOutline = Icons.Outlined.Category
 
     val Playlists = Icons.Filled.LibraryMusic
     val PlaylistsOutline = Icons.Outlined.LibraryMusic
