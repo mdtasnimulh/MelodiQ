@@ -17,6 +17,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.tasnimulhasan.settings.AppIconManager
+import com.tasnimulhasan.settings.AppIconOption
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -33,6 +38,15 @@ fun CustomDrawer(
     onLibraryClick: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
+    // The logo follows the launcher icon the user picked in Settings > App icon.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val selectedIcon by AppIconManager.selected.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(Unit) { AppIconManager.refresh(context) }
+    val logoRes = remember(selectedIcon) {
+        AppIconManager.previewResId(context, selectedIcon ?: AppIconOption.DEFAULT)
+            .takeIf { it != 0 } ?: Res.drawable.ic_logo_main
+    }
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -59,7 +73,7 @@ fun CustomDrawer(
             modifier = Modifier
                 .size(128.dp)
                 .clip(RoundedCornerShape(32.dp)),
-            painter = painterResource(id = Res.drawable.ic_logo_main),
+            painter = painterResource(id = logoRes),
             contentDescription = "App Logo"
         )
         Spacer(modifier = Modifier.height(40.dp))

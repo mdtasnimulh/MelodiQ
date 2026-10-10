@@ -11,6 +11,7 @@ import com.tasnimulhasan.domain.localusecase.library.ScanLibraryUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.enums.AccentColorOption
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
+import com.tasnimulhasan.settings.AppIconManager
 import com.tasnimulhasan.ui.image.AlbumArtAccentExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -45,13 +46,22 @@ class MainActivityViewModel @Inject constructor(
     // Recomputed (Palette extraction) only when the accent mode is ALBUM_ART AND the
     // currently playing song actually changes - never runs for any other accent mode, and
     // never re-runs on every progress tick since only songId is compared.
+    init {
+        AppIconManager.refresh(appContext)
+    }
+
     val accentSeedColor: StateFlow<Color?> = combine(
         accentColorOption,
         playerUseCases.observeCurrentSelectedAudio(),
-    ) { option, song -> option to song }
-        .distinctUntilChanged { old, new -> old.first == new.first && old.second?.songId == new.second?.songId }
-        .map { (option, song) ->
+        AppIconManager.selected,
+    ) { option, song, icon -> Triple(option, song, icon) }
+        .distinctUntilChanged { old, new ->
+            old.first == new.first && old.second?.songId == new.second?.songId && old.third == new.third
+        }
+        .map { (option, song, icon) ->
             when (option) {
+                AccentColorOption.APP_ICON ->
+                    AppIconManager.accentColor(appContext, icon ?: com.tasnimulhasan.settings.AppIconOption.DEFAULT)
                 AccentColorOption.ALBUM_ART -> song?.let {
                     AlbumArtAccentExtractor.extractAccentColor(
                         context = appContext,

@@ -18,7 +18,7 @@ fun AccentColorOption.fixedSeedColorOrNull(): Color? = when (this) {
     AccentColorOption.PINK -> Color(0xFFD81B60)
     AccentColorOption.RED -> Color(0xFFC62828)
     AccentColorOption.TEAL -> Color(0xFF00796B)
-    AccentColorOption.DYNAMIC, AccentColorOption.ALBUM_ART -> null
+    AccentColorOption.DYNAMIC, AccentColorOption.ALBUM_ART, AccentColorOption.APP_ICON -> null
 }
 
 /**

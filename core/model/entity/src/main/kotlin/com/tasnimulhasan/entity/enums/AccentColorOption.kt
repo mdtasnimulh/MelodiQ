@@ -14,6 +14,9 @@ enum class AccentColorOption {
     /** Derived live from the currently playing song's album art (Palette API). */
     ALBUM_ART,
 
+    /** Derived from the colours of the launcher icon the user picked (Settings > App icon). */
+    APP_ICON,
+
     PURPLE,
     BLUE,
     GREEN,

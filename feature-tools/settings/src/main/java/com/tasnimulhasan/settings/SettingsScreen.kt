@@ -450,7 +450,7 @@ private fun AccentColorSwatch(
                     contentDescription = "Selected",
                     tint = Color.White,
                 )
-                option == AccentColorOption.DYNAMIC || option == AccentColorOption.ALBUM_ART -> Icon(
+                option == AccentColorOption.DYNAMIC || option == AccentColorOption.ALBUM_ART || option == AccentColorOption.APP_ICON -> Icon(
                     imageVector = Icons.Filled.Palette,
                     contentDescription = null,
                     tint = Color.White,
@@ -479,6 +479,7 @@ private fun accentPreviewColor(option: AccentColorOption): Color? = when (option
     AccentColorOption.TEAL -> Color(0xFF00796B)
     AccentColorOption.DYNAMIC -> Color(0xFF757575)
     AccentColorOption.ALBUM_ART -> Color(0xFF757575)
+    AccentColorOption.APP_ICON -> Color(0xFF757575)
 }
 
 

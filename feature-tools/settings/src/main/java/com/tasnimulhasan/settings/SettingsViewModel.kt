@@ -63,9 +63,9 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _appIcon = kotlinx.coroutines.flow.MutableStateFlow(AppIconManager.current(context))
-    internal val appIcon: StateFlow<AppIconOption> = _appIcon
+    val appIcon: StateFlow<AppIconOption> = _appIcon
 
-    internal fun setAppIcon(option: AppIconOption) {
+    fun setAppIcon(option: AppIconOption) {
         if (option == _appIcon.value) return
         try {
             AppIconManager.apply(context, option)
@@ -215,6 +215,7 @@ class SettingsViewModel @Inject constructor(
     fun accentColorLabel(option: AccentColorOption): String = when (option) {
         AccentColorOption.DYNAMIC -> "Dynamic (wallpaper)"
         AccentColorOption.ALBUM_ART -> "Album art"
+        AccentColorOption.APP_ICON -> "App icon"
         AccentColorOption.PURPLE -> "Purple"
         AccentColorOption.BLUE -> "Blue"
         AccentColorOption.GREEN -> "Green"

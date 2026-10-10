@@ -3,10 +3,15 @@ package com.tasnimulhasan.settings
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import androidx.compose.ui.graphics.Color
+import com.tasnimulhasan.ui.image.AppIconAccentExtractor
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /** One selectable launcher icon. [aliasClass] must match an <activity-alias> in the manifest,
  * and [mipmapName] the adaptive icon (mipmap-anydpi) that alias uses. */
-internal enum class AppIconOption(val aliasClass: String, val mipmapName: String, val drawableName: String, val group: Group, val label: String) {
+enum class AppIconOption(val aliasClass: String, val mipmapName: String, val drawableName: String, val group: Group, val label: String) {
     MAIN_1("com.tasnimulhasan.melodiq.alias.LogoMain", "ic_alias_main_1", "ic_logo_main", Group.MAIN, "Main"),
     MAIN_2("com.tasnimulhasan.melodiq.alias.LogoMain2", "ic_alias_main_2", "ic_logo_main_2", Group.MAIN, "Main 2"),
     MAIN_3("com.tasnimulhasan.melodiq.alias.LogoMain3", "ic_alias_main_3", "ic_logo_main_3", Group.MAIN, "Main 3"),
@@ -18,6 +23,15 @@ internal enum class AppIconOption(val aliasClass: String, val mipmapName: String
 
     enum class Group(val title: String) { MAIN("Main logos"), CLASSIC("Classic logos") }
 
+    /** Used only if Palette can't read the drawable. */
+    val fallbackSeed: Color
+        get() = when (this) {
+            MAIN_1, ALT_1 -> Color(0xFF6497D6)
+            MAIN_2, ALT_2 -> Color(0xFF5B6B4D)
+            MAIN_3, ALT_3 -> Color(0xFFFF4D00)
+            MAIN_4, ALT_4 -> Color(0xFF3A6B35)
+        }
+
     companion object {
         val DEFAULT = MAIN_1
     }
@@ -25,7 +39,28 @@ internal enum class AppIconOption(val aliasClass: String, val mipmapName: String
 
 /** The launcher-icon choice lives in the system's component-enabled state (the single source
  * of truth), so there is nothing to keep in sync in DataStore. */
-internal object AppIconManager {
+object AppIconManager {
+
+    private val _selected = MutableStateFlow<AppIconOption?>(null)
+
+    /** The active launcher icon, shared so the drawer and the theme follow a change instantly.
+     * Null until [refresh] has run once. */
+    val selected: StateFlow<AppIconOption?> = _selected.asStateFlow()
+
+    fun refresh(context: Context) {
+        _selected.value = current(context)
+    }
+
+    private val accentCache = mutableMapOf<AppIconOption, Color>()
+
+    /** Accent colour taken from [option]'s artwork (cached - the artwork never changes). */
+    suspend fun accentColor(context: Context, option: AppIconOption): Color {
+        accentCache[option]?.let { return it }
+        val resId = previewResId(context, option)
+        val color = (if (resId != 0) AppIconAccentExtractor.extract(context, resId) else null) ?: option.fallbackSeed
+        accentCache[option] = color
+        return color
+    }
 
     fun current(context: Context): AppIconOption {
         val pm = context.packageManager
@@ -61,6 +96,7 @@ internal object AppIconManager {
                 PackageManager.DONT_KILL_APP,
             )
         }
+        _selected.value = target
     }
 
     /** Resource id of the option's icon, looked up by name so this module doesn't need to
