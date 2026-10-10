@@ -1,5 +1,7 @@
 package com.tasnimulhasan.playlistdetails.component
 
+import com.tasnimulhasan.ui.motion.pressFeedback
+
 import android.net.Uri
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -68,6 +70,7 @@ fun MusicCard(
         ),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
+            .pressFeedback()
             .fillMaxWidth()
             .height(88.dp)
             .padding(vertical = 6.dp, horizontal = 16.dp)

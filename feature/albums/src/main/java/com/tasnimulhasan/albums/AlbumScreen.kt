@@ -1,5 +1,7 @@
 package com.tasnimulhasan.albums
 
+import com.tasnimulhasan.ui.motion.pressFeedback
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,7 +70,7 @@ internal fun AlbumsScreen(
             }
         }
         items(items = albums, key = { it.albumId }) { album ->
-            AlbumGridCard(album = album, onClick = { onAlbumClicked(album.albumId) })
+            AlbumGridCard(album = album, onClick = { onAlbumClicked(album.albumId) }, modifier = Modifier.animateItem())
         }
     }
 }
@@ -77,9 +79,11 @@ internal fun AlbumsScreen(
 private fun AlbumGridCard(
     album: AlbumUiModel,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
+            .pressFeedback()
             .fillMaxWidth()
             .padding(4.dp)
             .clickable(onClick = onClick)

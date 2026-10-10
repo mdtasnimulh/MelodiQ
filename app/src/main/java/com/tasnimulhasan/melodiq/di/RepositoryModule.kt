@@ -59,6 +59,9 @@ interface RepositoryModule {
     fun bindLibraryRepository(impl: LibraryRepoImpl): LibraryRepository
 
     @Binds
+    fun bindBackupRepository(impl: com.tasnimulhasan.data.repoimpl.local.BackupRepoImpl): com.tasnimulhasan.domain.repository.local.BackupRepository
+
+    @Binds
     fun bindLyricsRepository(impl: LyricsRepoImpl): LyricsRepository
 
     @Binds

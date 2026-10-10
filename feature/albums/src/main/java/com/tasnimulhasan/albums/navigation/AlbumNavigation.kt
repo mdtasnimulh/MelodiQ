@@ -1,5 +1,6 @@
 package com.tasnimulhasan.albums.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -30,10 +31,10 @@ fun NavGraphBuilder.albumScreen(
     navigateToSearch: () -> Unit,
 ) {
     composable<AlbumRoute>(
-        enterTransition = { slideInHorizontally {it} },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         AlbumsScreen(onAlbumClicked = navigateToAlbumDetails, navigateToSearch = navigateToSearch)
     }
@@ -44,10 +45,10 @@ fun NavGraphBuilder.albumDetailsScreen(
     navigateToPlayer: (musicId: String) -> Unit,
 ) {
     composable<AlbumDetailsRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { MelodiqMotion.fadeEnter() },
+        exitTransition = { MelodiqMotion.fadeExit() },
+        popEnterTransition = { MelodiqMotion.fadeEnter() },
+        popExitTransition = { MelodiqMotion.fadeExit() }
     ) {
         AlbumDetailsScreen(navigateToPlayer = navigateToPlayer)
     }

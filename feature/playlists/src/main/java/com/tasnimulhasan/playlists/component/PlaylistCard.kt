@@ -1,5 +1,7 @@
 package com.tasnimulhasan.playlists.component
 
+import com.tasnimulhasan.ui.motion.pressFeedback
+
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
@@ -32,13 +34,15 @@ import java.util.concurrent.TimeUnit
 fun PlaylistCard(
     playlist: PlaylistWithStats,
     onPlaylistClicked: (Int, String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val subtitle = remember(playlist.songCount, playlist.totalDurationMs) {
         formatPlaylistSubtitle(playlist.songCount, playlist.totalDurationMs)
     }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
+            .pressFeedback()
             .padding(vertical = 6.dp, horizontal = 16.dp)
             .fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),

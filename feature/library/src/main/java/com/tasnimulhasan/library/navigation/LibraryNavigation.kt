@@ -1,5 +1,6 @@
 package com.tasnimulhasan.library.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -13,6 +14,7 @@ import com.tasnimulhasan.library.FoldersRoute
 import com.tasnimulhasan.library.GenreDetailsRoute
 import com.tasnimulhasan.library.GenresRoute
 import com.tasnimulhasan.library.LibraryHubRoute
+import com.tasnimulhasan.library.NeverPlayedRoute
 import com.tasnimulhasan.library.RecentlyPlayedRoute
 import com.tasnimulhasan.library.SearchRoute
 import kotlinx.serialization.Serializable
@@ -25,6 +27,7 @@ import kotlinx.serialization.Serializable
 @Serializable object FoldersNavRoute
 @Serializable object SearchNavRoute
 @Serializable object RecentlyPlayedNavRoute
+@Serializable object NeverPlayedNavRoute
 
 fun NavController.navigateToLibraryHub(navOptions: androidx.navigation.NavOptionsBuilder.() -> Unit = {}) {
     navigate(route = LibraryHubNavRoute) { navOptions() }
@@ -36,6 +39,7 @@ fun NavController.navigateToGenreDetails(genre: String) = navigate(route = Genre
 fun NavController.navigateToFolders() = navigate(route = FoldersNavRoute)
 fun NavController.navigateToSearch() = navigate(route = SearchNavRoute)
 fun NavController.navigateToRecentlyPlayed() = navigate(route = RecentlyPlayedNavRoute)
+fun NavController.navigateToNeverPlayed() = navigate(route = NeverPlayedNavRoute)
 
 fun NavGraphBuilder.libraryScreens(
     navController: NavController,
@@ -43,10 +47,10 @@ fun NavGraphBuilder.libraryScreens(
     navigateBack: () -> Unit,
 ) {
     composable<LibraryHubNavRoute>(
-        enterTransition = { slideInHorizontally { it } },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         LibraryHubRoute(
             navigateToArtists = { navController.navigateToArtists() },
@@ -54,69 +58,79 @@ fun NavGraphBuilder.libraryScreens(
             navigateToFolders = { navController.navigateToFolders() },
             navigateToRecentlyPlayed = { navController.navigateToRecentlyPlayed() },
             navigateToSearch = { navController.navigateToSearch() },
+            navigateToNeverPlayed = { navController.navigateToNeverPlayed() },
         )
     }
 
     composable<ArtistsNavRoute>(
-        enterTransition = { slideInHorizontally { it } },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         ArtistsRoute(onArtistClicked = { artist -> navController.navigateToArtistDetails(artist) })
     }
 
     composable<ArtistDetailsNavRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { MelodiqMotion.fadeEnter() },
+        exitTransition = { MelodiqMotion.fadeExit() },
+        popEnterTransition = { MelodiqMotion.fadeEnter() },
+        popExitTransition = { MelodiqMotion.fadeExit() }
     ) {
         ArtistDetailsRoute(navigateToPlayer = navigateToPlayer)
     }
 
     composable<GenresNavRoute>(
-        enterTransition = { slideInHorizontally { it } },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         GenresRoute(onGenreClicked = { genre -> navController.navigateToGenreDetails(genre) })
     }
 
     composable<GenreDetailsNavRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { MelodiqMotion.fadeEnter() },
+        exitTransition = { MelodiqMotion.fadeExit() },
+        popEnterTransition = { MelodiqMotion.fadeEnter() },
+        popExitTransition = { MelodiqMotion.fadeExit() }
     ) {
         GenreDetailsRoute(navigateToPlayer = navigateToPlayer)
     }
 
     composable<FoldersNavRoute>(
-        enterTransition = { slideInHorizontally { it } },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         FoldersRoute(navigateToPlayer = navigateToPlayer, navigateBack = navigateBack)
     }
 
     composable<SearchNavRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { MelodiqMotion.fadeEnter() },
+        exitTransition = { MelodiqMotion.fadeExit() },
+        popEnterTransition = { MelodiqMotion.fadeEnter() },
+        popExitTransition = { MelodiqMotion.fadeExit() }
     ) {
         SearchRoute(navigateToPlayer = navigateToPlayer)
     }
 
     composable<RecentlyPlayedNavRoute>(
-        enterTransition = { slideInHorizontally { it } },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         RecentlyPlayedRoute(navigateToPlayer = navigateToPlayer)
+    }
+
+    composable<NeverPlayedNavRoute>(
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
+    ) {
+        NeverPlayedRoute(navigateToPlayer = navigateToPlayer)
     }
 }

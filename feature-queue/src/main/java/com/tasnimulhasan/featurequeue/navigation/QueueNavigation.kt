@@ -1,5 +1,6 @@
 package com.tasnimulhasan.featurequeue.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
@@ -19,10 +20,10 @@ fun NavController.navigateToQueue(navOptions: NavOptionsBuilder.() -> Unit = {})
 
 fun NavGraphBuilder.queueScreen(navigateBack: () -> Unit = {}) {
     composable<QueueRoute>(
-        enterTransition = { slideInHorizontally {it} },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         QueueScreen(onNavigateUp = navigateBack)
     }

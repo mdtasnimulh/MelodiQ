@@ -68,6 +68,7 @@ internal fun SearchRoute(
             else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                 itemsIndexed(items = results, key = { _, item -> item.songId }) { _, item ->
                     LibrarySongRow(
+                        modifier = Modifier.animateItem(),
                         contentUri = item.contentUri,
                         title = item.songTitle,
                         subtitle = "${item.artist} • ${item.album}",
@@ -116,6 +117,7 @@ internal fun RecentlyPlayedRoute(
             item { LibrarySectionHeader("Continue Listening") }
             itemsIndexed(items = recentlyPlayed, key = { _, item -> "recent_${item.songId}" }) { _, item ->
                 LibrarySongRow(
+                    modifier = Modifier.animateItem(),
                     contentUri = item.contentUri,
                     title = item.songTitle,
                     subtitle = item.artist,
@@ -138,6 +140,7 @@ internal fun RecentlyPlayedRoute(
             itemsIndexed(items = mostPlayed, key = { _, pair -> "most_${pair.first.songId}" }) { _, pair ->
                 val (item, count) = pair
                 LibrarySongRow(
+                    modifier = Modifier.animateItem(),
                     contentUri = item.contentUri,
                     title = item.songTitle,
                     subtitle = item.artist,

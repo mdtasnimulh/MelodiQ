@@ -1,5 +1,6 @@
 package com.tasnimulhasan.home.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -24,10 +25,10 @@ fun NavGraphBuilder.homeScreen(
     navigateToSearch: () -> Unit,
 ) {
     composable<HomeRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { MelodiqMotion.fadeEnter() },
+        exitTransition = { MelodiqMotion.fadeExit() },
+        popEnterTransition = { MelodiqMotion.fadeEnter() },
+        popExitTransition = { MelodiqMotion.fadeExit() }
     ) {
         SharedTransitionLayout {
             HomeScreen(

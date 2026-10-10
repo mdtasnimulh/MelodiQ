@@ -28,6 +28,9 @@ interface PlaylistDetailsDao {
     @Query("SELECT * FROM playlist_details_table WHERE songTitle || artist || album = :searchKey")
     fun searchPlaylistMusic(searchKey: String): Flow<List<PlaylistDetailsEntity>>
 
+    @Query("SELECT * FROM playlist_details_table WHERE playlistId = :playlistId ORDER BY id ASC")
+    suspend fun getForPlaylistOnce(playlistId: Int): List<PlaylistDetailsEntity>
+
     // Used to show "Already added" instead of silently inserting a duplicate row.
     @Query("SELECT COUNT(*) FROM playlist_details_table WHERE playlistId = :playlistId AND songId = :songId")
     suspend fun countSongInPlaylist(playlistId: Int, songId: Long): Int

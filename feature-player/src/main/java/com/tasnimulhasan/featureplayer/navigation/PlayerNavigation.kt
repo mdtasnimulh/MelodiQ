@@ -1,5 +1,6 @@
 package com.tasnimulhasan.featureplayer.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
@@ -27,10 +28,10 @@ fun NavController.navigateToLyrics() = navigate(route = LyricsNavRoute)
 
 fun NavGraphBuilder.lyricsScreen(navigateBack: () -> Unit) {
     composable<LyricsNavRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)) },
+        exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) },
+        popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)) },
+        popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) }
     ) {
         LyricsRoute(onNavigateUp = navigateBack)
     }
@@ -44,10 +45,10 @@ fun NavGraphBuilder.playerScreen(
     navigateToQueue: () -> Unit,
 ) {
     composable<PlayerRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)) },
+        exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) },
+        popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)) },
+        popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) }
     ) { backStackEntry ->
         val musicId = backStackEntry.arguments?.getString("musicId") ?: ""
         SharedTransitionLayout {

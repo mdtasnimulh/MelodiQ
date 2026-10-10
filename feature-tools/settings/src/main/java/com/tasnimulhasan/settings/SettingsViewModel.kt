@@ -23,7 +23,15 @@ import com.tasnimulhasan.entity.enums.CoverArtStyle
 import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.enums.VisualizerStyle
+import android.content.Context
+import com.tasnimulhasan.domain.localusecase.backup.CreateBackupUseCase
+import com.tasnimulhasan.domain.localusecase.backup.RestoreBackupUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -49,7 +57,48 @@ class SettingsViewModel @Inject constructor(
     private val setCoverArtStyleUseCase: SetCoverArtStyleUseCase,
     private val getMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetMiniPlayerPositionUseCase,
     private val setMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetMiniPlayerPositionUseCase,
+    private val createBackupUseCase: CreateBackupUseCase,
+    private val restoreBackupUseCase: RestoreBackupUseCase,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
+
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val messages: SharedFlow<String> = _messages
+
+    fun exportBackup(uri: android.net.Uri) {
+        viewModelScope.launch {
+            val msg = try {
+                val json = createBackupUseCase()
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                        ?: error("Could not open the file")
+                }
+                "Backup saved"
+            } catch (e: Exception) {
+                "Backup failed: ${e.message ?: "unknown error"}"
+            }
+            _messages.emit(msg)
+        }
+    }
+
+    fun importBackup(uri: android.net.Uri) {
+        viewModelScope.launch {
+            val msg = try {
+                val json = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+                        ?: error("Could not open the file")
+                }
+                val r = restoreBackupUseCase(json)
+                buildString {
+                    append("Restored ${r.playlistsRestored} playlists, ${r.favouritesRestored} favourites, ${r.playsRestored} plays")
+                    if (r.songsNotFound > 0) append(" (${r.songsNotFound} songs not on this device)")
+                }
+            } catch (e: Exception) {
+                "Restore failed: ${e.message ?: "invalid backup file"}"
+            }
+            _messages.emit(msg)
+        }
+    }
 
     val sortType: StateFlow<SortType> = getSortTypeUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SortType.DATE_MODIFIED_DESC)

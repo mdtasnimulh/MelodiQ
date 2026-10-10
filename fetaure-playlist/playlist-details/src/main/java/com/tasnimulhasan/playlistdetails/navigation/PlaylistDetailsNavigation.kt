@@ -1,5 +1,6 @@
 package com.tasnimulhasan.playlistdetails.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
@@ -30,10 +31,10 @@ fun NavGraphBuilder.playlistDetailsScreen(
     navigateToPlayer: (musicId: String) -> Unit,
 ) {
     composable<PlaylistDetailsRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { MelodiqMotion.fadeEnter() },
+        exitTransition = { MelodiqMotion.fadeExit() },
+        popEnterTransition = { MelodiqMotion.fadeEnter() },
+        popExitTransition = { MelodiqMotion.fadeExit() }
     ) { backStackEntry ->
         val route = backStackEntry.toRoute<PlaylistDetailsRoute>()
         SharedTransitionLayout {

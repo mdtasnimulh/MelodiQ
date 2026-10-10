@@ -1,5 +1,6 @@
 package com.tasnimulhasan.featurefavourite.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
@@ -23,10 +24,10 @@ fun NavGraphBuilder.favouriteScreen(
     navigateToPlayer: (musicId: String) -> Unit,
 ) {
     composable<FavouriteRoute>(
-        enterTransition = { slideInHorizontally {it} },
-        exitTransition = { slideOutHorizontally { -it } },
-        popEnterTransition = { slideInHorizontally { -it } },
-        popExitTransition = { slideOutHorizontally { it } }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         FavouriteRouteScreen(navigateToPlayer = navigateToPlayer)
     }

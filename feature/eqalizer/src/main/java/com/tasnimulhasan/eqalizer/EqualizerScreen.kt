@@ -8,6 +8,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.TextButton
+import com.tasnimulhasan.common.constant.AppConstants
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -177,8 +182,8 @@ internal fun EqualizerScreen(
                     Button(
                         onClick = { viewModel.retryEqualizer() },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Black,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Text("Retry")
@@ -224,6 +229,7 @@ internal fun EqualizerScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PresetsView(viewModel: EqualizerViewModel) {
     Column {
@@ -238,7 +244,7 @@ fun PresetsView(viewModel: EqualizerViewModel) {
                     .height(4.dp)
                     .clip(RoundedCornerShape(4.dp)),
                 thickness = 1.dp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.outlineVariant
             )
 
             Text(
@@ -266,40 +272,26 @@ fun PresetsView(viewModel: EqualizerViewModel) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        LazyVerticalGrid(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(150.dp),
-            columns = GridCells.Fixed(3),
+        // A wrapping chip row instead of a fixed-height grid: the grid clipped the last
+        // presets and scrolled inside the page on small screens.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            items(effectType.size) { index ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight()
-                        .weight(1f)
-                        .padding(horizontal = 4.dp, vertical = 4.dp)
-                        .border(
-                            1.dp,
-                            if (index == audioEffects?.selectedEffectType) Color.Black else Color.Black,
-                            RoundedCornerShape(15.dp)
-                        )
-                        .clip(RoundedCornerShape(15.dp))
-                        .clickable { viewModel.onSelectPreset(index) }
-                        .background(if (index == audioEffects?.selectedEffectType) Color.Black else Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = effectType[index],
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        fontSize = 14.sp,
-                        color = if (index == audioEffects?.selectedEffectType) Color.White else Color.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            effectType.forEachIndexed { index, label ->
+                FilterChip(
+                    selected = index == audioEffects?.selectedEffectType,
+                    onClick = { viewModel.onSelectPreset(index) },
+                    label = { Text(label, maxLines = 1) },
+                )
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(onClick = { viewModel.onSelectPreset(AppConstants.PRESET_FLAT) }) {
+            Text("Reset to flat")
         }
     }
 }
@@ -346,14 +338,14 @@ fun EqualizerView10Band(viewModel: EqualizerViewModel) {
                     text = xAxisLabels[index],
                     fontSize = 10.sp,
                     textAlign = TextAlign.Center,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${(audioEffects?.gainValues?.getOrNull(index)?.times(1000) ?: 0.0) / 100}dB",
                     fontSize = 10.sp,
                     textAlign = TextAlign.Center,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Slider(
@@ -362,17 +354,17 @@ fun EqualizerView10Band(viewModel: EqualizerViewModel) {
                     onValueChange = { viewModel.onBandLevelChanged(index, it.toInt()) },
                     valueRange = -3000f..3000f,
                     colors = SliderDefaults.colors(
-                        thumbColor = Color.Black,
-                        activeTrackColor = Color.Black,
-                        inactiveTrackColor = Color.Gray
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     thumb = {
                         Box(
                             modifier = Modifier
                                 .size(20.dp)
-                                .border(1.dp, Color.Gray, CircleShape)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                                 .clip(CircleShape)
-                                .background(Color.Black, CircleShape)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
                         )
                     }
                 )

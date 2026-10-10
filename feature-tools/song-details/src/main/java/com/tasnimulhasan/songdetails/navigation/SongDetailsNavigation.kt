@@ -1,5 +1,6 @@
 package com.tasnimulhasan.songdetails.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.navigation.NavController
@@ -16,10 +17,10 @@ fun NavGraphBuilder.songDetailsScreen(
     navigateBack: () -> Unit,
 ) {
     composable<SongDetailsNavRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { MelodiqMotion.fadeEnter() },
+        exitTransition = { MelodiqMotion.fadeExit() },
+        popEnterTransition = { MelodiqMotion.fadeEnter() },
+        popExitTransition = { MelodiqMotion.fadeExit() }
     ) {
         SongDetailsRoute(
             onNavigateUp = navigateBack,

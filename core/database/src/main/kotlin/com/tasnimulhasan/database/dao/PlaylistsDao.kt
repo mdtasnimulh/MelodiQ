@@ -21,6 +21,13 @@ interface PlaylistsDao {
     @Delete
     suspend fun deletePlaylist(item: PlaylistEntity)
 
+    /** Backup/restore: one-shot reads and an insert that returns the new row id. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlaylistReturningId(item: PlaylistEntity): Long
+
+    @Query("SELECT * FROM melodiq_playlist_table")
+    suspend fun getAllOnce(): List<PlaylistEntity>
+
     @Query("DELETE FROM melodiq_playlist_table")
     suspend fun deleteAllPlaylists()
 

@@ -94,6 +94,9 @@ class LibraryRepoImpl @Inject constructor(
             rows.mapNotNull { row -> songs[row.songId]?.let { it.toMusicEntity() to row.playCount } }
         }
 
+    override fun observeNeverPlayed(): Flow<List<MusicEntity>> =
+        librarySongDao.observeNeverPlayed().map { rows -> rows.map { it.toMusicEntity() } }
+
     override fun observeListeningStats(): Flow<ListeningStats> = playHistoryDao.observeListeningStats()
 
     private fun SortType.toColumnAndDirection(): Pair<String, Boolean> = when (this) {

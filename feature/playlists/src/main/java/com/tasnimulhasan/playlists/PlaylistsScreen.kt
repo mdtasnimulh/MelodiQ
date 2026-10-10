@@ -165,6 +165,7 @@ internal fun PlaylistsScreen(
                         ) {
                             items(playlists, key = { it.playlist.id }) { playlist ->
                                 PlaylistCard(
+                                    modifier = Modifier.animateItem(),
                                     playlist = playlist,
                                     onPlaylistClicked = onPlaylistClicked,
                                 )

@@ -1,5 +1,7 @@
 package com.tasnimulhasan.songs
 
+import com.tasnimulhasan.ui.motion.pressFeedback
+
 import android.net.Uri
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
@@ -167,6 +169,7 @@ internal fun SongsScreen(
             key = { _, item -> item.songId }
         ) { _, item ->
             SongCard(
+                modifier = Modifier.animateItem(),
                 path = item.contentUri,
                 title = item.songTitle,
                 artist = item.artist,
@@ -240,6 +243,7 @@ private fun SongCard(
             containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
         ),
         modifier = modifier
+            .pressFeedback()
             .fillMaxWidth()
             .height(88.dp)
             .padding(vertical = 6.dp, horizontal = 16.dp)

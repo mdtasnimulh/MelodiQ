@@ -143,6 +143,7 @@ internal fun PlaylistDetailsScreen(
                             key = { _, item -> item.songId }
                         ) { index, item ->
                             MusicCard(
+                                modifier = Modifier.animateItem(),
                                 contentUri = item.contentUri.toUri(),
                                 albumId = item.albumId,
                                 title = item.songTitle,

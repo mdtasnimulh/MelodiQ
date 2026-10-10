@@ -1,5 +1,6 @@
 package com.tasnimulhasan.eqalizer.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -21,10 +22,10 @@ fun NavController.navigateToEqualizer(navOptions: NavOptionsBuilder.() -> Unit =
 
 fun NavGraphBuilder.equalizerScreen() {
     composable<EqualizerRoute>(
-        enterTransition = { fadeIn() },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = { fadeOut() }
+        enterTransition = { MelodiqMotion.fadeEnter() },
+        exitTransition = { MelodiqMotion.fadeExit() },
+        popEnterTransition = { MelodiqMotion.fadeEnter() },
+        popExitTransition = { MelodiqMotion.fadeExit() }
     ) {
         EqualizerScreen()
     }

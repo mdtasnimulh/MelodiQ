@@ -68,6 +68,7 @@ internal fun ArtistDetailsRoute(
     LazyColumn(modifier = modifier.fillMaxSize()) {
         itemsIndexed(items = songs, key = { _, item -> item.songId }) { _, item ->
             LibrarySongRow(
+                modifier = Modifier.animateItem(),
                 contentUri = item.contentUri,
                 title = item.songTitle,
                 subtitle = item.album,
@@ -137,6 +138,7 @@ internal fun GenreDetailsRoute(
     LazyColumn(modifier = modifier.fillMaxSize()) {
         itemsIndexed(items = songs, key = { _, item -> item.songId }) { _, item ->
             LibrarySongRow(
+                modifier = Modifier.animateItem(),
                 contentUri = item.contentUri,
                 title = item.songTitle,
                 subtitle = item.artist,

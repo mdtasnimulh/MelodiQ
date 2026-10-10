@@ -44,4 +44,7 @@ interface LibraryRepository {
     fun observeRecentlyPlayedWithTimestamp(limit: Int): Flow<List<Pair<MusicEntity, Long>>>
     fun observeMostPlayed(limit: Int): Flow<List<Pair<MusicEntity, Int>>>
     fun observeListeningStats(): Flow<ListeningStats>
+
+    /** Smart playlist: songs that have never been played, newest first. */
+    fun observeNeverPlayed(): Flow<List<MusicEntity>>
 }

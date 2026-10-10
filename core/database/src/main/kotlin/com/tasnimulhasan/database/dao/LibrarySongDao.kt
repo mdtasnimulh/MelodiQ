@@ -130,11 +130,28 @@ interface LibrarySongDao {
     @Query("SELECT * FROM library_song_table WHERE folderPath = :folderPath OR folderPath LIKE :folderPath || '/%' ORDER BY folderPath ASC, titleKey ASC")
     suspend fun getSongsUnderFolder(folderPath: String): List<LibrarySongEntity>
 
+    /** Songs with no entry in the play history at all - the "Never played" smart playlist.
+     * Room re-emits when either table changes, so a song leaves the list the moment it is played. */
+    @Query(
+        """SELECT * FROM library_song_table
+           WHERE songId NOT IN (SELECT DISTINCT songId FROM play_history_table)
+           ORDER BY dateModified DESC"""
+    )
+    fun observeNeverPlayed(): Flow<List<LibrarySongEntity>>
+
     @Query("SELECT * FROM library_song_table WHERE songId = :songId LIMIT 1")
     suspend fun getById(songId: Long): LibrarySongEntity?
 
     @Query("SELECT * FROM library_song_table WHERE songId IN (:songIds)")
     suspend fun getByIds(songIds: List<Long>): List<LibrarySongEntity>
+
+    /** Backup/restore: finds "the same song" on a device where its MediaStore id changed. */
+    @Query(
+        """SELECT * FROM library_song_table
+           WHERE titleKey = :titleKey AND artistKey = :artistKey AND ABS(durationMs - :durationMs) < 2000
+           LIMIT 1"""
+    )
+    suspend fun findByKey(titleKey: String, artistKey: String, durationMs: Long): LibrarySongEntity?
 }
 
 @Dao
@@ -142,6 +159,12 @@ interface PlayHistoryDao {
 
     @Insert
     suspend fun recordPlay(entry: PlayHistoryEntity)
+
+    @Insert
+    suspend fun insertAll(entries: List<PlayHistoryEntity>)
+
+    @Query("SELECT * FROM play_history_table")
+    suspend fun getAllOnce(): List<PlayHistoryEntity>
 
     /** Distinct songs, most-recently-played first. */
     @Query(

@@ -30,6 +30,7 @@ class MelodiqServiceHandler @Inject constructor(
     private val exoPlayer: ExoPlayer,
     private val preferencesDataStoreRepository: PreferencesDataStoreRepository,
     @ApplicationContext private val context: Context,
+    private val equalizerController: com.tasnimulhasan.common.audio.EqualizerController,
 ) : Player.Listener {
 
     private val _audioState: MutableStateFlow<MelodiqAudioState> = MutableStateFlow(MelodiqAudioState.Initial)
@@ -105,8 +106,29 @@ class MelodiqServiceHandler @Inject constructor(
 
     fun currentPlaybackSpeed(): Float = exoPlayer.playbackParameters.speed
 
+    private var savedEqConfig: com.tasnimulhasan.entity.AppConfiguration? = null
+
+    /** Applies the user's saved equalizer settings to the live audio session, so the sound
+     * is right from the first second of playback and no screen has to be open for it. */
+    private fun applyEqualizer() {
+        val config = savedEqConfig ?: return
+        if (!equalizerController.attach(exoPlayer.audioSessionId)) return
+        equalizerController.setEnabled(config.enableEqualizer)
+        equalizerController.applyGains(config.audioEffects.gainValues)
+    }
+
+    override fun onAudioSessionIdChanged(audioSessionId: Int) {
+        applyEqualizer()
+    }
+
     init {
         exoPlayer.addListener(this)
+        handlerScope.launch {
+            preferencesDataStoreRepository.appConfigurationStream.collect { config ->
+                savedEqConfig = config
+                applyEqualizer()
+            }
+        }
         handlerScope.launch {
             preferencesDataStoreRepository.getReplayGainEnabled().collect { enabled ->
                 replayGainEnabled = enabled
@@ -430,6 +452,7 @@ class MelodiqServiceHandler @Inject constructor(
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        if (isPlaying) applyEqualizer()
         _currentIndex.value = exoPlayer.currentMediaItemIndex
         if (isPlaying) {
             CoroutineScope(Dispatchers.Main).launch { startProgressUpdate() }

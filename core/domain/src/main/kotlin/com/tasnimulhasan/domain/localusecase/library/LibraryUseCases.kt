@@ -86,6 +86,10 @@ class ObserveMostPlayedUseCase @Inject constructor(private val repo: LibraryRepo
     operator fun invoke(limit: Int = 30): Flow<List<Pair<MusicEntity, Int>>> = repo.observeMostPlayed(limit)
 }
 
+class ObserveNeverPlayedUseCase @Inject constructor(private val repo: LibraryRepository) {
+    operator fun invoke(): Flow<List<MusicEntity>> = repo.observeNeverPlayed()
+}
+
 class ObserveListeningStatsUseCase @Inject constructor(private val repo: LibraryRepository) {
     operator fun invoke(): Flow<ListeningStats> = repo.observeListeningStats()
 }

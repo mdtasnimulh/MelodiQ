@@ -5,7 +5,12 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -121,12 +126,70 @@ internal fun SongDetailsScreen(
     var trackNumber by remember(uiState.metadata) { mutableStateOf(uiState.metadata?.trackNumber.orEmpty()) }
     var discNumber by remember(uiState.metadata) { mutableStateOf(uiState.metadata?.discNumber.orEmpty()) }
 
+    val original = uiState.metadata
+    val editable = uiState.writeSupport != TagWriteSupport.UNSUPPORTED
+    val isDirty = original != null && (
+        title != original.title.orEmpty() || artist != original.artist.orEmpty() ||
+            album != original.album.orEmpty() || albumArtist != original.albumArtist.orEmpty() ||
+            genre != original.genre.orEmpty() || year != original.year.orEmpty() ||
+            trackNumber != original.trackNumber.orEmpty() || discNumber != original.discNumber.orEmpty()
+        )
+    fun resetFields() {
+        title = original?.title.orEmpty(); artist = original?.artist.orEmpty()
+        album = original?.album.orEmpty(); albumArtist = original?.albumArtist.orEmpty()
+        genre = original?.genre.orEmpty(); year = original?.year.orEmpty()
+        trackNumber = original?.trackNumber.orEmpty(); discNumber = original?.discNumber.orEmpty()
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = if (isDirty) 96.dp else 16.dp)
+            .animateContentSize()
     ) {
+        // Header: shows the title/artist as they are being edited, so it is obvious which
+        // song this is and that typing is changing something.
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = title.trim().firstOrNull()?.uppercase() ?: "♪",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Column(modifier = Modifier.padding(start = 16.dp)) {
+                Text(
+                    text = title.ifBlank { "Untitled" },
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = listOf(artist, album).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Unknown artist" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                uiState.fileInfo?.let {
+                    Text(
+                        text = it.format.uppercase(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+        }
+
         if (uiState.writeSupport == TagWriteSupport.UNSUPPORTED) {
             Text(
                 text = "This file's format doesn't support editing tags in-app yet. You can still view its info and manage the file below.",
@@ -136,32 +199,25 @@ internal fun SongDetailsScreen(
             )
         }
 
-        val editable = uiState.writeSupport != TagWriteSupport.UNSUPPORTED
-        LabeledField("Title", title, editable) { title = it }
-        LabeledField("Artist", artist, editable) { artist = it }
-        LabeledField("Album", album, editable) { album = it }
-        LabeledField("Album Artist", albumArtist, editable) { albumArtist = it }
-        LabeledField("Genre", genre, editable) { genre = it }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            LabeledField("Year", year, editable, modifier = Modifier.weight(1f)) { year = it }
-            LabeledField("Track #", trackNumber, editable, modifier = Modifier.weight(1f)) { trackNumber = it }
-            LabeledField("Disc #", discNumber, editable, modifier = Modifier.weight(1f)) { discNumber = it }
+        androidx.compose.material3.ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text("Basic info", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
+                LabeledField("Title", title, editable) { title = it }
+                LabeledField("Artist", artist, editable) { artist = it }
+                LabeledField("Album", album, editable) { album = it }
+                LabeledField("Album Artist", albumArtist, editable) { albumArtist = it }
+            }
         }
-
-        if (editable) {
-            Button(
-                onClick = {
-                    onSave(
-                        EditableMetadata(
-                            title = title, artist = artist, album = album, albumArtist = albumArtist,
-                            genre = genre, year = year, trackNumber = trackNumber, discNumber = discNumber,
-                        )
-                    )
-                },
-                enabled = !uiState.isSaving,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            ) {
-                Text(if (uiState.isSaving) "Saving..." else "Save changes")
+        androidx.compose.foundation.layout.Spacer(Modifier.padding(6.dp))
+        androidx.compose.material3.ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text("Details", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
+                LabeledField("Genre", genre, editable) { genre = it }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LabeledField("Year", year, editable, modifier = Modifier.weight(1f), numeric = true, maxLength = 4) { year = it }
+                    LabeledField("Track #", trackNumber, editable, modifier = Modifier.weight(1f), numeric = true, maxLength = 3) { trackNumber = it }
+                    LabeledField("Disc #", discNumber, editable, modifier = Modifier.weight(1f), numeric = true, maxLength = 2) { discNumber = it }
+                }
             }
         }
 
@@ -179,7 +235,11 @@ internal fun SongDetailsScreen(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 
-        uiState.fileInfo?.let { FileInfoSection(it) }
+        uiState.fileInfo?.let {
+            androidx.compose.material3.ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.padding(16.dp)) { FileInfoSection(it) }
+            }
+        }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 
@@ -196,6 +256,36 @@ internal fun SongDetailsScreen(
         ) {
             Text("Delete song")
         }
+    }
+
+    // Save bar slides up only when something changed, replacing the always-visible buttons.
+    androidx.compose.animation.AnimatedVisibility(
+        visible = isDirty && editable,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = androidx.compose.animation.slideInVertically { it } + androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.slideOutVertically { it } + androidx.compose.animation.fadeOut(),
+    ) {
+        androidx.compose.material3.Surface(tonalElevation = 6.dp, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OutlinedButton(onClick = { resetFields() }, enabled = !uiState.isSaving) { Text("Discard") }
+                Button(
+                    onClick = {
+                        onSave(
+                            EditableMetadata(
+                                title = title, artist = artist, album = album, albumArtist = albumArtist,
+                                genre = genre, year = year, trackNumber = trackNumber, discNumber = discNumber,
+                            )
+                        )
+                    },
+                    enabled = !uiState.isSaving,
+                    modifier = Modifier.weight(1f),
+                ) { Text(if (uiState.isSaving) "Saving..." else "Save changes") }
+            }
+        }
+    }
     }
 
     if (showDeleteConfirm) {
@@ -254,11 +344,21 @@ private fun LabeledField(
     value: String,
     enabled: Boolean,
     modifier: Modifier = Modifier,
+    numeric: Boolean = false,
+    maxLength: Int = Int.MAX_VALUE,
     onValueChange: (String) -> Unit,
 ) {
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        // Year / track / disc only accept digits (and a sensible length) instead of letting
+        // junk get written into the file's tags.
+        onValueChange = { new ->
+            if (!numeric || (new.all { it.isDigit() } && new.length <= maxLength)) onValueChange(new)
+        },
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            keyboardType = if (numeric) androidx.compose.ui.text.input.KeyboardType.Number
+            else androidx.compose.ui.text.input.KeyboardType.Text
+        ),
         label = { Text(label) },
         enabled = enabled,
         singleLine = true,

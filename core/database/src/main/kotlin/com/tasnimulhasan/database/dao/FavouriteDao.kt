@@ -18,6 +18,9 @@ interface FavouriteDao {
     @Query("SELECT EXISTS(SELECT 1 FROM melodiq_favourite_table WHERE songId = :songId)")
     suspend fun isFavourite(songId: Long): Boolean
 
+    @Query("SELECT * FROM melodiq_favourite_table")
+    suspend fun getAllOnce(): List<FavouriteEntity>
+
     @Query("SELECT songId FROM melodiq_favourite_table")
     fun getFavouriteIds(): Flow<List<Long>>
 }

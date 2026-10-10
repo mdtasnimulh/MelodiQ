@@ -84,8 +84,20 @@ internal fun SettingsRoute(
         }
     }
 
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> if (uri != null) viewModel.exportBackup(uri) }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) viewModel.importBackup(uri) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+    }
+
     SettingsScreen(
         modifier = modifier,
+        onExportBackup = { exportLauncher.launch("melodiq_backup.json") },
+        onImportBackup = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
         sortType = sortType,
         themeConfig = themeConfig,
         accentColor = accentColor,
@@ -170,6 +182,8 @@ internal fun SettingsScreen(
     miniPlayerPosition: com.tasnimulhasan.entity.enums.MiniPlayerPosition,
     miniPlayerPositionLabel: (com.tasnimulhasan.entity.enums.MiniPlayerPosition) -> String,
     onMiniPlayerPositionSelected: (com.tasnimulhasan.entity.enums.MiniPlayerPosition) -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         item { SectionHeader("Sort songs by") }
@@ -263,6 +277,26 @@ internal fun SettingsScreen(
                     durationMs = crossfadeDurationMs,
                     onDurationChanged = onCrossfadeDurationChanged,
                 )
+            }
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+        item { SectionHeader("Backup & restore") }
+        item {
+            Text(
+                text = "Save your playlists, favourites, play history and settings to a file, and restore them later or on another device.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                androidx.compose.material3.Button(onClick = onExportBackup, modifier = Modifier.weight(1f)) { Text("Export") }
+                androidx.compose.material3.OutlinedButton(onClick = onImportBackup, modifier = Modifier.weight(1f)) { Text("Import") }
             }
         }
     }

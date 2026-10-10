@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -24,6 +25,7 @@ internal fun LibraryHubRoute(
     navigateToFolders: () -> Unit,
     navigateToRecentlyPlayed: () -> Unit,
     navigateToSearch: () -> Unit,
+    navigateToNeverPlayed: () -> Unit,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         LibraryHubRow(Icons.Filled.Search, "Search", "Songs, artists, albums, genres, folders", navigateToSearch)
@@ -31,6 +33,7 @@ internal fun LibraryHubRoute(
         LibraryHubRow(Icons.AutoMirrored.Filled.QueueMusic, "Genres", "Browse by genre tag", navigateToGenres)
         LibraryHubRow(Icons.Filled.Folder, "Folders", "Browse the actual folder structure", navigateToFolders)
         LibraryHubRow(Icons.Filled.History, "Recently & Most Played", "Continue listening, top tracks", navigateToRecentlyPlayed)
+        LibraryHubRow(Icons.Filled.NewReleases, "Not played yet", "Songs you have never listened to", navigateToNeverPlayed)
     }
 }
 

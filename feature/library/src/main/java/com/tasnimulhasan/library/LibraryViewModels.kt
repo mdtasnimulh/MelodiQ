@@ -59,6 +59,13 @@ class LibraryPlaybackState(
         if (index >= 0) scope.launch { playerUseCases.selectAudioChange(index) }
     }
 
+    /** Plays [songs] as their own closed queue (like a playlist), starting at [startIndex]. */
+    fun playList(songs: List<MusicEntity>, startIndex: Int = 0) {
+        if (songs.isEmpty()) return
+        ensurePlaybackServiceStarted()
+        scope.launch { playerUseCases.playCuratedQueue(songs, startIndex) }
+    }
+
     fun ensurePlaybackServiceStarted() = playerUseCases.ensurePlaybackServiceStarted()
 }
 

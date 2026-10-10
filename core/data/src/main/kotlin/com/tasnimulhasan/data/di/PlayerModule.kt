@@ -90,10 +90,12 @@ object PlayerModule {
     fun provideServiceHandler(
         exoPlayer: ExoPlayer,
         preferencesDataStoreRepository: PreferencesDataStoreRepository,
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        equalizerController: com.tasnimulhasan.common.audio.EqualizerController,
     ): MelodiqServiceHandler = MelodiqServiceHandler(
         exoPlayer = exoPlayer,
         preferencesDataStoreRepository = preferencesDataStoreRepository,
-        context
+        context = context,
+        equalizerController = equalizerController,
     )
 }

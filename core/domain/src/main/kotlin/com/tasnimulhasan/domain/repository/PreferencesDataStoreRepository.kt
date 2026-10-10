@@ -43,6 +43,11 @@ interface PreferencesDataStoreRepository {
     suspend fun getLastPlayedTrack(): LastPlayedTrack?
     suspend fun clearLastPlayedTrack()
 
+    /** Every saved setting except playback-session state, as name -> "type:value". */
+    suspend fun exportSettings(): Map<String, String>
+    /** Writes settings produced by [exportSettings]; returns how many were applied. */
+    suspend fun importSettings(settings: Map<String, String>): Int
+
     suspend fun saveMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition)
     fun getMiniPlayerPosition(): Flow<com.tasnimulhasan.entity.enums.MiniPlayerPosition>
 }

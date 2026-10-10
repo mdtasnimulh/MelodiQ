@@ -87,6 +87,7 @@ internal fun FoldersRoute(
 
             itemsIndexed(items = level.songs, key = { _, item -> item.songId }) { _, item ->
                 LibrarySongRow(
+                    modifier = Modifier.animateItem(),
                     contentUri = item.contentUri,
                     title = item.songTitle,
                     subtitle = item.artist,

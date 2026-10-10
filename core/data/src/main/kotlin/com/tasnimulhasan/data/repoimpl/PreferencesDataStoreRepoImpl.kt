@@ -227,6 +227,56 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
         }
     }
 
+    override suspend fun exportSettings(): Map<String, String> {
+        return try {
+            val skip = setOf(PreferencesKeys.lastPlayedSongId.name, PreferencesKeys.lastPlayedPositionMs.name)
+            dataStorePreferences.data.first().asMap()
+                .filterKeys { it.name !in skip }
+                .mapNotNull { (key, value) ->
+                    val encoded = when (value) {
+                        is String -> "s:$value"
+                        is Boolean -> "b:$value"
+                        is Long -> "l:$value"
+                        is Int -> "i:$value"
+                        is Float -> "f:$value"
+                        else -> null
+                    }
+                    encoded?.let { key.name to it }
+                }
+                .toMap()
+        } catch (exception: Exception) {
+            exception.localizedMessage?.let { Log.e(tag, it) }
+            emptyMap()
+        }
+    }
+
+    override suspend fun importSettings(settings: Map<String, String>): Int {
+        var applied = 0
+        tryIt {
+            dataStorePreferences.edit { preferences ->
+                settings.forEach { (name, encoded) ->
+                    if (name == PreferencesKeys.lastPlayedSongId.name || name == PreferencesKeys.lastPlayedPositionMs.name) return@forEach
+                    val type = encoded.substringBefore(':', "")
+                    val raw = encoded.substringAfter(':', "")
+                    try {
+                        when (type) {
+                            "s" -> preferences[stringPreferencesKey(name)] = raw
+                            "b" -> preferences[booleanPreferencesKey(name)] = raw.toBooleanStrict()
+                            "l" -> preferences[longPreferencesKey(name)] = raw.toLong()
+                            "i" -> preferences[androidx.datastore.preferences.core.intPreferencesKey(name)] = raw.toInt()
+                            "f" -> preferences[androidx.datastore.preferences.core.floatPreferencesKey(name)] = raw.toFloat()
+                            else -> return@forEach
+                        }
+                        applied++
+                    } catch (e: Exception) {
+                        Log.e(tag, "Skipping setting $name: ${e.localizedMessage}")
+                    }
+                }
+            }
+        }
+        return applied
+    }
+
     override suspend fun saveMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition) {
         tryIt {
             dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.miniPlayerPosition] = position.name }

@@ -1,5 +1,7 @@
 package com.tasnimulhasan.library.components
 
+import com.tasnimulhasan.ui.motion.pressFeedback
+
 import android.net.Uri
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +60,7 @@ fun LibrarySongRow(
             containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
         ),
         modifier = modifier
+            .pressFeedback()
             .fillMaxWidth()
             .height(76.dp)
             .padding(vertical = 4.dp, horizontal = 16.dp)
