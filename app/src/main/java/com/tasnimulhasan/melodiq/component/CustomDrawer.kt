@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -51,9 +53,13 @@ fun CustomDrawer(
             }
         }
         Spacer(modifier = Modifier.height(24.dp))
+        // The full logo artwork (not the adaptive-icon foreground, which carries a large empty
+        // margin), larger and with rounded corners.
         Image(
-            modifier = Modifier.size(100.dp),
-            painter = painterResource(id = Res.drawable.ic_launcher_foreground),
+            modifier = Modifier
+                .size(128.dp)
+                .clip(RoundedCornerShape(32.dp)),
+            painter = painterResource(id = Res.drawable.ic_logo_main),
             contentDescription = "App Logo"
         )
         Spacer(modifier = Modifier.height(40.dp))

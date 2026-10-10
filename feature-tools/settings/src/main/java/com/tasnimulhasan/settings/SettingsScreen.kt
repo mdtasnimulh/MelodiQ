@@ -6,6 +6,10 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,6 +66,7 @@ internal fun SettingsRoute(
     val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
     val coverArtStyle by viewModel.coverArtStyle.collectAsStateWithLifecycle()
     val miniPlayerPosition by viewModel.miniPlayerPosition.collectAsStateWithLifecycle()
+    val appIcon by viewModel.appIcon.collectAsStateWithLifecycle()
 
     // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
     // this app's own playback, not the microphone). Asked for only at the moment the user
@@ -96,6 +101,8 @@ internal fun SettingsRoute(
 
     SettingsScreen(
         modifier = modifier,
+        appIcon = appIcon,
+        onAppIconSelected = viewModel::setAppIcon,
         onExportBackup = { exportLauncher.launch("melodiq_backup.json") },
         onImportBackup = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
         sortType = sortType,
@@ -182,6 +189,8 @@ internal fun SettingsScreen(
     miniPlayerPosition: com.tasnimulhasan.entity.enums.MiniPlayerPosition,
     miniPlayerPositionLabel: (com.tasnimulhasan.entity.enums.MiniPlayerPosition) -> String,
     onMiniPlayerPositionSelected: (com.tasnimulhasan.entity.enums.MiniPlayerPosition) -> Unit,
+    appIcon: AppIconOption,
+    onAppIconSelected: (AppIconOption) -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
 ) {
@@ -252,6 +261,18 @@ internal fun SettingsScreen(
             )
         }
 
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+        item { SectionHeader("App icon") }
+        AppIconOption.Group.entries.forEach { group ->
+            item(key = "icon_group_${group.name}") {
+                AppIconGroup(
+                    group = group,
+                    selected = appIcon,
+                    onSelected = onAppIconSelected,
+                )
+            }
+        }
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
         item { SectionHeader("Playback") }
@@ -458,4 +479,104 @@ private fun accentPreviewColor(option: AccentColorOption): Color? = when (option
     AccentColorOption.TEAL -> Color(0xFF00796B)
     AccentColorOption.DYNAMIC -> Color(0xFF757575)
     AccentColorOption.ALBUM_ART -> Color(0xFF757575)
+}
+
+
+@Composable
+private fun AppIconGroup(
+    group: AppIconOption.Group,
+    selected: AppIconOption,
+    onSelected: (AppIconOption) -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Text(
+            text = group.title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AppIconOption.entries.filter { it.group == group }.forEach { option ->
+                AppIconTile(
+                    option = option,
+                    isSelected = option == selected,
+                    onClick = { onSelected(option) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppIconTile(
+    option: AppIconOption,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val resId = remember(option) { AppIconManager.previewResId(context, option) }
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+
+    Column(
+        modifier = modifier
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+            .selectable(selected = isSelected, onClick = onClick)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // Outer radius = inner image radius (18) + gap (4) + border (3) so the selection ring
+        // hugs the rounded logo evenly instead of looking boxy.
+        val ringShape = androidx.compose.foundation.shape.RoundedCornerShape(25.dp)
+        val logoShape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .border(3.dp, borderColor, ringShape)
+                .padding(7.dp)
+                .clip(logoShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (resId != 0) {
+                // The real logo drawable (not the adaptive wrapper), clipped to a rounded square.
+                androidx.compose.ui.viewinterop.AndroidView(
+                    factory = { ctx ->
+                        android.widget.ImageView(ctx).apply {
+                            scaleType = android.widget.ImageView.ScaleType.FIT_XY
+                            setImageResource(resId)
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Palette, contentDescription = null)
+                }
+            }
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(14.dp))
+                }
+            }
+        }
+        Text(
+            text = option.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
 }

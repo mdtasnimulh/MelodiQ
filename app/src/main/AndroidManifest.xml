@@ -30,12 +30,121 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.MelodiQ">
+        </activity>
+
+        <!-- One launcher entry per selectable icon (Settings > App icon). Exactly one is enabled
+             at a time; main_1 is the default. -->
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoMain"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_alias_main_1"
+            android:roundIcon="@mipmap/ic_alias_main_1"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoMain2"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_alias_main_2"
+            android:roundIcon="@mipmap/ic_alias_main_2"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoMain3"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_alias_main_3"
+            android:roundIcon="@mipmap/ic_alias_main_3"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoMain4"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_alias_main_4"
+            android:roundIcon="@mipmap/ic_alias_main_4"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoAlt1"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_alias_alt_1"
+            android:roundIcon="@mipmap/ic_alias_alt_1"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoAlt2"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_alias_alt_2"
+            android:roundIcon="@mipmap/ic_alias_alt_2"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoAlt3"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_alias_alt_3"
+            android:roundIcon="@mipmap/ic_alias_alt_3"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoAlt4"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_alias_alt_4"
+            android:roundIcon="@mipmap/ic_alias_alt_4"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <service
             android:name="com.tasnimulhasan.data.player.MelodiqPlayerService"

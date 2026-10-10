@@ -62,6 +62,20 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
+    private val _appIcon = kotlinx.coroutines.flow.MutableStateFlow(AppIconManager.current(context))
+    internal val appIcon: StateFlow<AppIconOption> = _appIcon
+
+    internal fun setAppIcon(option: AppIconOption) {
+        if (option == _appIcon.value) return
+        try {
+            AppIconManager.apply(context, option)
+            _appIcon.value = option
+            _messages.tryEmit("Icon changed. Your launcher may take a few seconds to show it.")
+        } catch (e: Exception) {
+            _messages.tryEmit("Couldn't change the icon: ${e.message ?: "unknown error"}")
+        }
+    }
+
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
 

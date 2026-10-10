@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Plain colour behind each selectable launcher icon; matches that logo's own background. -->
+    <color name="app_icon_bg_main_1">#6497D6</color>
+    <color name="app_icon_bg_main_2">#EBEDDF</color>
+    <color name="app_icon_bg_main_3">#FF4D00</color>
+    <color name="app_icon_bg_main_4">#3A6B35</color>
+    <color name="app_icon_bg_alt_1">#6497D6</color>
+    <color name="app_icon_bg_alt_2">#EBEDDF</color>
+    <color name="app_icon_bg_alt_3">#FF4D00</color>
+    <color name="app_icon_bg_alt_4">#3A6B35</color>
+</resources>
