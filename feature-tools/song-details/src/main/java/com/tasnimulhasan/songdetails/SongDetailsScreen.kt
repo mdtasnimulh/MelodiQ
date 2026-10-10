@@ -45,6 +45,42 @@ import com.tasnimulhasan.entity.metadata.AudioFileInfo
 import com.tasnimulhasan.entity.metadata.EditableMetadata
 import com.tasnimulhasan.entity.metadata.TagWriteSupport
 import kotlinx.coroutines.launch
+import android.content.ContentUris
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.provider.MediaStore
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.key
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import com.tasnimulhasan.ui.image.AlbumArt
+import com.tasnimulhasan.ui.image.AlbumArtVersion
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+
+/** Decodes the picked image, scales it down (long edge <= 1000px, keeps tags small) and
+ * re-encodes as JPEG - the tag writer labels embedded art image/jpeg. Null if undecodable. */
+private fun prepareCover(context: android.content.Context, uri: android.net.Uri): Pair<ByteArray, Bitmap>? = try {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 1000) sample *= 2
+    val decoded = context.contentResolver.openInputStream(uri)?.use {
+        BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+    }
+    decoded?.let { bmp ->
+        val scale = 1000f / maxOf(bmp.width, bmp.height)
+        val scaled = if (scale < 1f) Bitmap.createScaledBitmap(bmp, (bmp.width * scale).toInt().coerceAtLeast(1), (bmp.height * scale).toInt().coerceAtLeast(1), true) else bmp
+        val out = ByteArrayOutputStream()
+        // JPEG has no alpha; the Bitmap is flattened on white by compress() only if opaque - fine for covers.
+        scaled.compress(Bitmap.CompressFormat.JPEG, 90, out)
+        out.toByteArray() to scaled
+    }
+} catch (_: Exception) { null } catch (_: OutOfMemoryError) { null }
 
 @Composable
 fun SongDetailsRoute(
@@ -126,6 +162,25 @@ internal fun SongDetailsScreen(
     var trackNumber by remember(uiState.metadata) { mutableStateOf(uiState.metadata?.trackNumber.orEmpty()) }
     var discNumber by remember(uiState.metadata) { mutableStateOf(uiState.metadata?.discNumber.orEmpty()) }
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var pendingArt by remember(uiState.metadata) { mutableStateOf<ByteArray?>(null) }
+    // Not keyed on metadata: after a successful save the picked image keeps showing even
+    // before MediaStore regenerates its thumbnail.
+    var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val artLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) scope.launch {
+            val prepared = withContext(Dispatchers.IO) { prepareCover(context, uri) }
+            if (prepared != null) {
+                pendingArt = prepared.first
+                previewBitmap = prepared.second
+            } else {
+                android.widget.Toast.makeText(context, "Couldn't read that image", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    val artVersion = remember(uiState.metadata) { AlbumArtVersion.value }
+
     val original = uiState.metadata
     val editable = uiState.writeSupport != TagWriteSupport.UNSUPPORTED
     val isDirty = original != null && (
@@ -133,12 +188,13 @@ internal fun SongDetailsScreen(
             album != original.album.orEmpty() || albumArtist != original.albumArtist.orEmpty() ||
             genre != original.genre.orEmpty() || year != original.year.orEmpty() ||
             trackNumber != original.trackNumber.orEmpty() || discNumber != original.discNumber.orEmpty()
-        )
+        ) || pendingArt != null
     fun resetFields() {
         title = original?.title.orEmpty(); artist = original?.artist.orEmpty()
         album = original?.album.orEmpty(); albumArtist = original?.albumArtist.orEmpty()
         genre = original?.genre.orEmpty(); year = original?.year.orEmpty()
         trackNumber = original?.trackNumber.orEmpty(); discNumber = original?.discNumber.orEmpty()
+        pendingArt = null; previewBitmap = null
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -152,18 +208,50 @@ internal fun SongDetailsScreen(
         // Header: shows the title/artist as they are being edited, so it is obvious which
         // song this is and that typing is changing something.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = title.trim().firstOrNull()?.uppercase() ?: "♪",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .then(if (editable) Modifier.clickable {
+                            artLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } else Modifier),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = title.trim().firstOrNull()?.uppercase() ?: "♪",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    val preview = previewBitmap
+                    if (preview != null) {
+                        Image(
+                            bitmap = preview.asImageBitmap(),
+                            contentDescription = "Cover art",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else if (uiState.songId > 0) {
+                        key(artVersion) {
+                            AsyncImage(
+                                model = AlbumArt(
+                                    songId = uiState.songId,
+                                    contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, uiState.songId),
+                                    albumId = 0L,
+                                ),
+                                contentDescription = "Cover art",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                }
+                if (editable) {
+                    TextButton(onClick = {
+                        artLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }) { Text("Change cover") }
+                }
             }
             Column(modifier = Modifier.padding(start = 16.dp)) {
                 Text(
@@ -277,6 +365,7 @@ internal fun SongDetailsScreen(
                             EditableMetadata(
                                 title = title, artist = artist, album = album, albumArtist = albumArtist,
                                 genre = genre, year = year, trackNumber = trackNumber, discNumber = discNumber,
+                                newArtwork = pendingArt,
                             )
                         )
                     },

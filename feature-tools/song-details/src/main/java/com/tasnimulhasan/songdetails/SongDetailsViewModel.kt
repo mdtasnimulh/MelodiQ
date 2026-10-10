@@ -35,6 +35,7 @@ private sealed interface PendingRetry {
 }
 
 data class SongDetailsUiState(
+    val songId: Long = -1L,
     val isLoading: Boolean = true,
     val metadata: EditableMetadata? = null,
     val fileInfo: AudioFileInfo? = null,
@@ -74,6 +75,7 @@ class SongDetailsViewModel @Inject constructor(
             val info = readFileInfo(songId)
             val support = getWriteSupport(songId)
             _uiState.value = _uiState.value.copy(
+                songId = songId,
                 isLoading = false,
                 metadata = metadata,
                 fileInfo = info,
@@ -89,7 +91,7 @@ class SongDetailsViewModel @Inject constructor(
                 MetadataEditResult.Success -> {
                     com.tasnimulhasan.ui.image.AlbumArtVersion.bump()
                     _uiState.value = _uiState.value.copy(
-                    isSaving = false, metadata = metadata, message = "Saved"
+                    isSaving = false, metadata = metadata.copy(newArtwork = null), message = "Saved"
                     )
                 }
                 is MetadataEditResult.NeedsPermission -> {
