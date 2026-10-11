@@ -46,8 +46,13 @@ android {
             applicationIdSuffix = MelodiqBuildType.RELEASE.applicationIdSuffix
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.named("release").get()
+
+            ndk {
+                abiFilters.addAll(setOf("arm64-v8a"))
+            }
         }
     }
+
     buildFeatures {
         compose = true
         buildConfig = true

@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 /** One selectable launcher icon. [aliasClass] must match an <activity-alias> in the manifest,
  * and [mipmapName] the adaptive icon (mipmap-anydpi) that alias uses. */
 enum class AppIconOption(val aliasClass: String, val mipmapName: String, val drawableName: String, val group: Group, val label: String) {
-    LOGO_DEFAULT("com.tasnimulhasan.melodiq.alias.LogoDefault", "ic_alias_default", "ic_default", Group.DEFAULT, "Default"),
+    LOGO_DEFAULT("com.tasnimulhasan.melodiq.alias.LogoDefault", "ic_alias_default", "ic_default", Group.DEFAULT, "MelodiQ"),
     MAIN_1("com.tasnimulhasan.melodiq.alias.LogoMain", "ic_alias_main_1", "ic_logo_main", Group.MAIN, "Water"),
     MAIN_2("com.tasnimulhasan.melodiq.alias.LogoMain2", "ic_alias_main_2", "ic_logo_main_2", Group.MAIN, "Air"),
     MAIN_3("com.tasnimulhasan.melodiq.alias.LogoMain3", "ic_alias_main_3", "ic_logo_main_3", Group.MAIN, "Fire"),
@@ -22,7 +22,7 @@ enum class AppIconOption(val aliasClass: String, val mipmapName: String, val dra
     ALT_3("com.tasnimulhasan.melodiq.alias.LogoAlt3", "ic_alias_alt_3", "ic_logo_alt_3", Group.CLASSIC, "Fire"),
     ALT_4("com.tasnimulhasan.melodiq.alias.LogoAlt4", "ic_alias_alt_4", "ic_logo_alt_4", Group.CLASSIC, "Earth");
 
-    enum class Group(val title: String) { DEFAULT("Default logo"), MAIN("Minimal"), CLASSIC("Classic") }
+    enum class Group(val title: String) { DEFAULT("Default"), MAIN("Minimal"), CLASSIC("Classic") }
 
     /** Used only if Palette can't read the drawable. */
     val fallbackSeed: Color
