@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.tasnimulhasan.entity.room.library.AlbumSummary
+import com.tasnimulhasan.entity.room.library.ArtistPlayRow
+import com.tasnimulhasan.entity.room.library.PlayTimeRow
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.FolderSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
@@ -139,6 +141,22 @@ interface LibrarySongDao {
     )
     fun observeNeverPlayed(): Flow<List<LibrarySongEntity>>
 
+    /** Smart playlist: added to the device within the window (MediaStore DATE_ADDED is epoch seconds). */
+    @Query("SELECT * FROM library_song_table WHERE dateAdded >= :sinceSeconds ORDER BY dateAdded DESC LIMIT :limit")
+    fun observeRecentlyAdded(sinceSeconds: Long, limit: Int): Flow<List<LibrarySongEntity>>
+
+    /** Smart playlist: long tracks (mixes, live sets, classical pieces), longest first. */
+    @Query("SELECT * FROM library_song_table WHERE durationMs >= :minDurationMs ORDER BY durationMs DESC LIMIT :limit")
+    fun observeLongerThan(minDurationMs: Long, limit: Int): Flow<List<LibrarySongEntity>>
+
+    /** Smart playlist "Rediscover": songs that WERE played, but not since [beforeMillis]. */
+    @Query(
+        """SELECT * FROM library_song_table
+           WHERE songId IN (SELECT songId FROM play_history_table GROUP BY songId HAVING MAX(playedAt) < :beforeMillis)
+           ORDER BY titleKey ASC LIMIT :limit"""
+    )
+    fun observeNotPlayedSince(beforeMillis: Long, limit: Int): Flow<List<LibrarySongEntity>>
+
     @Query("SELECT * FROM library_song_table WHERE songId = :songId LIMIT 1")
     suspend fun getById(songId: Long): LibrarySongEntity?
 
@@ -208,4 +226,36 @@ interface PlayHistoryDao {
            INNER JOIN library_song_table s ON s.songId = h.songId"""
     )
     fun observeListeningStats(): Flow<ListeningStats>
+
+    @Query(
+        """SELECT songId, COUNT(*) AS playCount FROM play_history_table
+           WHERE playedAt >= :sinceMillis
+           GROUP BY songId ORDER BY playCount DESC, MAX(playedAt) DESC LIMIT :limit"""
+    )
+    fun observeMostPlayedSince(sinceMillis: Long, limit: Int): Flow<List<PlayCountRow>>
+
+    @Query(
+        """SELECT COUNT(*) AS totalPlays, COALESCE(SUM(s.durationMs), 0) AS totalDurationMs
+           FROM play_history_table h
+           INNER JOIN library_song_table s ON s.songId = h.songId
+           WHERE h.playedAt >= :sinceMillis"""
+    )
+    fun observeListeningStatsSince(sinceMillis: Long): Flow<ListeningStats>
+
+    @Query(
+        """SELECT s.artist AS artist, COUNT(*) AS playCount, MIN(s.songId) AS representativeSongId
+           FROM play_history_table h
+           INNER JOIN library_song_table s ON s.songId = h.songId
+           WHERE h.playedAt >= :sinceMillis
+           GROUP BY s.artistKey ORDER BY playCount DESC LIMIT :limit"""
+    )
+    fun observeTopArtistsSince(sinceMillis: Long, limit: Int): Flow<List<ArtistPlayRow>>
+
+    @Query(
+        """SELECT h.playedAt AS playedAt, s.durationMs AS durationMs
+           FROM play_history_table h
+           INNER JOIN library_song_table s ON s.songId = h.songId
+           WHERE h.playedAt >= :sinceMillis ORDER BY h.playedAt ASC"""
+    )
+    fun observePlayTimesSince(sinceMillis: Long): Flow<List<PlayTimeRow>>
 }

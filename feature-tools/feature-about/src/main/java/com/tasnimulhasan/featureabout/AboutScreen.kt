@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.TouchApp
@@ -69,6 +71,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
 
 private const val DEV_NAME = "Md. Tasnimul Hasan"
 private const val DEV_EMAIL = "mdtasnimulh@gmail.com"
@@ -87,6 +92,8 @@ private val features = listOf(
     FeatureItem(Icons.Filled.Edit, "Tag & file editor", "Edit title, artist, album and more, change embedded cover art, rename, move or delete files."),
     FeatureItem(Icons.Filled.Notifications, "Rich notification", "Cover art, previous / play / next, plus repeat and favourite buttons right in the notification."),
     FeatureItem(Icons.Filled.Palette, "Themes", "Light, dark and AMOLED black, wallpaper-based dynamic colour, album-art colour, app-icon colour or a fixed accent."),
+    FeatureItem(Icons.Filled.AutoAwesome, "Smart playlists", "Lists that build themselves: most played this month, on repeat, recently added, long tracks, rediscover and not played yet."),
+    FeatureItem(Icons.Filled.BarChart, "Listening stats", "See your listening time, a daily or monthly chart, top songs and artists, plus a shareable \"Your year in music\" summary."),
     FeatureItem(Icons.Filled.TouchApp, "Long-press song menu", "Press and hold any song on Home or Songs to play it next, add it to the queue, add it to a playlist (or create a new one) and see its info."),
     FeatureItem(Icons.Filled.Widgets, "Home screen widgets", "Five widgets: Player, Compact, Cover, Recently Played and Favourites, with play, skip and favourite controls right on your home screen."),
     FeatureItem(Icons.Filled.Bedtime, "Sleep timer", "Fall asleep to music; playback fades out and stops on its own."),
@@ -171,7 +178,7 @@ internal fun AboutScreen(modifier: Modifier = Modifier) {
 private fun Reveal(index: Int, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(index * 70L)
+        delay((index * 70L).milliseconds)
         visible = true
     }
     AnimatedVisibility(
@@ -307,7 +314,7 @@ private fun InfoRow(icon: ImageVector, text: String, onClick: (() -> Unit)? = nu
 
 /** Opens Gmail's compose screen addressed to the developer; falls back to any mail app. */
 private fun sendEmail(context: Context) {
-    val uri = Uri.parse("mailto:$DEV_EMAIL?subject=" + Uri.encode("MelodiQ"))
+    val uri = ("mailto:$DEV_EMAIL?subject=" + Uri.encode("MelodiQ")).toUri()
     val gmail = Intent(Intent.ACTION_SENDTO, uri).setPackage("com.google.android.gm")
     try {
         context.startActivity(gmail)

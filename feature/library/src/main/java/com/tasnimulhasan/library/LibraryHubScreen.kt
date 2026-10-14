@@ -26,7 +26,8 @@ import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -49,6 +50,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tasnimulhasan.ui.motion.pressFeedback
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun LibraryHubRoute(
@@ -60,6 +63,8 @@ internal fun LibraryHubRoute(
     navigateToSearch: () -> Unit,
     navigateToNeverPlayed: () -> Unit,
     navigateToAlbums: () -> Unit,
+    navigateToSmartPlaylists: () -> Unit,
+    navigateToStats: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(
@@ -88,7 +93,8 @@ internal fun LibraryHubRoute(
         Reveal(2) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 WideRow(Icons.Filled.History, "Recently & most played", "Continue listening, your top tracks", navigateToRecentlyPlayed)
-                WideRow(Icons.Filled.NewReleases, "Not played yet", "Songs you have never listened to", navigateToNeverPlayed)
+                WideRow(Icons.Filled.AutoAwesome, "Smart playlists", "Most played, recently added, rediscover and more", navigateToSmartPlaylists)
+                WideRow(Icons.Filled.BarChart, "Listening stats", "Your time, top songs and artists, year in music", navigateToStats)
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -99,7 +105,7 @@ internal fun LibraryHubRoute(
 private fun Reveal(index: Int, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(index * 60L)
+        delay((index * 60L).milliseconds)
         visible = true
     }
     AnimatedVisibility(

@@ -3,6 +3,8 @@ package com.tasnimulhasan.domain.repository.local
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.library.ListeningStats
+import com.tasnimulhasan.entity.room.library.ArtistPlay
+import com.tasnimulhasan.entity.room.library.PlayTimeRow
 import com.tasnimulhasan.entity.room.library.AlbumSummary
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.FolderSummary
@@ -47,4 +49,15 @@ interface LibraryRepository {
 
     /** Smart playlist: songs that have never been played, newest first. */
     fun observeNeverPlayed(): Flow<List<MusicEntity>>
+
+    // --- Smart playlists ---
+    fun observeMostPlayedSince(sinceMillis: Long, limit: Int): Flow<List<Pair<MusicEntity, Int>>>
+    fun observeRecentlyAdded(sinceSeconds: Long, limit: Int): Flow<List<MusicEntity>>
+    fun observeLongTracks(minDurationMs: Long, limit: Int): Flow<List<MusicEntity>>
+    fun observeNotPlayedSince(beforeMillis: Long, limit: Int): Flow<List<MusicEntity>>
+
+    // --- Listening stats (all take "since" as epoch millis; 0 = all time) ---
+    fun observeListeningStatsSince(sinceMillis: Long): Flow<ListeningStats>
+    fun observeTopArtistsSince(sinceMillis: Long, limit: Int): Flow<List<ArtistPlay>>
+    fun observePlayTimesSince(sinceMillis: Long): Flow<List<PlayTimeRow>>
 }

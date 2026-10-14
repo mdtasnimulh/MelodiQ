@@ -1,26 +1,29 @@
 package com.tasnimulhasan.data.repoimpl.local
 
-import android.net.Uri
+import androidx.core.net.toUri
 import com.tasnimulhasan.data.library.MediaStoreLibraryScanner
 import com.tasnimulhasan.database.dao.LibrarySongDao
 import com.tasnimulhasan.database.dao.PlayHistoryDao
 import com.tasnimulhasan.domain.repository.local.LibraryRepository
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
-import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.library.AlbumSummary
+import com.tasnimulhasan.entity.room.library.ArtistPlay
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.FolderSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
 import com.tasnimulhasan.entity.room.library.LibrarySongEntity
+import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.library.PlayHistoryEntity
+import com.tasnimulhasan.entity.room.library.PlayTimeRow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
-private const val HISTORY_KEEP_COUNT = 2_000
+// Big enough that "Year in music" has a full year of plays to work with (rows are tiny).
+private const val HISTORY_KEEP_COUNT = 50_000
 
 class LibraryRepoImpl @Inject constructor(
     private val librarySongDao: LibrarySongDao,
@@ -99,6 +102,33 @@ class LibraryRepoImpl @Inject constructor(
 
     override fun observeListeningStats(): Flow<ListeningStats> = playHistoryDao.observeListeningStats()
 
+    override fun observeMostPlayedSince(sinceMillis: Long, limit: Int): Flow<List<Pair<MusicEntity, Int>>> =
+        playHistoryDao.observeMostPlayedSince(sinceMillis, limit).map { rows ->
+            val songs = librarySongDao.getByIds(rows.map { it.songId }).associateBy { it.songId }
+            rows.mapNotNull { row -> songs[row.songId]?.let { it.toMusicEntity() to row.playCount } }
+        }
+
+    override fun observeRecentlyAdded(sinceSeconds: Long, limit: Int): Flow<List<MusicEntity>> =
+        librarySongDao.observeRecentlyAdded(sinceSeconds, limit).map { rows -> rows.map { it.toMusicEntity() } }
+
+    override fun observeLongTracks(minDurationMs: Long, limit: Int): Flow<List<MusicEntity>> =
+        librarySongDao.observeLongerThan(minDurationMs, limit).map { rows -> rows.map { it.toMusicEntity() } }
+
+    override fun observeNotPlayedSince(beforeMillis: Long, limit: Int): Flow<List<MusicEntity>> =
+        librarySongDao.observeNotPlayedSince(beforeMillis, limit).map { rows -> rows.map { it.toMusicEntity() } }
+
+    override fun observeListeningStatsSince(sinceMillis: Long): Flow<ListeningStats> =
+        playHistoryDao.observeListeningStatsSince(sinceMillis)
+
+    override fun observeTopArtistsSince(sinceMillis: Long, limit: Int): Flow<List<ArtistPlay>> =
+        playHistoryDao.observeTopArtistsSince(sinceMillis, limit).map { rows ->
+            val songs = librarySongDao.getByIds(rows.map { it.representativeSongId }).associateBy { it.songId }
+            rows.map { ArtistPlay(it.artist, it.playCount, songs[it.representativeSongId]?.toMusicEntity()) }
+        }
+
+    override fun observePlayTimesSince(sinceMillis: Long): Flow<List<PlayTimeRow>> =
+        playHistoryDao.observePlayTimesSince(sinceMillis)
+
     private fun SortType.toColumnAndDirection(): Pair<String, Boolean> = when (this) {
         SortType.NAME_ASC -> "title" to true
         SortType.NAME_DESC -> "title" to false
@@ -111,7 +141,7 @@ class LibraryRepoImpl @Inject constructor(
     }
 
     private fun LibrarySongEntity.toMusicEntity(): MusicEntity = MusicEntity(
-        contentUri = Uri.parse(contentUriString),
+        contentUri = contentUriString.toUri(),
         songId = songId,
         cover = null,
         songTitle = title,

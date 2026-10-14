@@ -31,7 +31,7 @@ data class LibrarySongEntity(
     val songId: Long,
     val title: String,
     // Lowercased copies used for fast, index-backed LIKE search - keeps the search query
-    // itself simple and case-insensitive without a COLLATE NOCASE scan on every row.
+    // itself simple and case-insensitive without a COLLATE NO CASE scan on every row.
     val titleKey: String,
     val artist: String,
     val artistKey: String,
@@ -112,4 +112,24 @@ data class RecentPlayRow(
 data class ListeningStats(
     val totalPlays: Int,
     val totalDurationMs: Long,
+)
+
+/** One play event paired with the played song's own length - the raw material for the
+ * listening-time chart (bucketed per day / month in the stats screen). */
+data class PlayTimeRow(
+    val playedAt: Long,
+    val durationMs: Long,
+)
+
+data class ArtistPlayRow(
+    val artist: String,
+    val playCount: Int,
+    val representativeSongId: Long,
+)
+
+/** A top-artist entry with a song to borrow cover art from, ready for the UI. */
+data class ArtistPlay(
+    val artist: String,
+    val playCount: Int,
+    val coverSong: com.tasnimulhasan.entity.home.MusicEntity?,
 )
