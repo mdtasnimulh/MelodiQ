@@ -63,3 +63,23 @@ class ToggleFavouriteAction : ActionCallback {
         WidgetUpdater.updateAll(context)
     }
 }
+
+internal val SongIdKey = ActionParameters.Key<Long>("songId")
+
+/** Plays the tapped song from the full library (same as tapping it in Songs/Home). */
+class PlaySongAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val songId = parameters[SongIdKey] ?: return
+        val useCases = context.widgetEntryPoint().playerUseCases()
+        withContext(Dispatchers.Main) {
+            runCatching { useCases.ensurePlaybackServiceStarted() }
+            // After a cold start the library list fills in asynchronously.
+            if (useCases.observeAudioList().value.isEmpty()) {
+                withTimeoutOrNull(3_000.milliseconds) { useCases.observeAudioList().first { it.isNotEmpty() } }
+            }
+            val index = useCases.observeAudioList().value.indexOfFirst { it.songId == songId }
+            if (index >= 0) useCases.selectAudioChange(index)
+        }
+        WidgetUpdater.updateAll(context)
+    }
+}

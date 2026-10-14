@@ -1,6 +1,7 @@
 package com.tasnimulhasan.melodiq.widget
 
 import android.content.Context
+import com.tasnimulhasan.domain.localusecase.library.LibraryUseCases
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.repository.local.FavouriteRepository
 import dagger.hilt.EntryPoint
@@ -18,6 +19,7 @@ import dagger.hilt.components.SingletonComponent
 internal interface WidgetEntryPoint {
     fun playerUseCases(): PlayerUseCases
     fun favouriteRepository(): FavouriteRepository
+    fun libraryUseCases(): LibraryUseCases
     fun widgetUpdater(): WidgetUpdater
 }
 

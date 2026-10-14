@@ -55,12 +55,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
-import com.tasnimulhasan.home.components.AddToPlaylistDialog
 import com.tasnimulhasan.home.components.CompactSongRow
 import com.tasnimulhasan.home.components.HomeEmptyState
 import com.tasnimulhasan.home.components.HomeSectionHeader
 import com.tasnimulhasan.home.components.ListeningStatsHeader
 import com.tasnimulhasan.home.components.MostPlayedRow
+import com.tasnimulhasan.ui.component.AddToPlaylistSheet
+import com.tasnimulhasan.ui.component.SongActionsSheet
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -92,9 +93,9 @@ internal fun SharedTransitionScope.HomeScreen(
     val favoriteSongs by viewModel.favoriteSongs.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
-    val showAddToPlaylistDialog = remember { mutableStateOf(false) }
-    val showSongActionsSheet = remember { mutableStateOf(false) }
-    val selectedSongForPlaylist = remember { mutableStateOf<MusicEntity?>(null) }
+    // Non-null = that sheet is showing for that song.
+    val actionsSong = remember { mutableStateOf<MusicEntity?>(null) }
+    val playlistSong = remember { mutableStateOf<MusicEntity?>(null) }
 
     val snackBarHostState = remember { SnackbarHostState() }
     val playlists = remember { mutableStateOf<List<PlaylistEntity>>(emptyList()) }
@@ -116,8 +117,7 @@ internal fun SharedTransitionScope.HomeScreen(
     }
 
     fun openSongActions(song: MusicEntity) {
-        selectedSongForPlaylist.value = song
-        showSongActionsSheet.value = true
+        actionsSong.value = song
     }
 
     fun playFromList(song: MusicEntity) {
@@ -230,94 +230,44 @@ internal fun SharedTransitionScope.HomeScreen(
             }
         }
 
-        AddToPlaylistDialog(
-            show = showAddToPlaylistDialog,
-            song = selectedSongForPlaylist.value,
-            playlists = playlists.value,
-            onPlaylistSelected = { playlist ->
-                selectedSongForPlaylist.value?.let { song ->
-                    viewModel.action(
-                        UiAction.AddMusicToPlaylist(playlistId = playlist.id, music = song)
-                    )
-                }
-                showAddToPlaylistDialog.value = false
-            },
-            onDismiss = { showAddToPlaylistDialog.value = false }
-        )
-
         SongActionsSheet(
-            show = showSongActionsSheet,
-            song = selectedSongForPlaylist.value,
+            song = actionsSong.value,
             onPlayNext = { song ->
                 viewModel.playNext(song)
-                showSongActionsSheet.value = false
+                actionsSong.value = null
             },
             onPlayLater = { song ->
                 viewModel.playLater(song)
-                showSongActionsSheet.value = false
+                actionsSong.value = null
             },
-            onAddToPlaylist = {
-                showSongActionsSheet.value = false
-                showAddToPlaylistDialog.value = true
+            onAddToPlaylist = { song ->
+                actionsSong.value = null
+                playlistSong.value = song
             },
             onSongInfo = { song ->
-                showSongActionsSheet.value = false
+                actionsSong.value = null
                 navigateToSongDetails(song.songId)
             },
-            onDismiss = { showSongActionsSheet.value = false }
+            onDismiss = { actionsSong.value = null }
+        )
+
+        AddToPlaylistSheet(
+            song = playlistSong.value,
+            playlists = playlists.value,
+            onPlaylistSelected = { song, playlist ->
+                viewModel.action(UiAction.AddMusicToPlaylist(playlistId = playlist.id, music = song))
+                playlistSong.value = null
+            },
+            onCreatePlaylist = { song, name ->
+                viewModel.createPlaylistAndAdd(name, song)
+                playlistSong.value = null
+            },
+            onDismiss = { playlistSong.value = null }
         )
     }
 }
 
 private fun Int.dp() = this.dp
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SongActionsSheet(
-    show: MutableState<Boolean>,
-    song: MusicEntity?,
-    onPlayNext: (MusicEntity) -> Unit,
-    onPlayLater: (MusicEntity) -> Unit,
-    onAddToPlaylist: () -> Unit,
-    onSongInfo: (MusicEntity) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    if (!show.value || song == null) return
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            Text(
-                text = song.songTitle,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-            )
-            SheetAction(Icons.Filled.QueuePlayNext, "Play next") { onPlayNext(song) }
-            SheetAction(Icons.AutoMirrored.Filled.QueueMusic, "Add to queue") { onPlayLater(song) }
-            SheetAction(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist") { onAddToPlaylist() }
-            SheetAction(Icons.Filled.Info, "Song info") { onSongInfo(song) }
-        }
-    }
-}
-
-@Composable
-private fun SheetAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(imageVector = icon, contentDescription = null)
-        Spacer(modifier = Modifier.width(20.dp))
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
-    }
-}
 
 @Suppress("DEPRECATION")
 fun <T> Context.isServiceRunning(service: Class<T>): Boolean {

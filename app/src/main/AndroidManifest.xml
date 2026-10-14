@@ -185,6 +185,42 @@
                 android:resource="@xml/melodiq_widget_compact_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.MelodiqCoverWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_cover_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/melodiq_widget_cover_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.MelodiqRecentWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_recent_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/melodiq_widget_recent_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.MelodiqFavouritesWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_favourites_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/melodiq_widget_favourites_info" />
+        </receiver>
+
         <service
             android:name="com.tasnimulhasan.data.player.MelodiqPlayerService"
             android:exported="true"

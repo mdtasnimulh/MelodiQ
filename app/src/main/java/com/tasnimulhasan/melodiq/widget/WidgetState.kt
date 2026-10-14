@@ -35,11 +35,40 @@ internal suspend fun loadWidgetState(context: Context): WidgetState {
 
 // Goes through the app's own Coil ImageLoader so it reuses AlbumArtFetcher (MediaStore
 // thumbnail -> embedded picture), the memory cache and the AlbumArtVersion cache key.
-private suspend fun loadArt(context: Context, song: MusicEntity): Bitmap? = runCatching {
+private suspend fun loadArt(context: Context, song: MusicEntity, sizePx: Int = ART_SIZE_PX): Bitmap? = runCatching {
     val request = ImageRequest.Builder(context)
         .data(AlbumArt(songId = song.songId, contentUri = song.contentUri, albumId = song.albumId))
-        .size(ART_SIZE_PX)
+        .size(sizePx)
         .allowHardware(false) // RemoteViews need a software bitmap
         .build()
     (context.imageLoader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
 }.getOrNull()
+
+/** A song shown in one of the list-style widgets, with its (small) cover already decoded. */
+internal data class WidgetSong(val song: MusicEntity, val art: Bitmap?)
+
+private const val LIST_ART_SIZE_PX = 160
+
+/** Most recently played songs that still exist in the current library. */
+internal suspend fun loadRecentSongs(context: Context, limit: Int): List<WidgetSong> {
+    val entry = context.widgetEntryPoint()
+    val library = entry.playerUseCases().observeAudioList().value.mapTo(HashSet()) { it.songId }
+    val recent = runCatching {
+        entry.libraryUseCases().observeRecentlyPlayedWithTimestamp(limit * 2).first()
+    }.getOrDefault(emptyList())
+    return recent.map { it.first }
+        .filter { library.isEmpty() || it.songId in library }
+        .distinctBy { it.songId }
+        .take(limit)
+        .map { WidgetSong(it, loadArt(context, it, LIST_ART_SIZE_PX)) }
+}
+
+/** Favourite songs (resolved against the current library, like Home does). */
+internal suspend fun loadFavouriteSongs(context: Context, limit: Int): List<WidgetSong> {
+    val entry = context.widgetEntryPoint()
+    val ids = runCatching { entry.favouriteRepository().observeFavouriteIds().first() }.getOrDefault(emptySet())
+    return entry.playerUseCases().observeAudioList().value
+        .filter { it.songId in ids }
+        .take(limit)
+        .map { WidgetSong(it, loadArt(context, it, LIST_ART_SIZE_PX)) }
+}

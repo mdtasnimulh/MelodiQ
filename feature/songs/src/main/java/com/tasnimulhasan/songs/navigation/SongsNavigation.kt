@@ -17,6 +17,7 @@ fun NavController.navigateToSongs(navOptions: NavOptions) = navigate(route = Son
 fun NavGraphBuilder.songsScreen(
     navigateToPlayer: (musicId: String) -> Unit,
     navigateToSearch: () -> Unit,
+    navigateToSongDetails: (Long) -> Unit,
 ) {
     composable<SongsRoute>(
         enterTransition = { MelodiqMotion.pushEnter() },
@@ -24,6 +25,10 @@ fun NavGraphBuilder.songsScreen(
         popEnterTransition = { MelodiqMotion.popEnter() },
         popExitTransition = { MelodiqMotion.popExit() }
     ) {
-        SongsRouteScreen(navigateToPlayer = navigateToPlayer, navigateToSearch = navigateToSearch)
+        SongsRouteScreen(
+            navigateToPlayer = navigateToPlayer,
+            navigateToSearch = navigateToSearch,
+            navigateToSongDetails = navigateToSongDetails,
+        )
     }
 }

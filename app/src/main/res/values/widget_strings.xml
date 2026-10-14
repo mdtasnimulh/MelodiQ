@@ -4,4 +4,10 @@
     <string name="widget_player_description">Cover, track info, favourite and playback controls</string>
     <string name="widget_compact_name">MelodiQ Compact</string>
     <string name="widget_compact_description">Slim now-playing bar with play and next</string>
+    <string name="widget_cover_name">MelodiQ Cover</string>
+    <string name="widget_cover_description">Big album art with play and pause</string>
+    <string name="widget_recent_name">MelodiQ Recently Played</string>
+    <string name="widget_recent_description">Your latest songs, one tap to play</string>
+    <string name="widget_favourites_name">MelodiQ Favourites</string>
+    <string name="widget_favourites_description">A shelf of your favourite songs</string>
 </resources>

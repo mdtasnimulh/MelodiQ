@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Keeps the home screen widgets in step with the player. Started once from the Application;
@@ -40,6 +41,8 @@ class WidgetUpdater @Inject constructor(
         val artist: String?,
         val isPlaying: Boolean,
         val isFavourite: Boolean,
+        // Whole set, so the Favourites widget also refreshes when a non-current song is hearted.
+        val favouriteIds: Set<Long>,
     )
 
     @OptIn(FlowPreview::class)
@@ -59,10 +62,11 @@ class WidgetUpdater @Inject constructor(
                     artist = song?.artist,
                     isPlaying = playing,
                     isFavourite = song != null && favourites.contains(song.songId),
+                    favouriteIds = favourites,
                 )
             }
                 .distinctUntilChanged()
-                .debounce(250)
+                .debounce(250.milliseconds)
                 .collect { updateAll(context) }
         }
     }
@@ -71,7 +75,13 @@ class WidgetUpdater @Inject constructor(
         /** Cheap synchronous check used at app start. */
         fun hasPlacedWidgets(context: Context): Boolean {
             val manager = AppWidgetManager.getInstance(context)
-            return listOf(MelodiqPlayerWidgetReceiver::class.java, MelodiqCompactWidgetReceiver::class.java)
+            return listOf(
+                MelodiqPlayerWidgetReceiver::class.java,
+                MelodiqCompactWidgetReceiver::class.java,
+                MelodiqCoverWidgetReceiver::class.java,
+                MelodiqRecentWidgetReceiver::class.java,
+                MelodiqFavouritesWidgetReceiver::class.java,
+            )
                 .any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
         }
 
@@ -79,6 +89,9 @@ class WidgetUpdater @Inject constructor(
         suspend fun updateAll(context: Context) {
             runCatching { MelodiqPlayerWidget().updateAll(context) }
             runCatching { MelodiqCompactWidget().updateAll(context) }
+            runCatching { MelodiqCoverWidget().updateAll(context) }
+            runCatching { MelodiqRecentWidget().updateAll(context) }
+            runCatching { MelodiqFavouritesWidget().updateAll(context) }
         }
     }
 }

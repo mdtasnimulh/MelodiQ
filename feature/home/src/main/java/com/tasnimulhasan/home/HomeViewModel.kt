@@ -12,17 +12,14 @@ import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicListToPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.IsSongInPlaylistUseCase
-import com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.GetAllPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
-import com.tasnimulhasan.domain.localusecase.playlists.SearchPlaylistByNameUseCase
-import com.tasnimulhasan.domain.localusecase.playlists.UpdatePlaylistUseCase
 import com.tasnimulhasan.domain.player.PlaybackState
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
+import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
-import com.tasnimulhasan.entity.room.library.ListeningStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -47,6 +45,7 @@ class HomeViewModel @Inject constructor(
     private val setSortTypeUseCase: SetSortTypeUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
     private val getAllPlaylistUseCase: GetAllPlaylistUseCase,
+    private val insertPlaylistUseCase: InsertPlaylistUseCase,
     private val insertMusicToPlaylist: InsertMusicToPlaylistUseCase,
     private val isSongInPlaylistUseCase: IsSongInPlaylistUseCase,
     private val insertMusicListToPlaylistUseCase: InsertMusicListToPlaylistUseCase,
@@ -280,6 +279,27 @@ class HomeViewModel @Inject constructor(
             )
             insertMusicToPlaylist(params = InsertMusicToPlaylistUseCase.Params(details))
             _uiEvent.send(UiEvent.ShowToast("Added to playlist"))
+        }
+    }
+
+    /** Creates a playlist called [name] and puts [song] straight into it. */
+    fun createPlaylistAndAdd(name: String, song: MusicEntity) {
+        execute {
+            val createdAt = System.currentTimeMillis()
+            insertPlaylistUseCase(
+                InsertPlaylistUseCase.Params(
+                    PlaylistEntity(playlistName = name, playlistDescription = "", createdAt = createdAt)
+                )
+            )
+            // insertPlaylist returns nothing, so find the new row (newest with this name).
+            val created = getAllPlaylistUseCase.invoke().first()
+                .filter { it.playlistName == name && it.createdAt == createdAt }
+                .maxByOrNull { it.id }
+            if (created == null) {
+                _uiEvent.send(UiEvent.ShowToast("Couldn't create playlist"))
+                return@execute
+            }
+            addMusicToPlaylist(created.id, song)
         }
     }
 

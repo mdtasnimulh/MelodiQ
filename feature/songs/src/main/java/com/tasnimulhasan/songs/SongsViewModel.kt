@@ -8,6 +8,15 @@ import com.tasnimulhasan.domain.localusecase.datastore.SetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
 import com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
+import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlistdetails.IsSongInPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.GetAllPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
+import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
+import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,7 +37,18 @@ class SongsViewModel @Inject constructor(
     private val setSortTypeUseCase: SetSortTypeUseCase,
     private val observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
     private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
+    private val getAllPlaylistUseCase: GetAllPlaylistUseCase,
+    private val insertPlaylistUseCase: InsertPlaylistUseCase,
+    private val insertMusicToPlaylist: InsertMusicToPlaylistUseCase,
+    private val isSongInPlaylistUseCase: IsSongInPlaylistUseCase,
 ) : BaseViewModel() {
+
+    private val _messages = Channel<String>(Channel.BUFFERED)
+    /** One-shot user messages ("Added to queue", ...) shown as a toast by the screen. */
+    val messages = _messages.receiveAsFlow()
+
+    val playlists: StateFlow<List<PlaylistEntity>> = getAllPlaylistUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val dummyAudio = MusicEntity(
         contentUri = "".toUri(),
@@ -85,6 +105,67 @@ class SongsViewModel @Inject constructor(
 
     fun toggleFavorite(songId: Long) {
         viewModelScope.launch { toggleFavouriteUseCase(songId) }
+    }
+
+    fun playNext(song: MusicEntity) = viewModelScope.launch {
+        playerUseCases.playNext(song)
+        _messages.send("Playing next")
+    }
+
+    fun playLater(song: MusicEntity) = viewModelScope.launch {
+        playerUseCases.playLater(song)
+        _messages.send("Added to queue")
+    }
+
+    fun addToPlaylist(playlistId: Int, song: MusicEntity) {
+        viewModelScope.launch { addSongToPlaylist(playlistId, song) }
+    }
+
+    /** Creates a playlist called [name] and puts [song] straight into it. */
+    fun createPlaylistAndAdd(name: String, song: MusicEntity) {
+        viewModelScope.launch {
+            val createdAt = System.currentTimeMillis()
+            insertPlaylistUseCase(
+                InsertPlaylistUseCase.Params(
+                    PlaylistEntity(playlistName = name, playlistDescription = "", createdAt = createdAt)
+                )
+            )
+            // insertPlaylist returns nothing, so look the new row up (newest with this name).
+            val created = getAllPlaylistUseCase().first()
+                .filter { it.playlistName == name && it.createdAt == createdAt }
+                .maxByOrNull { it.id }
+            if (created == null) {
+                _messages.send("Couldn't create playlist")
+                return@launch
+            }
+            addSongToPlaylist(created.id, song)
+        }
+    }
+
+    private suspend fun addSongToPlaylist(playlistId: Int, song: MusicEntity) {
+        val alreadyAdded = isSongInPlaylistUseCase(
+            IsSongInPlaylistUseCase.Params(playlistId = playlistId, songId = song.songId)
+        )
+        if (alreadyAdded) {
+            _messages.send("Already added to this playlist")
+            return
+        }
+        insertMusicToPlaylist(
+            params = InsertMusicToPlaylistUseCase.Params(
+                PlaylistDetailsEntity(
+                    playlistId = playlistId,
+                    contentUri = song.contentUri.toString(),
+                    songId = song.songId,
+                    cover = song.contentUri.toString(),
+                    songTitle = song.songTitle,
+                    artist = song.artist,
+                    duration = song.duration,
+                    album = song.album,
+                    albumId = song.albumId,
+                )
+            )
+        )
+        _messages.send("Added to playlist")
     }
 
     fun sortTypeToDisplayString(sortType: SortType): String = when (sortType) {

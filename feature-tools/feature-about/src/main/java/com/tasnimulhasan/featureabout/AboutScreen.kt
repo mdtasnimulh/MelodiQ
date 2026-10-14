@@ -26,7 +26,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Equalizer
@@ -79,10 +83,14 @@ private val features = listOf(
     FeatureItem(Icons.Filled.Subtitles, "Lyrics", "Synced lyrics that follow the song as it plays."),
     FeatureItem(Icons.Filled.Equalizer, "Equalizer & presets", "Tune the sound with a built-in equalizer, preset chips and one-tap reset to flat."),
     FeatureItem(Icons.Filled.Tune, "Crossfade & volume normalization", "Smooth transitions between tracks and even loudness using ReplayGain tags."),
-    FeatureItem(Icons.AutoMirrored.Filled.QueueMusic, "Queue & playlists", "Manage the play queue, create playlists and mark favourites."),
+    FeatureItem(Icons.AutoMirrored.Filled.QueueMusic, "Queue & playlists", "Manage the play queue, create playlists (even straight from a song's menu) and mark favourites."),
     FeatureItem(Icons.Filled.Edit, "Tag & file editor", "Edit title, artist, album and more, change embedded cover art, rename, move or delete files."),
     FeatureItem(Icons.Filled.Notifications, "Rich notification", "Cover art, previous / play / next, plus repeat and favourite buttons right in the notification."),
-    FeatureItem(Icons.Filled.Palette, "Themes", "Light, dark and AMOLED black, wallpaper-based dynamic colour, album-art colour or a fixed accent."),
+    FeatureItem(Icons.Filled.Palette, "Themes", "Light, dark and AMOLED black, wallpaper-based dynamic colour, album-art colour, app-icon colour or a fixed accent."),
+    FeatureItem(Icons.Filled.TouchApp, "Long-press song menu", "Press and hold any song on Home or Songs to play it next, add it to the queue, add it to a playlist (or create a new one) and see its info."),
+    FeatureItem(Icons.Filled.Widgets, "Home screen widgets", "Five widgets: Player, Compact, Cover, Recently Played and Favourites, with play, skip and favourite controls right on your home screen."),
+    FeatureItem(Icons.Filled.Bedtime, "Sleep timer", "Fall asleep to music; playback fades out and stops on its own."),
+    FeatureItem(Icons.Filled.Apps, "App icon switcher", "Pick your launcher icon from eight designs in Settings; the drawer logo and theme can follow it."),
     FeatureItem(Icons.Filled.Backup, "Backup & restore", "Export playlists, favourites, play history and settings to a file and restore them anytime."),
 )
 

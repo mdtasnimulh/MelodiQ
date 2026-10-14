@@ -50,6 +50,7 @@ fun MelodiQNavHost(
         songsScreen(
             navigateToPlayer = navigateToPlayer,
             navigateToSearch = { navController.navigateToSearch() },
+            navigateToSongDetails = { songId -> navController.navigateToSongDetails(songId) },
         )
         albumScreen(
             navigateToAlbumDetails = { albumId -> navigateToAlbumDetails(albumId) },
