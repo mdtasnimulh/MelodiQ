@@ -46,6 +46,7 @@ constraintlayoutCompose = "1.1.2"
 paletteVersion = "1.0.0"
 composeShapes = "1.1.0"
 animationCompose = "1.12.1"
+glance = "1.2.0"
 
 [libraries]
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
@@ -95,6 +96,9 @@ androidx-window-core = { group = "androidx.window", name = "window-core", versio
 androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-palette-compose = { group = "androidx.palette", name = "palette-ktx", version.ref = "paletteVersion" }
 compose-graphics-shapes = { group = "androidx.graphics", name = "graphics-shapes", version.ref = "composeShapes" }
+
+androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 
 androidx-animation-compose = { group = "androidx.compose.animation", name = "animation", version.ref = "animationCompose" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "androidxNavigation" }

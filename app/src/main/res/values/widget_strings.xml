@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_player_name">MelodiQ Player</string>
+    <string name="widget_player_description">Cover, track info, favourite and playback controls</string>
+    <string name="widget_compact_name">MelodiQ Compact</string>
+    <string name="widget_compact_description">Slim now-playing bar with play and next</string>
+</resources>

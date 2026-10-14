@@ -134,6 +134,8 @@ dependencies {
     implementation(libs.coil.kt.compose)
     implementation(libs.androidx.constraintlayout.compose)
     implementation(libs.androidx.palette.compose)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
 
     ksp(libs.hilt.compiler)
     implementation(libs.timber)
