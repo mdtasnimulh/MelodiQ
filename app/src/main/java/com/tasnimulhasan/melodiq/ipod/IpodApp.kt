@@ -27,7 +27,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
+import android.app.Activity
+import android.os.Process
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,13 +55,6 @@ import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import kotlin.math.sign
-
-private val BodyBrush = Brush.horizontalGradient(
-    0.00f to Color(0xFFB7B7B9),
-    0.10f to Color(0xFFCFCFD1),
-    0.90f to Color(0xFFCFCFD1),
-    1.00f to Color(0xFFB7B7B9),
-)
 
 /**
  * Player B: the whole app as an iPod.
@@ -77,13 +80,43 @@ internal fun IpodApp(
     val current by viewModel.current.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val clickFeedback by viewModel.clickFeedback.collectAsStateWithLifecycle()
+    val bodyColor by viewModel.color.collectAsStateWithLifecycle()
+    val theme = remember(bodyColor) { ipodTheme(bodyColor) }
 
-    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback)
+    val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
+    val minimize = remember(activity) { { activity?.moveTaskToBack(true); Unit } }
+    val exitApp = remember(activity, viewModel) {
+        {
+            viewModel.stopEverything {
+                activity?.finishAndRemoveTask()
+                Process.killProcess(Process.myPid())
+            }
+        }
+    }
+
+    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp)
+    val latestData by rememberUpdatedState(data)
+    val latestSwitch by rememberUpdatedState(onSwitchToClassic)
+
+    // Status / navigation bar icons follow the body colour (light icons on a dark body).
+    DisposableEffect(activity, theme.darkBody) {
+        val a = activity as? ComponentActivity
+        if (a != null) {
+            val bar = if (theme.darkBody) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+            else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+            a.enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)
+        }
+        onDispose { }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    }
 
     val contentTop = viewModel.content.last()
     val menuTop = viewModel.menu.lastOrNull()
     val active = menuTop ?: contentTop
-    val activeRows = rememberRows(active, data, viewModel, onSwitchToClassic)
 
     LaunchedEffect(songs.isNotEmpty()) { viewModel.syncHomeSelection() }
 
@@ -105,32 +138,38 @@ internal fun IpodApp(
         }
     }
 
+    // The wheel callbacks always read the LIVE top-of-stack (menu first, else content), never a
+    // value captured at an earlier composition - otherwise a menu opened later would be ignored
+    // and the wheel / OK button would keep driving the screen behind it.
+    fun liveEntry(): IpodEntry = viewModel.menu.lastOrNull() ?: viewModel.content.last()
+
     fun rotate(steps: Int) {
-        val e = active
+        val e = liveEntry()
         if (e.page == IpodPage.NOW_PLAYING) {
             viewModel.nowPlayingRotate(steps)
             return
         }
-        val count = activeRows.size
+        val count = if (e.page.isMenuPage) buildRows(e, latestData, viewModel, latestSwitch).size else rowCount(e, latestData)
         // Fast turns skip several items, but only in long lists - a short menu moves one row at a time.
         val moved = if (count < 30) steps.sign else steps
         e.selected = (e.selected + moved).coerceIn(0, (count - 1).coerceAtLeast(0))
     }
 
     fun centerPressed() {
-        val e = active
+        val e = liveEntry()
         if (e.page == IpodPage.NOW_PLAYING) viewModel.toggleScrub()
-        else activeRows.getOrNull(e.selected)?.onSelect?.invoke()
+        else buildRows(e, latestData, viewModel, latestSwitch).getOrNull(e.selected)?.onSelect?.invoke()
     }
 
     // Keeps the last menu level around while the panel is sliding out.
     val lastMenu = remember { arrayOfNulls<IpodEntry>(1) }
     if (menuTop != null) lastMenu[0] = menuTop
 
+    CompositionLocalProvider(LocalIpodTheme provides theme) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(BodyBrush)
+            .background(theme.body)
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
@@ -174,11 +213,22 @@ internal fun IpodApp(
                 onHoldSeek = viewModel::seekHold,
                 onMenuHold = viewModel::menuHold,
                 onFeedback = feedback,
+                isPlaying = isPlaying,
             )
 
             Spacer(Modifier.weight(1f))
         }
     }
+    }
+}
+
+private fun android.content.Context.findActivity(): Activity? {
+    var c = this
+    while (c is android.content.ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
 }
 
 @Composable
@@ -281,6 +331,7 @@ private fun NowPlayingScreen(vm: IpodViewModel) {
     val scrubbing by vm.scrubbing.collectAsStateWithLifecycle()
     val showVolume by vm.showVolume.collectAsStateWithLifecycle()
     val volume by vm.volume.collectAsStateWithLifecycle()
+    val favouriteIds by vm.favouriteIds.collectAsStateWithLifecycle()
     NowPlayingView(
         song = song,
         positionMs = positionMs,
@@ -288,6 +339,9 @@ private fun NowPlayingScreen(vm: IpodViewModel) {
         scrubbing = scrubbing,
         showVolume = showVolume,
         volume = volume,
+        isFavourite = song?.songId in favouriteIds,
+        onToggleFavourite = vm::toggleFavouriteCurrent,
+        onAddToPlaylist = { vm.openMenuPage(IpodPage.ADD_TO_PLAYLIST, "Add to Playlist") },
     )
 }
 
@@ -311,6 +365,9 @@ internal class IpodData(
     val favouriteIds: Set<Long>,
     val current: MusicEntity?,
     val clickFeedback: Boolean,
+    val color: IpodColor,
+    val onMinimize: () -> Unit,
+    val onExit: () -> Unit,
 )
 
 /** Rows are rebuilt only when what they are made from changes - not on every recomposition. */
@@ -321,7 +378,7 @@ private fun rememberRows(
     vm: IpodViewModel,
     onSwitchToClassic: () -> Unit,
 ): List<IpodRow> = remember(
-    entry, d.songs, d.artists, d.albums, d.genres, d.playlists, d.favouriteIds, d.current, d.clickFeedback,
+    entry, d.songs, d.artists, d.albums, d.genres, d.playlists, d.favouriteIds, d.current, d.clickFeedback, d.color,
 ) { buildRows(entry, d, vm, onSwitchToClassic) }
 
 private fun rowCount(entry: IpodEntry, d: IpodData): Int = when (entry.page) {
@@ -410,7 +467,38 @@ internal fun buildRows(
             if (d.current != null) {
                 add(IpodRow("now", "Now Playing", chevron = false) { vm.pushContent(IpodPage.NOW_PLAYING, "Now Playing") })
             }
+            add(IpodRow("colour", "Colour") { vm.pushMenu(IpodPage.COLOUR, "Colour") })
             add(IpodRow("settings", "Settings") { vm.pushMenu(IpodPage.SETTINGS, "Settings") })
+            add(IpodRow("minimize", "Minimize", chevron = false) {
+                vm.closeMenu()
+                d.onMinimize()
+            })
+            add(IpodRow("exit", "Exit", chevron = false) { d.onExit() })
+        }
+
+        IpodPage.COLOUR -> IpodColor.entries.map { c ->
+            IpodRow(
+                id = "colour_${c.name}",
+                title = c.label + if (c == d.color) "  ✓" else "",
+                chevron = false,
+                onSelect = { vm.setColor(c) },
+            )
+        }
+
+        IpodPage.ADD_TO_PLAYLIST -> if (d.playlists.isEmpty()) {
+            listOf(IpodRow("no_playlists", "No playlists yet", chevron = false) { })
+        } else {
+            d.playlists.map { p ->
+                IpodRow(
+                    id = "add_${p.id}",
+                    title = p.playlistName,
+                    chevron = false,
+                    onSelect = {
+                        vm.addCurrentToPlaylist(p)
+                        vm.closeMenu()
+                    },
+                )
+            }
         }
 
         IpodPage.MUSIC -> listOf(

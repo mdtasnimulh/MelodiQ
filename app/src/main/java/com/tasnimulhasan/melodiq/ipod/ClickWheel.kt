@@ -7,7 +7,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -49,7 +48,11 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
 
-private val LabelGrey = Color(0xFF9B9BA0)
+/**
+ * true: icon shows the CURRENT state (playing = play icon, paused = pause icon).
+ * false: icon shows the ACTION a tap does (playing = pause icon, paused = play icon).
+ */
+private const val SHOW_STATE_ICON = true
 
 /**
  * The iPod click wheel.
@@ -72,8 +75,10 @@ internal fun ClickWheel(
     onHoldSeek: (forward: Boolean) -> Unit,
     onMenuHold: () -> Unit,
     onFeedback: () -> Unit,
+    isPlaying: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val theme = LocalIpodTheme.current
     val rotate by rememberUpdatedState(onRotate)
     val center by rememberUpdatedState(onCenter)
     val menu by rememberUpdatedState(onMenu)
@@ -92,15 +97,8 @@ internal fun ClickWheel(
         modifier = modifier
             .aspectRatio(1f)
             .shadow(6.dp, CircleShape, ambientColor = Color(0x33000000), spotColor = Color(0x44000000))
-            .background(
-                Brush.radialGradient(
-                    0.0f to Color.White,
-                    0.7f to Color(0xFFF6F6F6),
-                    1.0f to Color(0xFFE3E3E3),
-                ),
-                CircleShape,
-            )
-            .border(1.dp, Color(0xFFD2D2D4), CircleShape)
+            .background(theme.wheel, CircleShape)
+            .border(1.dp, theme.wheelBorder, CircleShape)
             .onSizeChanged { size = it }
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -213,7 +211,7 @@ internal fun ClickWheel(
 
         Text(
             text = "MENU",
-            color = LabelGrey,
+            color = theme.label,
             fontSize = 17.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.Center).offset(y = -labelOffset),
@@ -221,22 +219,22 @@ internal fun ClickWheel(
         Icon(
             imageVector = Icons.Filled.SkipPrevious,
             contentDescription = "Previous",
-            tint = LabelGrey,
+            tint = theme.label,
             modifier = Modifier.align(Alignment.Center).offset(x = -labelOffset).size(30.dp),
         )
         Icon(
             imageVector = Icons.Filled.SkipNext,
             contentDescription = "Next",
-            tint = LabelGrey,
+            tint = theme.label,
             modifier = Modifier.align(Alignment.Center).offset(x = labelOffset).size(30.dp),
         )
-        Row(
-            modifier = Modifier.align(Alignment.Center).offset(y = labelOffset),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Play / pause", tint = LabelGrey, modifier = Modifier.size(24.dp))
-            Icon(Icons.Filled.Pause, contentDescription = null, tint = LabelGrey, modifier = Modifier.size(22.dp).padding(start = 0.dp))
-        }
+        // One icon that mirrors the state: play icon while playing, pause icon while paused.
+        Icon(
+            imageVector = if (isPlaying == SHOW_STATE_ICON) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+            contentDescription = "Play / pause",
+            tint = theme.label,
+            modifier = Modifier.align(Alignment.Center).offset(y = labelOffset).size(30.dp),
+        )
 
         // Centre button.
         Box(
@@ -244,15 +242,8 @@ internal fun ClickWheel(
                 .align(Alignment.Center)
                 .fillMaxSize(0.40f)
                 .aspectRatio(1f)
-                .background(
-                    Brush.radialGradient(
-                        0.0f to if (centerPressed) Color(0xFFD8D8D8) else Color(0xFFEFEFEF),
-                        0.75f to if (centerPressed) Color(0xFFCDCDCD) else Color(0xFFE4E4E4),
-                        1.0f to Color(0xFFD4D4D4),
-                    ),
-                    CircleShape,
-                )
-                .border(1.dp, Color(0xFFCFCFD1), CircleShape),
+                .background(if (centerPressed) theme.centerPressed else theme.centerIdle, CircleShape)
+                .border(1.dp, theme.centerBorder, CircleShape),
         )
     }
 }

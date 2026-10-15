@@ -12,13 +12,17 @@ import com.tasnimulhasan.entity.home.MusicEntity
 /**
  * Pages come in two families. CONTENT pages fill the display: HOME (Cover Flow of every song),
  * ALBUMS / ARTISTS / GENRES / FAVOURITES / SONG_LIST (all Cover Flow too) and NOW_PLAYING.
- * MENU pages (MAIN, MUSIC, PLAYLISTS, SETTINGS) are plain lists shown in the panel that slides
+ * MENU pages (MAIN, MUSIC, PLAYLISTS, SETTINGS, COLOUR, ADD_TO_PLAYLIST) are plain lists shown in the panel that slides
  * in from the left when MENU is pressed.
  */
 internal enum class IpodPage {
     HOME, ALBUMS, ARTISTS, GENRES, FAVOURITES, SONG_LIST, NOW_PLAYING,
-    MAIN, MUSIC, PLAYLISTS, SETTINGS,
+    MAIN, MUSIC, PLAYLISTS, SETTINGS, COLOUR, ADD_TO_PLAYLIST,
 }
+
+internal val IpodPage.isMenuPage: Boolean
+    get() = this == IpodPage.MAIN || this == IpodPage.MUSIC || this == IpodPage.PLAYLISTS ||
+        this == IpodPage.SETTINGS || this == IpodPage.COLOUR || this == IpodPage.ADD_TO_PLAYLIST
 
 internal val IpodPage.isCoverFlow: Boolean
     get() = this == IpodPage.HOME || this == IpodPage.ALBUMS || this == IpodPage.ARTISTS ||

@@ -6,6 +6,14 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
+import com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase
+import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlistdetails.IsSongInPlaylistUseCase
+import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import com.tasnimulhasan.domain.localusecase.library.LibraryUseCases
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
@@ -42,6 +50,9 @@ internal class IpodViewModel @Inject constructor(
     private val getAllPlaylistUseCase: GetAllPlaylistUseCase,
     private val getAllMusicFromPlaylistUseCase: GetAllMusicFromPlaylistUseCase,
     observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
+    private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
+    private val insertMusicToPlaylistUseCase: InsertMusicToPlaylistUseCase,
+    private val isSongInPlaylistUseCase: IsSongInPlaylistUseCase,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -56,6 +67,12 @@ internal class IpodViewModel @Inject constructor(
     }
 
     fun closeMenu() = menu.clear()
+
+    /** Opens the menu panel directly on [page] (MENU then closes it in one press). */
+    fun openMenuPage(page: IpodPage, title: String) {
+        menu.clear()
+        menu.add(IpodEntry(page, title, depth = 0))
+    }
 
     fun pushMenu(page: IpodPage, title: String) {
         menu.add(IpodEntry(page, title, depth = menu.size))
@@ -282,12 +299,69 @@ internal class IpodViewModel @Inject constructor(
         }
     }
 
+    // ─── Favourite / playlist actions for the current song ───────────────────────────────
+    private val _messages = Channel<String>(Channel.BUFFERED)
+    /** One-off messages (toasts) for the UI. */
+    val messages = _messages.receiveAsFlow()
+
+    fun toggleFavouriteCurrent() {
+        val song = current.value ?: return
+        viewModelScope.launch { toggleFavouriteUseCase(song.songId) }
+    }
+
+    fun addCurrentToPlaylist(playlist: PlaylistEntity) {
+        val song = current.value ?: return
+        viewModelScope.launch {
+            val already = isSongInPlaylistUseCase(IsSongInPlaylistUseCase.Params(playlist.id, song.songId))
+            if (already) {
+                _messages.send("Already in ${playlist.playlistName}")
+                return@launch
+            }
+            insertMusicToPlaylistUseCase(
+                InsertMusicToPlaylistUseCase.Params(
+                    PlaylistDetailsEntity(
+                        playlistId = playlist.id,
+                        contentUri = song.contentUri.toString(),
+                        songId = song.songId,
+                        cover = song.contentUri.toString(),
+                        songTitle = song.songTitle,
+                        artist = song.artist,
+                        duration = song.duration,
+                        album = song.album,
+                        albumId = song.albumId,
+                    )
+                )
+            )
+            _messages.send("Added to ${playlist.playlistName}")
+        }
+    }
+
+    // ─── Leaving the app ─────────────────────────────────────────────────────────────────
+    /** Stops playback and the playback service, then runs [afterStopped] (which closes the app). */
+    fun stopEverything(afterStopped: () -> Unit) {
+        viewModelScope.launch {
+            withContext(NonCancellable) { runCatching { playerUseCases.stopPlayback() } }
+            delay(250)
+            afterStopped()
+        }
+    }
+
     // ─── Small iPod-only preference ──────────────────────────────────────────────────────
     private val prefs = context.getSharedPreferences("ipod_ui", Context.MODE_PRIVATE)
 
     private val _clickFeedback = MutableStateFlow(prefs.getBoolean(KEY_CLICK, true))
     /** Wheel ticks play the system click sound and a light vibration when on. */
     val clickFeedback: StateFlow<Boolean> = _clickFeedback.asStateFlow()
+
+    private val _color = MutableStateFlow(
+        runCatching { IpodColor.valueOf(prefs.getString(KEY_COLOR, IpodColor.WHITE.name)!!) }.getOrDefault(IpodColor.WHITE)
+    )
+    val color: StateFlow<IpodColor> = _color.asStateFlow()
+
+    fun setColor(color: IpodColor) {
+        _color.value = color
+        prefs.edit().putString(KEY_COLOR, color.name).apply()
+    }
 
     fun toggleClickFeedback() {
         val next = !_clickFeedback.value
@@ -297,5 +371,6 @@ internal class IpodViewModel @Inject constructor(
 
     private companion object {
         const val KEY_CLICK = "click_feedback"
+        const val KEY_COLOR = "body_color"
     }
 }

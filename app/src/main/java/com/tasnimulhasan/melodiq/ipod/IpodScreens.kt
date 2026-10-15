@@ -30,10 +30,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VolumeMute
@@ -420,6 +424,9 @@ internal fun NowPlayingView(
     scrubbing: Boolean,
     showVolume: Boolean,
     volume: Float,
+    isFavourite: Boolean,
+    onToggleFavourite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (song == null) {
@@ -454,6 +461,22 @@ internal fun NowPlayingView(
                 Spacer(Modifier.height(4.dp))
                 Text(song.artist, color = Color(0xFF8E9297), fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(song.album, color = Color(0xFF8E9297), fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (isFavourite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Favourite",
+                        tint = if (isFavourite) Color(0xFFE5365B) else Color(0xFF6E7378),
+                        modifier = Modifier.size(34.dp).clip(CircleShape).clickable(onClick = onToggleFavourite).padding(5.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                        contentDescription = "Add to playlist",
+                        tint = Color(0xFF6E7378),
+                        modifier = Modifier.size(34.dp).clip(CircleShape).clickable(onClick = onAddToPlaylist).padding(4.dp),
+                    )
+                }
             }
         }
 
