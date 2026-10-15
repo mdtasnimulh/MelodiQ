@@ -6,3 +6,8 @@ plugins {
 android {
     namespace = "com.tasnimulhasan.featureaudiobook"
 }
+
+dependencies {
+    // Reads the cover image embedded in a PDF's first page.
+    implementation(libs.pdfbox.android)
+}

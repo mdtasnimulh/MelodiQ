@@ -41,6 +41,7 @@ coil = "2.7.0"
 androidxMetrics = "1.0.0"
 timberVersion = "5.0.1"
 gsonVersion = "2.14.0"
+pdfboxAndroid = "2.0.27.0"
 preferenceVersion = "1.2.1"
 constraintlayoutCompose = "1.1.2"
 paletteVersion = "1.0.0"
@@ -128,6 +129,7 @@ kotlin-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutine
 androidx-work-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "androidxWork" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timberVersion" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gsonVersion" }
+pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfboxAndroid" }
 
 coil-kt = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
 coil-kt-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }

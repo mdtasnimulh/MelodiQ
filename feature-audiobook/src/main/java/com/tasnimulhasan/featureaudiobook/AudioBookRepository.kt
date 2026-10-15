@@ -10,6 +10,9 @@ import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import android.util.LruCache
 import com.google.gson.Gson
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -102,7 +105,7 @@ class AudioBookRepository @Inject constructor(
     }
 }
 
-/** Draws the first page of a book's PDF as its cover, with a small in-memory cache. */
+/** A book's cover: the artwork embedded in its PDF, else the rendered first page. Small in-memory cache. */
 @Singleton
 class BookCovers @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -116,7 +119,45 @@ class BookCovers @Inject constructor(
         cache.get(book.id)?.let { return it }
         return withContext(Dispatchers.IO) {
             gate.withPermit {
-                runCatching {
+                // The book's real cover art first; the rendered first page only when there is none.
+                val bmp = embeddedCover(book, widthPx) ?: firstPage(book, widthPx)
+                bmp?.also { cache.put(book.id, it) }
+            }
+        }
+    }
+
+    /**
+     * Most PDF books carry their cover as a large portrait image on page one. Pull that image out
+     * directly (full artwork, no page margins or text); returns null when page one has no such image.
+     */
+    private fun embeddedCover(book: Book, widthPx: Int): Bitmap? {
+        if (book.sizeBytes > MAX_SCAN_BYTES) return null
+        return runCatching {
+            PDFBoxResourceLoader.init(context)
+            context.contentResolver.openInputStream(Uri.parse(book.uri))?.use { input ->
+                PDDocument.load(input).use { doc ->
+                    val resources = doc.getPage(0).resources ?: return@use null
+                    var best: PDImageXObject? = null
+                    for (name in resources.xObjectNames) {
+                        val image = resources.getXObject(name) as? PDImageXObject ?: continue
+                        val w = image.width
+                        val h = image.height
+                        val ratio = w.toFloat() / h
+                        if (w < 300 || h < 400 || w.toLong() * h > MAX_COVER_PIXELS) continue
+                        if (ratio !in 0.4f..1.0f) continue // not a portrait cover
+                        if (best == null || w.toLong() * h > best.width.toLong() * best.height) best = image
+                    }
+                    best?.image?.let { src ->
+                        val h = (widthPx.toFloat() * src.height / src.width).toInt().coerceAtLeast(1)
+                        Bitmap.createScaledBitmap(src, widthPx, h, true).also { if (it !== src) src.recycle() }
+                    }
+                }
+            }
+        }.getOrNull()
+    }
+
+    private fun firstPage(book: Book, widthPx: Int): Bitmap? =
+        runCatching {
                     var fd: ParcelFileDescriptor? = null
                     try {
                         fd = context.contentResolver.openFileDescriptor(Uri.parse(book.uri), "r") ?: return@runCatching null
@@ -126,15 +167,16 @@ class BookCovers @Inject constructor(
                                 val bmp = Bitmap.createBitmap(widthPx, h, Bitmap.Config.ARGB_8888)
                                 bmp.eraseColor(Color.WHITE)
                                 page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                                cache.put(book.id, bmp)
                                 bmp
                             }
                         }
                     } finally {
                         runCatching { fd?.close() }
                     }
-                }.getOrNull()
-            }
-        }
+        }.getOrNull()
+
+    private companion object {
+        const val MAX_SCAN_BYTES = 80L * 1024 * 1024
+        const val MAX_COVER_PIXELS = 16_000_000L
     }
 }
