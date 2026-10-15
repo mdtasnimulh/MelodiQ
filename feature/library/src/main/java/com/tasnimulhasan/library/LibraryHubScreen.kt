@@ -73,8 +73,6 @@ internal fun LibraryHubRoute(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Reveal(0) { SearchPill(onClick = navigateToSearch) }
-
         SectionLabel("Browse")
         Reveal(1) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -102,7 +100,7 @@ internal fun LibraryHubRoute(
         Reveal(3) {
             WideRow(Icons.Filled.ContentCopy, "Duplicate finder", "Find repeated songs and free up space", navigateToDuplicates)
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp + com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding.current))
     }
 }
 
@@ -129,32 +127,6 @@ private fun SectionLabel(text: String) {
     )
 }
 
-@Composable
-private fun SearchPill(onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .pressFeedback()
-            .clip(RoundedCornerShape(28.dp))
-            .clickable(onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(
-                "Search songs, artists, albums…",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 12.dp),
-            )
-        }
-    }
-}
 
 @Composable
 private fun BrowseCard(

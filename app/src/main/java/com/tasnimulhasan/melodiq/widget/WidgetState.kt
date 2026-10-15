@@ -22,7 +22,18 @@ internal data class WidgetState(
 // small - it is only ever shown at ~60-130dp.
 private const val ART_SIZE_PX = 320
 
-internal suspend fun loadWidgetState(context: Context): WidgetState {
+internal suspend fun loadWidgetState(context: Context): WidgetState = try {
+    loadWidgetStateUnsafe(context)
+} catch (e: kotlinx.coroutines.CancellationException) {
+    throw e
+} catch (e: Throwable) {
+    // A failed load must still render something; otherwise the widget stays on the system
+    // "Loading" layout forever and looks dead.
+    timber.log.Timber.w(e, "Widget state load failed")
+    WidgetState(song = null, isPlaying = false, isFavourite = false, art = null)
+}
+
+private suspend fun loadWidgetStateUnsafe(context: Context): WidgetState {
     val entry = context.widgetEntryPoint()
     val song = entry.playerUseCases().observeCurrentSelectedAudio().value
     val playing = entry.playerUseCases().observeIsPlaying().value
@@ -50,7 +61,16 @@ internal data class WidgetSong(val song: MusicEntity, val art: Bitmap?)
 private const val LIST_ART_SIZE_PX = 160
 
 /** Most recently played songs that still exist in the current library. */
-internal suspend fun loadRecentSongs(context: Context, limit: Int): List<WidgetSong> {
+internal suspend fun loadRecentSongs(context: Context, limit: Int): List<WidgetSong> = try {
+    loadRecentSongsUnsafe(context, limit)
+} catch (e: kotlinx.coroutines.CancellationException) {
+    throw e
+} catch (e: Throwable) {
+    timber.log.Timber.w(e, "Recent widget load failed")
+    emptyList()
+}
+
+private suspend fun loadRecentSongsUnsafe(context: Context, limit: Int): List<WidgetSong> {
     val entry = context.widgetEntryPoint()
     val library = entry.playerUseCases().observeAudioList().value.mapTo(HashSet()) { it.songId }
     val recent = runCatching {
@@ -64,7 +84,16 @@ internal suspend fun loadRecentSongs(context: Context, limit: Int): List<WidgetS
 }
 
 /** Favourite songs (resolved against the current library, like Home does). */
-internal suspend fun loadFavouriteSongs(context: Context, limit: Int): List<WidgetSong> {
+internal suspend fun loadFavouriteSongs(context: Context, limit: Int): List<WidgetSong> = try {
+    loadFavouriteSongsUnsafe(context, limit)
+} catch (e: kotlinx.coroutines.CancellationException) {
+    throw e
+} catch (e: Throwable) {
+    timber.log.Timber.w(e, "Favourites widget load failed")
+    emptyList()
+}
+
+private suspend fun loadFavouriteSongsUnsafe(context: Context, limit: Int): List<WidgetSong> {
     val entry = context.widgetEntryPoint()
     val ids = runCatching { entry.favouriteRepository().observeFavouriteIds().first() }.getOrDefault(emptySet())
     return entry.playerUseCases().observeAudioList().value

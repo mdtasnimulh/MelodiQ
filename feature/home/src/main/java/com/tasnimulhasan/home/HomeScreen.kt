@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -133,16 +134,11 @@ internal fun SharedTransitionScope.HomeScreen(
         if (audioList.isEmpty()) {
             HomeEmptyState()
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding.current),
+            ) {
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        IconButton(onClick = navigateToSearch) {
-                            Icon(Icons.Filled.Search, contentDescription = "Search")
-                        }
-                    }
                     ListeningStatsHeader(
                         stats = listeningStats,
                         artistCount = artistCount,

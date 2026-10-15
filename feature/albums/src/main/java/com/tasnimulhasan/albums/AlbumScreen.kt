@@ -58,17 +58,13 @@ internal fun AlbumsScreen(
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp, top = 16.dp, end = 16.dp,
+            bottom = 16.dp + com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding.current,
+        ),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                IconButton(onClick = navigateToSearch) {
-                    Icon(Icons.Filled.Search, contentDescription = "Search")
-                }
-            }
-        }
         items(items = albums, key = { it.albumId }) { album ->
             AlbumGridCard(album = album, onClick = { onAlbumClicked(album.albumId) }, modifier = Modifier.animateItem())
         }

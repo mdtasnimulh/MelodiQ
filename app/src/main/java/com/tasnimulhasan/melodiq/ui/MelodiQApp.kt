@@ -42,6 +42,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import com.tasnimulhasan.library.navigation.SearchNavRoute
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
@@ -62,9 +67,10 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.tasnimulhasan.albums.navigation.AlbumRoute
 import com.tasnimulhasan.common.utils.coloredShadow
-import com.tasnimulhasan.designsystem.component.MelodiQNavigationBar
-import com.tasnimulhasan.designsystem.component.MelodiQNavigationBarItem
-import com.tasnimulhasan.designsystem.component.MelodiqTopAppBar
+import com.tasnimulhasan.designsystem.component.FloatingNavItem
+import com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding
+import com.tasnimulhasan.designsystem.component.MelodiqFloatingNavBar
+import com.tasnimulhasan.designsystem.component.MelodiqSearchTopBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 import com.tasnimulhasan.eqalizer.navigation.EqualizerRoute
 import com.tasnimulhasan.featureabout.navigation.AboutRoute
@@ -150,6 +156,26 @@ internal fun MmApp(
     else stringResource(id = Res.string.navigation_back_content_description)
 
     var customDrawerState by remember { mutableStateOf(CustomDrawerState.Closed) }
+
+    // iOS-style: the floating bar shrinks to icons while the content scrolls down and comes
+    // back when it scrolls up. Only observes scrolling (never consumes it), accumulating the
+    // distance so slow scrolls count too and a direction change starts over.
+    var barMinimized by remember { mutableStateOf(false) }
+    val scrollWatcher = remember {
+        object : NestedScrollConnection {
+            private var travelled = 0f
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val dy = available.y
+                if (dy == 0f) return Offset.Zero
+                if ((dy > 0f) != (travelled > 0f)) travelled = 0f
+                travelled += dy
+                if (travelled < -48f) barMinimized = true
+                else if (travelled > 48f) barMinimized = false
+                return Offset.Zero
+            }
+        }
+    }
+    LaunchedEffect(currentDestination?.route) { barMinimized = false }
     var selectedNavigationItem by remember { mutableStateOf(CustomNavigationItem.ABOUT) }
 
     val configuration = LocalConfiguration.current
@@ -215,37 +241,22 @@ internal fun MmApp(
                 },
             topBar = {
                 if (!currentDestination.isRouteInHierarchy(PlayerRoute::class)) {
-                    MelodiqTopAppBar(
-                        titleRes = currentTitleRes,
+                    val onSearch = currentDestination.isRouteInHierarchy(SearchNavRoute::class)
+                    val onSettings = currentDestination.isRouteInHierarchy(SettingsRoute::class)
+                    // No screen title any more: the search pill takes its place. currentTitleRes
+                    // above is intentionally kept (unused) in case titles come back.
+                    MelodiqSearchTopBar(
                         navigationIcon = navigationIcon,
                         navigationIconContentDescription = navigationIconContentDescription,
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                            scrolledContainerColor = Color.Unspecified,
-                            navigationIconContentColor = Color.Unspecified,
-                            titleContentColor = Color.Unspecified,
-                            actionIconContentColor = Color.Unspecified
-                        ),
                         onNavigationClick = {
                             if (!isTopLevelDestination) appState.navigateBack()
                             else customDrawerState = customDrawerState.opposite()
-                        }
+                        },
+                        onSearchClick = { appState.navigateToSearch() },
+                        onSettingsClick = { appState.navigateToSettings() },
+                        showSearch = !onSearch,
+                        showSettings = !onSearch && !onSettings,
                     )
-                }
-            },
-            bottomBar = {
-                if (isTopLevelDestination){
-                    MelodiQNavigationBar {
-                        appState.topLevelDestination.forEach { destination ->
-                            MelodiQNavigationBarItem(
-                                selected = currentDestination.isRouteInHierarchy(destination.route),
-                                onClick = { appState.navigateToTopLevelDestination(destination) },
-                                icon = { Icon(imageVector = destination.unSelectedIcon, contentDescription = null) },
-                                selectedIcon = { Icon(imageVector = destination.selectedIcon, contentDescription = null) },
-                                label = { Text(stringResource(destination.iconTextId)) },
-                            )
-                        }
-                    }
                 }
             },
             containerColor = Color.Transparent,
@@ -256,11 +267,37 @@ internal fun MmApp(
                 modifier
                     .fillMaxSize()
                     .onSizeChanged { containerSize = it }
+                    .nestedScroll(scrollWatcher)
                     .background(color = MaterialTheme.colorScheme.background)
                     .padding(padding)
                     .consumeWindowInsets(padding)
             ) {
-                GetContent(appState = appState)
+                CompositionLocalProvider(
+                    LocalFloatingBarPadding provides if (isTopLevelDestination) FloatingBarSpace else 0.dp
+                ) {
+                    GetContent(appState = appState)
+                }
+
+                val barItems = remember {
+                    appState.topLevelDestination.map {
+                        FloatingNavItem(label = "", icon = it.unSelectedIcon, selectedIcon = it.selectedIcon)
+                    }
+                }
+                val labels = appState.topLevelDestination.map { stringResource(it.iconTextId) }
+                AnimatedVisibility(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    visible = isTopLevelDestination,
+                    enter = fadeIn(tween(250)) + scaleIn(tween(300), initialScale = 0.9f),
+                    exit = fadeOut(tween(200)) + scaleOut(tween(200), targetScale = 0.9f),
+                ) {
+                    MelodiqFloatingNavBar(
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        items = barItems.mapIndexed { i, item -> item.copy(label = labels[i]) },
+                        selectedIndex = appState.topLevelDestination.indexOfFirst { currentDestination.isRouteInHierarchy(it.route) }.coerceAtLeast(0),
+                        minimized = barMinimized,
+                        onSelect = { index -> appState.navigateToTopLevelDestination(appState.topLevelDestination[index]) },
+                    )
+                }
 
                 val miniPosition by viewModel.miniPlayerPosition.collectAsStateWithLifecycle()
                 var miniDrag by remember { mutableStateOf(Offset.Zero) }
@@ -275,6 +312,7 @@ internal fun MmApp(
                     AnimatedVisibility(
                         modifier = Modifier
                             .align(miniAlignment)
+                            .padding(bottom = if (isTopLevelDestination && miniAlignment.isBottom()) FloatingBarSpace else 0.dp)
                             .offset { IntOffset(miniDrag.x.roundToInt(), miniDrag.y.roundToInt()) }
                             .pointerInput(miniPosition, containerSize) {
                                 detectDragGestures(
@@ -332,7 +370,7 @@ internal fun MmApp(
                     }
 
                     AnimatedVisibility(
-                        modifier = Modifier.align(Alignment.BottomCenter),
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (isTopLevelDestination) FloatingBarSpace else 0.dp),
                         visible = showPopUpPlayer,
                         enter = scaleIn(
                             animationSpec = tween(durationMillis = 500),
@@ -418,3 +456,8 @@ private fun NavDestination?.isRouteInHierarchy(route: KClass<*>) =
     this?.hierarchy?.any {
         it.hasRoute(route)
     } ?: false
+
+/** Height reserved for the floating bar: 68dp bar + 12dp gap + a little breathing room. */
+private val FloatingBarSpace = 92.dp
+
+private fun Alignment.isBottom() = this == Alignment.BottomEnd || this == Alignment.BottomStart

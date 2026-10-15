@@ -17,6 +17,7 @@ import com.tasnimulhasan.eqalizer.navigation.navigateToEqualizer
 import com.tasnimulhasan.featureabout.navigation.navigateToAbout
 import com.tasnimulhasan.featurefavourite.navigation.navigateToFavourite
 import com.tasnimulhasan.library.navigation.navigateToLibraryHub
+import com.tasnimulhasan.library.navigation.navigateToSearch
 import com.tasnimulhasan.featurefeedback.navigation.navigateToFeedback
 import com.tasnimulhasan.featureplayer.navigation.navigateToPlayer
 import com.tasnimulhasan.featurequeue.navigation.navigateToQueue
@@ -98,6 +99,8 @@ class MelodiQAppState(
     fun navigateToFeedBack() = navController.navigateToFeedback()
 
     fun navigateToSettings() = navController.navigateToSettings()
+
+    fun navigateToSearch() = navController.navigateToSearch()
 
     fun navigateToEqualizerScreen() = navController.navigateToEqualizer()
 

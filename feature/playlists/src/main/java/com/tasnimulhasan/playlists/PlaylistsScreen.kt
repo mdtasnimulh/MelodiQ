@@ -161,7 +161,7 @@ internal fun PlaylistsScreen(
                     playlists.isNotEmpty() -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 24.dp),
+                            contentPadding = PaddingValues(bottom = 24.dp + com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding.current),
                         ) {
                             items(playlists, key = { it.playlist.id }) { playlist ->
                                 PlaylistCard(

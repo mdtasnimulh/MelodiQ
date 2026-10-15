@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import androidx.glance.appwidget.updateAll
+import com.tasnimulhasan.domain.localusecase.library.LibraryUseCases
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.repository.local.FavouriteRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Keeps the home screen widgets in step with the player. Started once from the Application;
@@ -31,6 +31,7 @@ class WidgetUpdater @Inject constructor(
     @ApplicationContext private val context: Context,
     private val playerUseCases: PlayerUseCases,
     private val favouriteRepository: FavouriteRepository,
+    private val libraryUseCases: LibraryUseCases,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var started = false
@@ -43,6 +44,10 @@ class WidgetUpdater @Inject constructor(
         val isFavourite: Boolean,
         // Whole set, so the Favourites widget also refreshes when a non-current song is hearted.
         val favouriteIds: Set<Long>,
+        // The play is written to history a moment AFTER the song changes, so the Recently
+        // Played widget must also react to the history itself, not just to the song.
+        val recentTop: List<Long>,
+        val libraryCount: Int,
     )
 
     @OptIn(FlowPreview::class)
@@ -55,7 +60,9 @@ class WidgetUpdater @Inject constructor(
                 playerUseCases.observeCurrentSelectedAudio(),
                 playerUseCases.observeIsPlaying(),
                 favouriteRepository.observeFavouriteIds(),
-            ) { song, playing, favourites ->
+                libraryUseCases.observeRecentlyPlayedWithTimestamp(5),
+                playerUseCases.observeAudioList(),
+            ) { song, playing, favourites, recent, library ->
                 Snapshot(
                     songId = song?.songId,
                     title = song?.songTitle,
@@ -63,10 +70,12 @@ class WidgetUpdater @Inject constructor(
                     isPlaying = playing,
                     isFavourite = song != null && favourites.contains(song.songId),
                     favouriteIds = favourites,
+                    recentTop = recent.map { it.first.songId },
+                    libraryCount = library.size,
                 )
             }
                 .distinctUntilChanged()
-                .debounce(250.milliseconds)
+                .debounce(250)
                 .collect { updateAll(context) }
         }
     }
@@ -87,11 +96,21 @@ class WidgetUpdater @Inject constructor(
 
         /** Redraws every placed MelodiQ widget (no-op when none are on the home screen). */
         suspend fun updateAll(context: Context) {
-            runCatching { MelodiqPlayerWidget().updateAll(context) }
-            runCatching { MelodiqCompactWidget().updateAll(context) }
-            runCatching { MelodiqCoverWidget().updateAll(context) }
-            runCatching { MelodiqRecentWidget().updateAll(context) }
-            runCatching { MelodiqFavouritesWidget().updateAll(context) }
+            safely { MelodiqPlayerWidget().updateAll(context) }
+            safely { MelodiqCompactWidget().updateAll(context) }
+            safely { MelodiqCoverWidget().updateAll(context) }
+            safely { MelodiqRecentWidget().updateAll(context) }
+            safely { MelodiqFavouritesWidget().updateAll(context) }
+        }
+
+        private suspend inline fun safely(block: () -> Unit) {
+            try {
+                block()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                timber.log.Timber.w(e, "Widget update failed")
+            }
         }
     }
 }
