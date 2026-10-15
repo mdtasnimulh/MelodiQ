@@ -67,6 +67,7 @@ internal fun SettingsRoute(
     val coverArtStyle by viewModel.coverArtStyle.collectAsStateWithLifecycle()
     val miniPlayerPosition by viewModel.miniPlayerPosition.collectAsStateWithLifecycle()
     val appIcon by viewModel.appIcon.collectAsStateWithLifecycle()
+    val playerType by viewModel.playerType.collectAsStateWithLifecycle()
 
     // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
     // this app's own playback, not the microphone). Asked for only at the moment the user
@@ -103,6 +104,9 @@ internal fun SettingsRoute(
         modifier = modifier,
         appIcon = appIcon,
         onAppIconSelected = viewModel::setAppIcon,
+        playerType = playerType,
+        playerTypeLabel = viewModel::playerTypeLabel,
+        onPlayerTypeSelected = viewModel::setPlayerType,
         onExportBackup = { exportLauncher.launch("melodiq_backup.json") },
         onImportBackup = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
         sortType = sortType,
@@ -191,10 +195,24 @@ internal fun SettingsScreen(
     onMiniPlayerPositionSelected: (com.tasnimulhasan.entity.enums.MiniPlayerPosition) -> Unit,
     appIcon: AppIconOption,
     onAppIconSelected: (AppIconOption) -> Unit,
+    playerType: com.tasnimulhasan.entity.enums.PlayerType = com.tasnimulhasan.entity.enums.PlayerType.CLASSIC,
+    playerTypeLabel: (com.tasnimulhasan.entity.enums.PlayerType) -> String = { it.name },
+    onPlayerTypeSelected: (com.tasnimulhasan.entity.enums.PlayerType) -> Unit = {},
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
+        item { SectionHeader("Player type") }
+        items(com.tasnimulhasan.entity.enums.PlayerType.entries.toList()) { option ->
+            SettingsRadioRow(
+                label = playerTypeLabel(option),
+                selected = option == playerType,
+                onClick = { onPlayerTypeSelected(option) },
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
         item { SectionHeader("Sort songs by") }
         items(SortType.entries.toList()) { option ->
             SettingsRadioRow(

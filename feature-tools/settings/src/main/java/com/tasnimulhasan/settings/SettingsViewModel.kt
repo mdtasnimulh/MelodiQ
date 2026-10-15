@@ -57,6 +57,8 @@ class SettingsViewModel @Inject constructor(
     private val setCoverArtStyleUseCase: SetCoverArtStyleUseCase,
     private val getMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetMiniPlayerPositionUseCase,
     private val setMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetMiniPlayerPositionUseCase,
+    private val getPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetPlayerTypeUseCase,
+    private val setPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetPlayerTypeUseCase,
     private val createBackupUseCase: CreateBackupUseCase,
     private val restoreBackupUseCase: RestoreBackupUseCase,
     @ApplicationContext private val context: Context,
@@ -147,6 +149,18 @@ class SettingsViewModel @Inject constructor(
         com.tasnimulhasan.entity.enums.MiniPlayerPosition.BOTTOM_START -> "Bottom left"
         com.tasnimulhasan.entity.enums.MiniPlayerPosition.TOP_END -> "Top right"
         com.tasnimulhasan.entity.enums.MiniPlayerPosition.TOP_START -> "Top left"
+    }
+
+    val playerType: StateFlow<com.tasnimulhasan.entity.enums.PlayerType> = getPlayerTypeUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.PlayerType.CLASSIC)
+
+    fun setPlayerType(type: com.tasnimulhasan.entity.enums.PlayerType) {
+        viewModelScope.launch { setPlayerTypeUseCase(type) }
+    }
+
+    fun playerTypeLabel(type: com.tasnimulhasan.entity.enums.PlayerType): String = when (type) {
+        com.tasnimulhasan.entity.enums.PlayerType.CLASSIC -> "A  -  MelodiQ (default)"
+        com.tasnimulhasan.entity.enums.PlayerType.IPOD -> "B  -  iPod style, with a click wheel"
     }
 
     fun setCoverArtStyle(style: CoverArtStyle) {

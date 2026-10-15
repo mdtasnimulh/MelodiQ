@@ -1,3 +1,4 @@
+// app/src/main/java/com/tasnimulhasan/melodiq/MainActivity.kt
 package com.tasnimulhasan.melodiq
 
 import android.Manifest
@@ -6,7 +7,11 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
+import com.tasnimulhasan.entity.enums.PlayerType
+import com.tasnimulhasan.melodiq.ipod.IpodApp
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.tasnimulhasan.melodiq.shortcut.AppShortcuts
@@ -117,13 +122,38 @@ class MainActivity : ComponentActivity() {
                 amoledBlack = amoledBlack,
                 seedColor = accentSeedColor,
             ) {
+                val playerType by mainActivityViewModel.playerType.collectAsStateWithLifecycle()
+
+                // The iPod UI is a light silver device, so its status/navigation bar icons must
+                // be dark whatever the system theme is; Player A keeps the default behaviour.
+                DisposableEffect(playerType) {
+                    if (playerType == PlayerType.IPOD) {
+                        enableEdgeToEdge(
+                            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+                            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+                        )
+                    } else {
+                        enableEdgeToEdge()
+                    }
+                    onDispose { }
+                }
+
                 if (audioGranted) {
                     val shouldOpenPlayer by openPlayerRequested
-                    MelodiQApp(
-                        appState = appState,
-                        openPlayerRequested = shouldOpenPlayer,
-                        onOpenPlayerHandled = { openPlayerRequested.value = false },
-                    )
+                    when (playerType) {
+                        // Saved choice not read yet (a few ms): show nothing rather than the wrong UI.
+                        null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                        PlayerType.CLASSIC -> MelodiQApp(
+                            appState = appState,
+                            openPlayerRequested = shouldOpenPlayer,
+                            onOpenPlayerHandled = { openPlayerRequested.value = false },
+                        )
+                        PlayerType.IPOD -> IpodApp(
+                            openNowPlayingRequested = shouldOpenPlayer,
+                            onOpenNowPlayingHandled = { openPlayerRequested.value = false },
+                            onSwitchToClassic = { mainActivityViewModel.setPlayerType(PlayerType.CLASSIC) },
+                        )
+                    }
                 } else {
                     val audioStatus = permissionsState.permissions.first { it.permission == audioPermission }.status
                     val permanentlyDenied = askedOnce && !audioStatus.shouldShowRationale
@@ -150,7 +180,7 @@ class MainActivity : ComponentActivity() {
     private fun handleShortcut(intent: Intent?) {
         val action = intent?.action
         if (!AppShortcuts.isShortcutAction(action)) return
-        // Consume it so a later recreation (rotation, theme change) doesn't run it again.
+        // Consume it so a later recreate (rotation, theme change) doesn't run it again.
         intent?.action = null
         lifecycleScope.launch {
             if (mainActivityViewModel.runShortcut(action!!)) openPlayerRequested.value = true

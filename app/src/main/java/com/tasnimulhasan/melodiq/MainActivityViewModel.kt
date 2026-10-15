@@ -32,6 +32,8 @@ import javax.inject.Inject
 class MainActivityViewModel @Inject constructor(
     getThemeConfigUseCase: GetThemeConfigUseCase,
     getAccentColorUseCase: GetAccentColorUseCase,
+    getPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetPlayerTypeUseCase,
+    private val setPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetPlayerTypeUseCase,
     private val playerUseCases: PlayerUseCases,
     private val observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
     private val scanLibraryUseCase: ScanLibraryUseCase,
@@ -40,6 +42,15 @@ class MainActivityViewModel @Inject constructor(
 
     val themeConfig: StateFlow<DarkThemeConfig> = getThemeConfigUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DarkThemeConfig.FOLLOW_SYSTEM)
+
+    /** null until the saved choice has been read, so neither UI flashes before the right one. */
+    val playerType: StateFlow<com.tasnimulhasan.entity.enums.PlayerType?> = getPlayerTypeUseCase()
+        .map<com.tasnimulhasan.entity.enums.PlayerType, com.tasnimulhasan.entity.enums.PlayerType?> { it }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setPlayerType(type: com.tasnimulhasan.entity.enums.PlayerType) {
+        viewModelScope.launch { setPlayerTypeUseCase(type) }
+    }
 
     private val accentColorOption: StateFlow<AccentColorOption> = getAccentColorUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccentColorOption.DYNAMIC)

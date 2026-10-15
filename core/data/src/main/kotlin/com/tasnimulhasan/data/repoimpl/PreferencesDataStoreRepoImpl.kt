@@ -277,6 +277,22 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
         return applied
     }
 
+    override suspend fun savePlayerType(type: com.tasnimulhasan.entity.enums.PlayerType) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.playerType] = type.name }
+        }
+    }
+
+    override fun getPlayerType(): Flow<com.tasnimulhasan.entity.enums.PlayerType> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                val name = preferences[PreferencesKeys.playerType]
+                com.tasnimulhasan.entity.enums.PlayerType.entries.find { it.name == name }
+                    ?: com.tasnimulhasan.entity.enums.PlayerType.CLASSIC
+            }
+            .distinctUntilChanged()
+    }
+
     override suspend fun saveMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition) {
         tryIt {
             dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.miniPlayerPosition] = position.name }
@@ -295,6 +311,7 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
 
     private object PreferencesKeys {
         val miniPlayerPosition = stringPreferencesKey("mini_player_position")
+        val playerType = stringPreferencesKey("player_type")
         val eqType = stringPreferencesKey(name = "eq_type")
         val enableEqualizer = booleanPreferencesKey(name = "enable_equalizer")
         val sortType = stringPreferencesKey("sort_type")
