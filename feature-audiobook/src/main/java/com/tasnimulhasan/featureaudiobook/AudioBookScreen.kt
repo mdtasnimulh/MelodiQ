@@ -32,7 +32,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -144,16 +143,19 @@ internal fun AudioBookScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .shadow(8.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                        .clickable(onClick = onAdd),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Filled.Add, "Add PDF", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(28.dp))
+                // Only once the library has books; the empty state has its own "Add Book" button.
+                if (books.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .shadow(8.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .clickable(onClick = onAdd)
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Add Book", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
+                    }
                 }
             }
         }
@@ -387,14 +389,14 @@ private fun EmptyState(favouritesTab: Boolean, onAdd: () -> Unit) {
         )
         Text(
             text = if (favouritesTab) "Long-press a book or open it to add it here."
-            else "Add a PDF from your phone to start your library. The file stays where it is.",
+            else "Add a book (PDF) from your phone to start your library. The file stays where it is.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp, start = 24.dp, end = 24.dp),
         )
         if (!favouritesTab) {
-            Button(onClick = onAdd) { Text("Add PDF") }
+            Button(onClick = onAdd) { Text("Add Book") }
         }
     }
 }

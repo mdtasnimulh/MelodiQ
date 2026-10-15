@@ -247,7 +247,11 @@ internal fun MmApp(
                     customDrawerState = CustomDrawerState.Closed
                 },
             topBar = {
-                if (!currentDestination.isRouteInHierarchy(PlayerRoute::class)) {
+                // The Audio Book screens draw their own header, so the app bar is hidden there.
+                val hideAppBar = currentDestination.isRouteInHierarchy(PlayerRoute::class) ||
+                    currentDestination.isRouteInHierarchy(AudioBookRoute::class) ||
+                    currentDestination.isRouteInHierarchy(AudioBookDetailsRoute::class)
+                if (!hideAppBar) {
                     val onSearch = currentDestination.isRouteInHierarchy(SearchNavRoute::class)
                     val onSettings = currentDestination.isRouteInHierarchy(SettingsRoute::class)
                     // No screen title any more: the search pill takes its place. currentTitleRes

@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -87,6 +88,7 @@ internal fun BookDetailsRouteScreen(
                 .onFailure { Toast.makeText(context, "No app can open this PDF", Toast.LENGTH_SHORT).show() }
         },
         onComingSoon = viewModel::comingSoon,
+        onBack = navigateBack,
     )
 }
 
@@ -102,15 +104,23 @@ internal fun BookDetailsScreen(
     onRemove: () -> Unit,
     onOpenPdf: () -> Unit,
     onComingSoon: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 8.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // The app bar is hidden on this screen, so it carries its own back button.
+        Row(Modifier.fillMaxWidth()) {
+            RoundAction(onClick = onBack, tint = scheme.onSurface) { tint ->
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = tint, modifier = Modifier.size(22.dp))
+            }
+        }
+
         // Record-style disc with the cover sitting in front of it.
         Box(Modifier.fillMaxWidth().height(300.dp)) {
             Canvas(Modifier.align(Alignment.TopCenter).size(250.dp)) {
