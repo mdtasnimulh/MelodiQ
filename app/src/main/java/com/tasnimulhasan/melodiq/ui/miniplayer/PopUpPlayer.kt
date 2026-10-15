@@ -17,7 +17,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Forward5
 import androidx.compose.material.icons.filled.Replay5
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
+import com.tasnimulhasan.designsystem.component.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text

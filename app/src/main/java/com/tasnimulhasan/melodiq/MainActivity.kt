@@ -19,7 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
+import com.tasnimulhasan.designsystem.component.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -125,7 +125,7 @@ class MainActivity : ComponentActivity() {
                 val playerType by mainActivityViewModel.playerType.collectAsStateWithLifecycle()
 
                 // Player A uses the default system-bar handling; the iPod UI (Player B) sets its own
-                // bar icon colors from the chosen body colour (white / black / AMOLED).
+                // bar icon colours from the chosen body colour (white / black / AMOLED).
                 DisposableEffect(playerType) {
                     if (playerType != PlayerType.IPOD) enableEdgeToEdge()
                     onDispose { }
@@ -173,7 +173,7 @@ class MainActivity : ComponentActivity() {
     private fun handleShortcut(intent: Intent?) {
         val action = intent?.action
         if (!AppShortcuts.isShortcutAction(action)) return
-        // Consume it so a later recreation (rotation, theme change) doesn't run it again.
+        // Consume it so a later recreate (rotation, theme change) doesn't run it again.
         intent?.action = null
         lifecycleScope.launch {
             if (mainActivityViewModel.runShortcut(action!!)) openPlayerRequested.value = true

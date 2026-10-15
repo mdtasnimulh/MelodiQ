@@ -13,11 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
+import com.tasnimulhasan.designsystem.component.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -25,7 +24,6 @@ import com.tasnimulhasan.settings.AppIconManager
 import com.tasnimulhasan.settings.AppIconOption
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
@@ -41,12 +39,12 @@ fun CustomDrawer(
     onSettingsClick: () -> Unit,
 ) {
     // The logo follows the launcher icon the user picked in Settings > App icon.
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val selectedIcon by AppIconManager.selected.collectAsState()
-    LaunchedEffect(Unit) { AppIconManager.refresh(context) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { AppIconManager.refresh(context) }
     val logoRes = remember(selectedIcon) {
         AppIconManager.previewResId(context, selectedIcon ?: AppIconOption.DEFAULT)
-            .takeIf { it != 0 } ?: Res.drawable.ic_default
+            .takeIf { it != 0 } ?: Res.drawable.ic_logo_main
     }
 
     Column(
