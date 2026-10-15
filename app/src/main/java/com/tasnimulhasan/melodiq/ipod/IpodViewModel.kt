@@ -45,23 +45,72 @@ internal class IpodViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
-    // ─── Navigation stack ────────────────────────────────────────────────────────────────
-    val stack = mutableStateListOf(IpodEntry(IpodPage.MAIN, "MelodiQ", depth = 0))
+    // ─── Navigation ──────────────────────────────────────────────────────────────────────
+    // Two stacks: what fills the display (starts on the Cover Flow of every song) and the
+    // menu panel that slides in over it. The panel is only there after MENU is pressed.
+    val content = mutableStateListOf(IpodEntry(IpodPage.HOME, "Cover Flow", depth = 0))
+    val menu = mutableStateListOf<IpodEntry>()
 
-    fun push(page: IpodPage, title: String, songs: List<MusicEntity> = emptyList()) {
-        // Never stack two Now Playing screens (e.g. tapping a song while already on it).
-        if (page == IpodPage.NOW_PLAYING && stack.last().page == IpodPage.NOW_PLAYING) return
-        stack.add(IpodEntry(page, title, depth = stack.size, songs = songs))
+    fun openMenu() {
+        if (menu.isEmpty()) menu.add(IpodEntry(IpodPage.MAIN, "MelodiQ", depth = 0))
     }
 
-    fun pop(): Boolean {
-        if (stack.size <= 1) return false
-        stack.removeAt(stack.lastIndex)
+    fun closeMenu() = menu.clear()
+
+    fun pushMenu(page: IpodPage, title: String) {
+        menu.add(IpodEntry(page, title, depth = menu.size))
+    }
+
+    /**
+     * Shows a content page and closes the menu. [fromRoot] first drops back to the home Cover
+     * Flow, so a page chosen from the menu doesn't pile on top of whatever was open before.
+     */
+    fun pushContent(page: IpodPage, title: String, songs: List<MusicEntity> = emptyList(), fromRoot: Boolean = false) {
+        closeMenu()
+        if (fromRoot) while (content.size > 1) content.removeAt(content.lastIndex)
+        // Never stack two Now Playing screens (e.g. picking a song while already on it).
+        if (page == IpodPage.NOW_PLAYING && content.last().page == IpodPage.NOW_PLAYING) return
+        content.add(IpodEntry(page, title, depth = content.size, songs = songs))
+    }
+
+    fun showHome() {
+        closeMenu()
+        while (content.size > 1) content.removeAt(content.lastIndex)
+    }
+
+    /**
+     * The MENU button. Menu open: go up a menu level, or close the menu from its first level.
+     * Menu closed: go back a screen, or - from the home Cover Flow - open the menu.
+     */
+    fun menuButton() {
+        when {
+            menu.isNotEmpty() -> if (menu.size > 1) menu.removeAt(menu.lastIndex) else closeMenu()
+            content.size > 1 -> content.removeAt(content.lastIndex)
+            else -> openMenu()
+        }
+    }
+
+    /** Holding MENU opens the menu from anywhere, however deep the current screen is. */
+    fun menuHold() = openMenu()
+
+    /** System back: same as MENU, but lets the app close when already at the home Cover Flow. */
+    fun back(): Boolean {
+        if (menu.isEmpty() && content.size <= 1) return false
+        menuButton()
         return true
     }
 
-    fun goToMain() {
-        while (stack.size > 1) stack.removeAt(stack.lastIndex)
+    private var homeSynced = false
+
+    /** Once the library has loaded, start the home Cover Flow on the song that is current. */
+    fun syncHomeSelection() {
+        if (homeSynced) return
+        val list = songs.value
+        if (list.isEmpty()) return
+        homeSynced = true
+        val id = current.value?.songId ?: return
+        val index = list.indexOfFirst { it.songId == id }
+        if (index >= 0) content.first().selected = index
     }
 
     // ─── Library + player state (shared with the regular UI) ─────────────────────────────
@@ -82,15 +131,15 @@ internal class IpodViewModel @Inject constructor(
 
     // ─── Opening sub-lists ───────────────────────────────────────────────────────────────
     fun openArtist(name: String) {
-        viewModelScope.launch { push(IpodPage.SONG_LIST, name, libraryUseCases.getSongsByArtist(name)) }
+        viewModelScope.launch { pushContent(IpodPage.SONG_LIST, name, libraryUseCases.getSongsByArtist(name)) }
     }
 
     fun openAlbum(albumId: Long, title: String) {
-        viewModelScope.launch { push(IpodPage.SONG_LIST, title, libraryUseCases.getSongsByAlbum(albumId)) }
+        viewModelScope.launch { pushContent(IpodPage.SONG_LIST, title, libraryUseCases.getSongsByAlbum(albumId)) }
     }
 
     fun openGenre(genre: String) {
-        viewModelScope.launch { push(IpodPage.SONG_LIST, genre, libraryUseCases.getSongsByGenre(genre)) }
+        viewModelScope.launch { pushContent(IpodPage.SONG_LIST, genre, libraryUseCases.getSongsByGenre(genre)) }
     }
 
     fun openPlaylist(playlistId: Int, name: String) {
@@ -98,7 +147,7 @@ internal class IpodViewModel @Inject constructor(
             val saved = getAllMusicFromPlaylistUseCase.invoke(params = GetAllMusicFromPlaylistUseCase.Params(playlistId)).first()
             // Resolve against the live library so deleted files drop out and tags are current.
             val library = songs.value.associateBy { it.songId }
-            push(IpodPage.SONG_LIST, name, saved.mapNotNull { library[it.songId] })
+            pushContent(IpodPage.SONG_LIST, name, saved.mapNotNull { library[it.songId] }, fromRoot = true)
         }
     }
 
@@ -167,6 +216,10 @@ internal class IpodViewModel @Inject constructor(
         audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / maxVolume
 
     init {
+        // Opened while music is already playing: land on Now Playing (MENU goes back to the Cover Flow).
+        if (isPlaying.value && current.value != null) {
+            content.add(IpodEntry(IpodPage.NOW_PLAYING, "Now Playing", depth = 1))
+        }
         viewModelScope.launch {
             playerUseCases.observeAudioState().collectLatest { state ->
                 when (state) {

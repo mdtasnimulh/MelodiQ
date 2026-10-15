@@ -8,6 +8,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -40,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,6 +55,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -162,7 +167,13 @@ private fun BatteryIcon(level: Float) {
 // ─────────────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-internal fun IpodList(entry: IpodEntry, rows: List<IpodRow>, emptyText: String, modifier: Modifier = Modifier) {
+internal fun IpodList(
+    entry: IpodEntry,
+    rows: List<IpodRow>,
+    emptyText: String,
+    onRowTap: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     if (rows.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(emptyText, color = Color(0xFF8A8F94), fontSize = 16.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, modifier = Modifier.padding(24.dp))
@@ -174,7 +185,7 @@ internal fun IpodList(entry: IpodEntry, rows: List<IpodRow>, emptyText: String, 
 
     LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
         itemsIndexed(rows, key = { _, r -> r.id }) { index, row ->
-            IpodRowItem(row, selected = index == entry.selected)
+            IpodRowItem(row, selected = index == entry.selected, onClick = { onRowTap(index) })
         }
     }
 }
@@ -200,15 +211,16 @@ private fun KeepSelectedVisible(state: LazyListState, selected: Int, count: Int)
 }
 
 @Composable
-private fun IpodRowItem(row: IpodRow, selected: Boolean) {
+private fun IpodRowItem(row: IpodRow, selected: Boolean, onClick: () -> Unit) {
     val textColor = if (selected) Color.White else Color.Black
     val subColor = if (selected) Color(0xFFE6F2FC) else Color(0xFF7D8287)
     val hasArt = row.art != null
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (hasArt) 52.dp else 38.dp)
-            .then(if (selected) Modifier.background(SelectionBlue) else Modifier),
+            .height(if (hasArt) 52.dp else 40.dp)
+            .then(if (selected) Modifier.background(SelectionBlue) else Modifier)
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (hasArt) {
@@ -254,97 +266,145 @@ internal fun CoverImage(art: IpodArt, modifier: Modifier = Modifier) {
     )
 }
 
-/** Main menu: the list on the left and a big preview of the current song's cover on the right. */
-@Composable
-internal fun IpodMainMenu(entry: IpodEntry, rows: List<IpodRow>, current: MusicEntity?) {
-    Row(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(0.5f).fillMaxHeight()) {
-            IpodList(entry, rows, emptyText = "")
-        }
-        Box(Modifier.weight(0.5f).fillMaxHeight().background(Color(0xFFF0F1F3))) {
-            if (current != null) {
-                CoverImage(current.toArt(), Modifier.fillMaxSize())
-            } else {
-                Icon(Icons.Filled.MusicNote, contentDescription = null, tint = Color(0xFFC3C7CB), modifier = Modifier.align(Alignment.Center).size(64.dp))
-            }
-        }
-    }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────────────────
 // Cover Flow
 // ─────────────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Cover Flow over any list of [items]: the selected cover large and flat in the middle, the
+ * others turned and squeezed together on either side with a fading reflection, and the
+ * title / subtitle underneath. Turn the wheel, drag a finger across the display, tap a side
+ * cover to move there, tap the middle cover to open it.
+ */
 @Composable
-internal fun CoverFlowView(albums: List<AlbumSummary>, selected: Int, modifier: Modifier = Modifier) {
-    if (albums.isEmpty()) {
+internal fun CoverFlowView(
+    items: List<IpodRow>,
+    selected: Int,
+    emptyText: String,
+    onStep: (Int) -> Unit,
+    onActivate: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (items.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No albums", color = Color(0xFF8A8F94), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text(emptyText, color = Color(0xFF8A8F94), fontSize = 16.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, modifier = Modifier.padding(24.dp))
         }
         return
     }
     val pos by animateFloatAsState(
         targetValue = selected.toFloat(),
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow),
+        animationSpec = spring(dampingRatio = 0.9f, stiffness = 260f),
         label = "coverFlowPos",
     )
     val density = LocalDensity.current
+    val step by rememberUpdatedState(onStep)
+    val activate by rememberUpdatedState(onActivate)
 
-    BoxWithConstraints(modifier.fillMaxSize().background(Color.White)) {
-        val cover = min(maxWidth * 0.46f, maxHeight * 0.58f)
+    BoxWithConstraints(
+        modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color.White, Color(0xFFF1F2F4))))
+            .pointerInput(items.size) {
+                detectTapGestures { tap ->
+                    val centreX = size.width / 2f
+                    val half = size.height * 0.30f
+                    when {
+                        tap.x < centreX - half -> step(-1)
+                        tap.x > centreX + half -> step(1)
+                        else -> activate()
+                    }
+                }
+            }
+            .pointerInput(items.size) {
+                var travelled = 0f
+                val stepPx = 34.dp.toPx()
+                detectHorizontalDragGestures(
+                    onDragStart = { travelled = 0f },
+                ) { change, dragAmount ->
+                    change.consume()
+                    // Dragging left brings the covers on the right towards the middle.
+                    travelled -= dragAmount
+                    while (travelled >= stepPx) { travelled -= stepPx; step(1) }
+                    while (travelled <= -stepPx) { travelled += stepPx; step(-1) }
+                }
+            },
+    ) {
+        val cover = min(maxWidth * 0.40f, maxHeight * 0.56f)
         val coverPx = with(density) { cover.toPx() }
 
-        val from = (floor(pos) - 3).toInt().coerceAtLeast(0)
-        val to = (ceil(pos) + 3).toInt().coerceAtMost(albums.lastIndex)
-        // Farthest first so the centre cover is drawn on top of its neighbours.
+        val from = (floor(pos) - 4).toInt().coerceAtLeast(0)
+        val to = (ceil(pos) + 4).toInt().coerceAtMost(items.lastIndex)
+        // Farthest first so the middle cover is drawn on top of its neighbours.
         (from..to).sortedByDescending { abs(it - pos) }.forEach { i ->
-            val album = albums[i]
+            val item = items[i]
             val d = i - pos
             val near = min(abs(d), 1f)
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 10.dp)
+                    .padding(top = 8.dp)
                     .size(width = cover, height = cover * 1.4f)
                     .zIndex(-abs(d))
                     .graphicsLayer {
-                        // Neighbours slide out to the side, turn to face the centre and shrink.
-                        val gap = coverPx * 0.70f
-                        translationX = if (abs(d) <= 1f) d * gap else sign(d) * (gap + (abs(d) - 1f) * coverPx * 0.24f)
-                        rotationY = -sign(d) * 58f * near
-                        val s = 1f - 0.20f * near
+                        // The first neighbour sits just beside the middle cover, the rest are
+                        // packed tightly behind it, each turned to face the centre.
+                        val gap = coverPx * 0.62f
+                        translationX = if (abs(d) <= 1f) d * gap else sign(d) * (gap + (abs(d) - 1f) * coverPx * 0.17f)
+                        rotationY = -sign(d) * 64f * near
+                        val s = 1f - 0.14f * near
                         scaleX = s
                         scaleY = s
                         cameraDistance = 14f * density.density
                     },
             ) {
-                val art = artFor(album.representativeSongId, album.albumId)
-                CoverImage(art, Modifier.size(cover))
-                // Reflection: the flipped bottom of the cover, fading into the white background.
-                Box(Modifier.size(width = cover, height = cover * 0.4f).clip(RoundedCornerShape(0.dp))) {
-                    CoverImage(
-                        art,
-                        Modifier
-                            .size(cover)
-                            .graphicsLayer { scaleY = -1f },
-                    )
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.50f), Color.White))
-                        )
-                    )
+                val art = item.art
+                if (art != null) CoverImage(art, Modifier.size(cover))
+                else Box(Modifier.size(cover).background(Color(0xFFD9DCE0)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(cover / 2))
+                }
+                // Reflection: the flipped bottom of the cover, fading into the background.
+                Box(Modifier.size(width = cover, height = cover * 0.4f)) {
+                    if (art != null) {
+                        CoverImage(art, Modifier.size(cover).graphicsLayer { scaleY = -1f })
+                    } else {
+                        Box(Modifier.fillMaxSize().background(Color(0xFFD9DCE0)))
+                    }
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color(0xFFF1F2F4)))))
                 }
             }
         }
 
-        val centre = albums[selected.coerceIn(0, albums.lastIndex)]
+        val centre = items[selected.coerceIn(0, items.lastIndex)]
         Column(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp, start = 12.dp, end = 12.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 5.dp, start = 12.dp, end = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(centre.album, color = Color.Black, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(centre.artist, color = Color(0xFF7D8287), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(centre.title, color = Color.Black, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (centre.subtitle != null) {
+                Text(centre.subtitle, color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
+    }
+}
+
+/** The menu: a white panel over the left part of the display, with a soft edge on its right. */
+@Composable
+internal fun IpodMenuPanel(
+    entry: IpodEntry,
+    rows: List<IpodRow>,
+    onRowTap: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxHeight().fillMaxWidth(0.66f).background(Color.White)) {
+        IpodList(entry = entry, rows = rows, emptyText = "", onRowTap = onRowTap)
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .width(8.dp)
+                .fillMaxHeight()
+                .offset(x = 8.dp)
+                .background(Brush.horizontalGradient(listOf(Color(0x33000000), Color.Transparent)))
+        )
     }
 }
 

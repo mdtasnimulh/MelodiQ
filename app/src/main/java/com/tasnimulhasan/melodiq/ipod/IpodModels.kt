@@ -9,10 +9,20 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import com.tasnimulhasan.entity.home.MusicEntity
 
+/**
+ * Pages come in two families. CONTENT pages fill the display: HOME (Cover Flow of every song),
+ * ALBUMS / ARTISTS / GENRES / FAVOURITES / SONG_LIST (all Cover Flow too) and NOW_PLAYING.
+ * MENU pages (MAIN, MUSIC, PLAYLISTS, SETTINGS) are plain lists shown in the panel that slides
+ * in from the left when MENU is pressed.
+ */
 internal enum class IpodPage {
-    MAIN, MUSIC, SONGS, ARTISTS, ALBUMS, GENRES, PLAYLISTS, FAVOURITES,
-    COVER_FLOW, SONG_LIST, NOW_PLAYING, SETTINGS,
+    HOME, ALBUMS, ARTISTS, GENRES, FAVOURITES, SONG_LIST, NOW_PLAYING,
+    MAIN, MUSIC, PLAYLISTS, SETTINGS,
 }
+
+internal val IpodPage.isCoverFlow: Boolean
+    get() = this == IpodPage.HOME || this == IpodPage.ALBUMS || this == IpodPage.ARTISTS ||
+        this == IpodPage.GENRES || this == IpodPage.FAVOURITES || this == IpodPage.SONG_LIST
 
 /**
  * One screen on the iPod's navigation stack. [selected] lives here (not in the composable) so

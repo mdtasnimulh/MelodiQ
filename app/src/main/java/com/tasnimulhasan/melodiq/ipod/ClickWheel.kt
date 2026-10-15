@@ -1,5 +1,6 @@
 package com.tasnimulhasan.melodiq.ipod
 
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -55,6 +56,7 @@ private val LabelGrey = Color(0xFF9B9BA0)
  *  - drag a finger around the ring: [onRotate] fires once per ~17 degrees, +1 clockwise, -1 anticlockwise;
  *  - tap MENU / the left / right / bottom labels: [onMenu] / [onPrevious] / [onNext] / [onPlayPause];
  *  - press and hold the left or right label: [onHoldSeek] repeats (false = backwards, true = forwards);
+ *  - press and hold MENU: [onMenuHold];
  *  - tap the centre button: [onCenter].
  * The whole thing is one pointer-input surface so a finger can start on a label and turn into a
  * rotation without lifting, exactly like the hardware.
@@ -68,6 +70,7 @@ internal fun ClickWheel(
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
     onHoldSeek: (forward: Boolean) -> Unit,
+    onMenuHold: () -> Unit,
     onFeedback: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -78,6 +81,7 @@ internal fun ClickWheel(
     val previous by rememberUpdatedState(onPrevious)
     val playPause by rememberUpdatedState(onPlayPause)
     val holdSeek by rememberUpdatedState(onHoldSeek)
+    val menuHold by rememberUpdatedState(onMenuHold)
     val feedback by rememberUpdatedState(onFeedback)
 
     val scope = rememberCoroutineScope()
@@ -129,9 +133,32 @@ internal fun ClickWheel(
                     var total = 0f
                     var rotated = false
                     var holdFired = false
+                    var lastTickAt = 0L
+
+                    // Turning fast moves several rows per tick (like the real wheel), so a
+                    // library of thousands of songs can be crossed in a couple of spins.
+                    fun tick(direction: Int) {
+                        val now = SystemClock.uptimeMillis()
+                        val gap = now - lastTickAt
+                        lastTickAt = now
+                        val multiplier = when {
+                            gap < 35 -> 4
+                            gap < 70 -> 2
+                            else -> 1
+                        }
+                        feedback()
+                        rotate(direction * multiplier)
+                    }
 
                     var holdJob: Job? = null
-                    if (zone == Zone.NEXT || zone == Zone.PREVIOUS) {
+                    if (zone == Zone.MENU) {
+                        holdJob = scope.launch {
+                            delay(500)
+                            holdFired = true
+                            feedback()
+                            menuHold()
+                        }
+                    } else if (zone == Zone.NEXT || zone == Zone.PREVIOUS) {
                         holdJob = scope.launch {
                             delay(450)
                             holdFired = true
@@ -163,8 +190,8 @@ internal fun ClickWheel(
                             holdJob?.cancel()
                         }
                         if (rotated) {
-                            while (accumulated >= STEP) { accumulated -= STEP; feedback(); rotate(1) }
-                            while (accumulated <= -STEP) { accumulated += STEP; feedback(); rotate(-1) }
+                            while (accumulated >= STEP) { accumulated -= STEP; tick(1) }
+                            while (accumulated <= -STEP) { accumulated += STEP; tick(-1) }
                         }
                         change.consume()
                     }

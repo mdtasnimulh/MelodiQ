@@ -99,7 +99,7 @@ private val features = listOf(
     FeatureItem(Icons.Filled.Speed, "Speed & pitch", "Change playback speed and pitch from the player with presets, and optionally remember the setting for each song."),
     FeatureItem(Icons.Filled.Shortcut, "App shortcuts", "Press and hold the launcher icon for Shuffle all, Favourites and Continue listening."),
     FeatureItem(Icons.Filled.ContentCopy, "Duplicate finder", "Scan your library for repeated songs (same title, artist and length) and delete the extra copies in one go."),
-    FeatureItem(Icons.Filled.MusicNote, "Player B: iPod style", "In Settings, switch Player type to B for a whole-app iPod look: a display on top and a click wheel below. Turn the wheel to scroll, press the centre to select, MENU to go back, and use the labels for previous, next and play / pause."),
+    FeatureItem(Icons.Filled.MusicNote, "Player B: iPod style", "In Settings, switch Player type to B for a whole-app iPod look. It opens on a Cover Flow of your songs; press MENU on the click wheel for the menu (MENU again closes it). Turn the wheel or drag the display to browse, press the centre or tap to play, and use the labels for previous, next and play / pause."),
     FeatureItem(Icons.Filled.Bedtime, "Sleep timer", "Fall asleep to music; playback fades out and stops on its own."),
     FeatureItem(Icons.Filled.Apps, "App icon switcher", "Pick your launcher icon from eight designs in Settings; the drawer logo and theme can follow it."),
     FeatureItem(Icons.Filled.Backup, "Backup & restore", "Export playlists, favourites, play history and settings to a file and restore them anytime."),
