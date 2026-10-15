@@ -9,6 +9,8 @@ import com.tasnimulhasan.eqalizer.navigation.equalizerScreen
 import com.tasnimulhasan.featureabout.navigation.aboutScreen
 import com.tasnimulhasan.featurefavourite.navigation.favouriteScreen
 import com.tasnimulhasan.featurefeedback.navigation.feedbackScreen
+import com.tasnimulhasan.featureaudiobook.navigation.audioBookScreens
+import com.tasnimulhasan.featureaudiobook.navigation.navigateToBookDetails
 import com.tasnimulhasan.featureplayer.navigation.lyricsScreen
 import com.tasnimulhasan.featureplayer.navigation.navigateToLyrics
 import com.tasnimulhasan.featureplayer.navigation.playerScreen
@@ -83,7 +85,10 @@ fun MelodiQNavHost(
             navigateToAlbums = { appState.navigateToAlbumsList() },
         )
         aboutScreen()
-        audioBookScreen()
+        audioBookScreens(
+            navigateToDetails = { bookId -> navController.navigateToBookDetails(bookId) },
+            navigateBack = navigateBack,
+        )
         feedbackScreen()
         equalizerScreen()
         playlistDetailsScreen(

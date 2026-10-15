@@ -108,6 +108,7 @@ dependencies {
         implementation(featurePlayer)
         implementation(featureQueue)
         implementation(featureFavourite)
+        implementation(featureAudiobook)
         implementation(featureTools.featureAbout)
         implementation(featureTools.featureFeedback)
         implementation(featureTools.settings)

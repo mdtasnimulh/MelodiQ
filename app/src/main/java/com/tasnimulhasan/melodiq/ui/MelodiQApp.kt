@@ -72,7 +72,8 @@ import com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding
 import com.tasnimulhasan.designsystem.component.FloatingNavAction
 import com.tasnimulhasan.designsystem.component.MelodiqFloatingNavBar
 import androidx.compose.material.icons.filled.Headphones
-import com.tasnimulhasan.melodiq.navigation.AudioBookRoute
+import com.tasnimulhasan.featureaudiobook.navigation.AudioBookDetailsRoute
+import com.tasnimulhasan.featureaudiobook.navigation.AudioBookRoute
 import com.tasnimulhasan.designsystem.component.MelodiqSearchTopBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 import com.tasnimulhasan.eqalizer.navigation.EqualizerRoute
@@ -151,6 +152,7 @@ internal fun MmApp(
         AboutRoute::class.qualifiedName -> Res.string.title_about
         FeedbackRoute::class.qualifiedName -> Res.string.title_feedback
         AudioBookRoute::class.qualifiedName -> Res.string.title_audio_book
+        AudioBookDetailsRoute::class.qualifiedName.plus("/{bookId}") -> Res.string.title_book_details
         else -> Res.string.app_name
     }
 
