@@ -203,11 +203,11 @@ internal fun SettingsScreen(
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         item { SectionHeader("Player type") }
-        items(com.tasnimulhasan.entity.enums.PlayerType.entries.toList()) { option ->
-            SettingsRadioRow(
-                label = playerTypeLabel(option),
-                selected = option == playerType,
-                onClick = { onPlayerTypeSelected(option) },
+        item {
+            PlayerTypePicker(
+                selected = playerType,
+                label = playerTypeLabel,
+                onSelected = onPlayerTypeSelected,
             )
         }
 
@@ -597,5 +597,60 @@ private fun AppIconTile(
             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
         )
+    }
+}
+
+
+/** Two preview cards side by side so the player can be seen before it is applied. */
+@Composable
+private fun PlayerTypePicker(
+    selected: com.tasnimulhasan.entity.enums.PlayerType,
+    label: (com.tasnimulhasan.entity.enums.PlayerType) -> String,
+    onSelected: (com.tasnimulhasan.entity.enums.PlayerType) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        com.tasnimulhasan.entity.enums.PlayerType.entries.forEach { option ->
+            val isSelected = option == selected
+            val preview = when (option) {
+                com.tasnimulhasan.entity.enums.PlayerType.CLASSIC -> com.tasnimulhasan.designsystem.R.drawable.preview_player_classic
+                com.tasnimulhasan.entity.enums.PlayerType.IPOD -> com.tasnimulhasan.designsystem.R.drawable.preview_player_ipod
+            }
+            val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(shape)
+                    .border(
+                        width = if (isSelected) 2.5.dp else 1.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        shape = shape,
+                    )
+                    .selectable(selected = isSelected, onClick = { onSelected(option) })
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(preview),
+                    contentDescription = label(option),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(0.62f)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)),
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    RadioButton(selected = isSelected, onClick = { onSelected(option) })
+                    Text(
+                        text = label(option),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
     }
 }

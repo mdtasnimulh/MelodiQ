@@ -159,8 +159,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun playerTypeLabel(type: com.tasnimulhasan.entity.enums.PlayerType): String = when (type) {
-        com.tasnimulhasan.entity.enums.PlayerType.CLASSIC -> "A  -  MelodiQ (default)"
-        com.tasnimulhasan.entity.enums.PlayerType.IPOD -> "B  -  iPod style, with a click wheel"
+        com.tasnimulhasan.entity.enums.PlayerType.CLASSIC -> "A · MelodiQ (default)"
+        com.tasnimulhasan.entity.enums.PlayerType.IPOD -> "B · iPod style"
     }
 
     fun setCoverArtStyle(style: CoverArtStyle) {
