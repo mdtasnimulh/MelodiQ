@@ -69,7 +69,10 @@ import com.tasnimulhasan.albums.navigation.AlbumRoute
 import com.tasnimulhasan.common.utils.coloredShadow
 import com.tasnimulhasan.designsystem.component.FloatingNavItem
 import com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding
+import com.tasnimulhasan.designsystem.component.FloatingNavAction
 import com.tasnimulhasan.designsystem.component.MelodiqFloatingNavBar
+import androidx.compose.material.icons.filled.Headphones
+import com.tasnimulhasan.melodiq.navigation.AudioBookRoute
 import com.tasnimulhasan.designsystem.component.MelodiqSearchTopBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 import com.tasnimulhasan.eqalizer.navigation.EqualizerRoute
@@ -131,7 +134,8 @@ internal fun MmApp(
 
     // Matches the real route, not a substring of its name: package names such as
     // "...library.navigation" would otherwise make every Library sub-screen look top-level.
-    val isTopLevelDestination = appState.currentTopLevelDestination != null
+    val onAudioBook = currentDestination?.route == AudioBookRoute::class.qualifiedName
+    val isTopLevelDestination = appState.currentTopLevelDestination != null || onAudioBook
 
     val currentTitleRes = when (currentDestination?.route) {
         HomeRoute::class.qualifiedName -> Res.string.app_name
@@ -146,6 +150,7 @@ internal fun MmApp(
         QueueRoute::class.qualifiedName -> Res.string.title_queue
         AboutRoute::class.qualifiedName -> Res.string.title_about
         FeedbackRoute::class.qualifiedName -> Res.string.title_feedback
+        AudioBookRoute::class.qualifiedName -> Res.string.title_audio_book
         else -> Res.string.app_name
     }
 
@@ -293,8 +298,15 @@ internal fun MmApp(
                     MelodiqFloatingNavBar(
                         modifier = Modifier.padding(bottom = 12.dp),
                         items = barItems.mapIndexed { i, item -> item.copy(label = labels[i]) },
-                        selectedIndex = appState.topLevelDestination.indexOfFirst { currentDestination.isRouteInHierarchy(it.route) }.coerceAtLeast(0),
+                        selectedIndex = if (onAudioBook) -1
+                        else appState.topLevelDestination.indexOfFirst { currentDestination.isRouteInHierarchy(it.route) }.coerceAtLeast(0),
                         minimized = barMinimized,
+                        action = FloatingNavAction(
+                            label = stringResource(Res.string.title_audio_book),
+                            icon = androidx.compose.material.icons.Icons.Filled.Headphones,
+                            selected = onAudioBook,
+                            onClick = { appState.navigateToAudioBook() },
+                        ),
                         onSelect = { index -> appState.navigateToTopLevelDestination(appState.topLevelDestination[index]) },
                     )
                 }

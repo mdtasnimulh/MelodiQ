@@ -83,6 +83,7 @@ fun MelodiQNavHost(
             navigateToAlbums = { appState.navigateToAlbumsList() },
         )
         aboutScreen()
+        audioBookScreen()
         feedbackScreen()
         equalizerScreen()
         playlistDetailsScreen(

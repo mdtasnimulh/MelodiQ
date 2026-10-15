@@ -24,6 +24,7 @@ import com.tasnimulhasan.featurequeue.navigation.navigateToQueue
 import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.home.navigation.navigateToHome
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
+import com.tasnimulhasan.melodiq.navigation.navigateToAudioBook
 import com.tasnimulhasan.playlistdetails.navigation.navigateToPlaylistDetails
 import com.tasnimulhasan.playlists.navigation.navigateToPlaylists
 import com.tasnimulhasan.settings.navigation.navigateToSettings
@@ -90,6 +91,16 @@ class MelodiQAppState(
             }
             TopLevelDestination.PLAYLISTS -> navController.navigateToPlaylists(topLevelNavOptions)
         }
+    }
+
+    fun navigateToAudioBook() {
+        navController.navigateToAudioBook(
+            navOptions {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        )
     }
 
     fun navigateToPlayer(musicId: String) = navController.navigateToPlayer(musicId)
