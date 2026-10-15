@@ -30,6 +30,9 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Shortcut
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Widgets
@@ -71,9 +74,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.net.toUri
 
 private const val DEV_NAME = "Md. Tasnimul Hasan"
 private const val DEV_EMAIL = "mdtasnimulh@gmail.com"
@@ -96,6 +96,9 @@ private val features = listOf(
     FeatureItem(Icons.Filled.BarChart, "Listening stats", "See your listening time, a daily or monthly chart, top songs and artists, plus a shareable \"Your year in music\" summary."),
     FeatureItem(Icons.Filled.TouchApp, "Long-press song menu", "Press and hold any song on Home or Songs to play it next, add it to the queue, add it to a playlist (or create a new one) and see its info."),
     FeatureItem(Icons.Filled.Widgets, "Home screen widgets", "Five widgets: Player, Compact, Cover, Recently Played and Favourites, with play, skip and favourite controls right on your home screen."),
+    FeatureItem(Icons.Filled.Speed, "Speed & pitch", "Change playback speed and pitch from the player with presets, and optionally remember the setting for each song."),
+    FeatureItem(Icons.Filled.Shortcut, "App shortcuts", "Press and hold the launcher icon for Shuffle all, Favourites and Continue listening."),
+    FeatureItem(Icons.Filled.ContentCopy, "Duplicate finder", "Scan your library for repeated songs (same title, artist and length) and delete the extra copies in one go."),
     FeatureItem(Icons.Filled.Bedtime, "Sleep timer", "Fall asleep to music; playback fades out and stops on its own."),
     FeatureItem(Icons.Filled.Apps, "App icon switcher", "Pick your launcher icon from eight designs in Settings; the drawer logo and theme can follow it."),
     FeatureItem(Icons.Filled.Backup, "Backup & restore", "Export playlists, favourites, play history and settings to a file and restore them anytime."),
@@ -178,7 +181,7 @@ internal fun AboutScreen(modifier: Modifier = Modifier) {
 private fun Reveal(index: Int, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay((index * 70L).milliseconds)
+        kotlinx.coroutines.delay(index * 70L)
         visible = true
     }
     AnimatedVisibility(
@@ -314,7 +317,7 @@ private fun InfoRow(icon: ImageVector, text: String, onClick: (() -> Unit)? = nu
 
 /** Opens Gmail's compose screen addressed to the developer; falls back to any mail app. */
 private fun sendEmail(context: Context) {
-    val uri = ("mailto:$DEV_EMAIL?subject=" + Uri.encode("MelodiQ")).toUri()
+    val uri = Uri.parse("mailto:$DEV_EMAIL?subject=" + Uri.encode("MelodiQ"))
     val gmail = Intent(Intent.ACTION_SENDTO, uri).setPackage("com.google.android.gm")
     try {
         context.startActivity(gmail)

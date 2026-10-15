@@ -35,6 +35,19 @@ class FileManagementRepoImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteSongs(songIds: List<Long>): FileOpResult = withContext(Dispatchers.IO) {
+        if (songIds.isEmpty()) return@withContext FileOpResult.Success
+        val remaining = songIds.map { songUri(it) }.filterNot { writeAccess.tryDeleteDirect(it) }
+        if (remaining.size != songIds.size) changeNotifier.notifyChanged()
+        if (remaining.isEmpty()) return@withContext FileOpResult.Success
+
+        when (val access = writeAccess.requestDeleteAccess(remaining)) {
+            is MediaStoreWriteAccess.Access.NeedsPermission -> FileOpResult.NeedsPermission(access.intentSender)
+            MediaStoreWriteAccess.Access.Failed -> FileOpResult.Error("Could not delete files")
+            MediaStoreWriteAccess.Access.Granted -> FileOpResult.Success
+        }
+    }
+
     override suspend fun renameSong(songId: Long, newTitleOnDisk: String): FileOpResult = withContext(Dispatchers.IO) {
         val uri = songUri(songId)
         val currentExtension = currentExtension(uri)

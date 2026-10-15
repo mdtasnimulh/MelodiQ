@@ -1,10 +1,16 @@
 package com.tasnimulhasan.library.navigation
 
+import com.tasnimulhasan.ui.motion.MelodiqMotion
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.tasnimulhasan.library.ArtistDetailsRoute
 import com.tasnimulhasan.library.ArtistsRoute
+import com.tasnimulhasan.library.DuplicatesRoute
 import com.tasnimulhasan.library.FoldersRoute
 import com.tasnimulhasan.library.GenreDetailsRoute
 import com.tasnimulhasan.library.GenresRoute
@@ -16,7 +22,6 @@ import com.tasnimulhasan.library.SmartPlaylistKind
 import com.tasnimulhasan.library.SmartPlaylistRoute
 import com.tasnimulhasan.library.SmartPlaylistsHubRoute
 import com.tasnimulhasan.library.StatsRoute
-import com.tasnimulhasan.ui.motion.MelodiqMotion
 import kotlinx.serialization.Serializable
 
 @Serializable object LibraryHubNavRoute
@@ -31,6 +36,7 @@ import kotlinx.serialization.Serializable
 @Serializable object SmartPlaylistsNavRoute
 @Serializable data class SmartPlaylistNavRoute(val kind: String)
 @Serializable object StatsNavRoute
+@Serializable object DuplicatesNavRoute
 
 fun NavController.navigateToLibraryHub(navOptions: androidx.navigation.NavOptionsBuilder.() -> Unit = {}) {
     navigate(route = LibraryHubNavRoute) { navOptions() }
@@ -46,6 +52,7 @@ fun NavController.navigateToNeverPlayed() = navigate(route = NeverPlayedNavRoute
 fun NavController.navigateToSmartPlaylists() = navigate(route = SmartPlaylistsNavRoute)
 fun NavController.navigateToSmartPlaylist(kind: SmartPlaylistKind) = navigate(route = SmartPlaylistNavRoute(kind.name))
 fun NavController.navigateToStats() = navigate(route = StatsNavRoute)
+fun NavController.navigateToDuplicates() = navigate(route = DuplicatesNavRoute)
 
 fun NavGraphBuilder.libraryScreens(
     navController: NavController,
@@ -69,6 +76,7 @@ fun NavGraphBuilder.libraryScreens(
             navigateToAlbums = navigateToAlbums,
             navigateToSmartPlaylists = { navController.navigateToSmartPlaylists() },
             navigateToStats = { navController.navigateToStats() },
+            navigateToDuplicates = { navController.navigateToDuplicates() },
         )
     }
 
@@ -172,5 +180,14 @@ fun NavGraphBuilder.libraryScreens(
         popExitTransition = { MelodiqMotion.popExit() }
     ) {
         StatsRoute(navigateToPlayer = navigateToPlayer)
+    }
+
+    composable<DuplicatesNavRoute>(
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
+    ) {
+        DuplicatesRoute()
     }
 }

@@ -4,6 +4,7 @@ import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.library.ArtistPlay
+import com.tasnimulhasan.entity.room.library.DuplicateGroup
 import com.tasnimulhasan.entity.room.library.PlayTimeRow
 import com.tasnimulhasan.entity.room.library.AlbumSummary
 import com.tasnimulhasan.entity.room.library.ArtistSummary
@@ -60,4 +61,7 @@ interface LibraryRepository {
     fun observeListeningStatsSince(sinceMillis: Long): Flow<ListeningStats>
     fun observeTopArtistsSince(sinceMillis: Long, limit: Int): Flow<List<ArtistPlay>>
     fun observePlayTimesSince(sinceMillis: Long): Flow<List<PlayTimeRow>>
+
+    /** Songs that exist more than once (same title + artist, lengths within ~2s). */
+    fun observeDuplicateGroups(): Flow<List<DuplicateGroup>>
 }

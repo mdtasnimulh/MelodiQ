@@ -79,7 +79,7 @@ enum class StatsPeriod(val chipLabel: String) {
     WEEK("Week"), MONTH("Month"), YEAR("Year"), ALL("All time")
 }
 
-/** One chart bar. [caption] is the long form shown when it is the peak ("Wednesday, 14 Oct"). */
+/** One chart bar. [caption] is the long form shown when it is the peak ("Tuesday, 14 Oct"). */
 data class StatsBar(val label: String, val caption: String, val minutes: Long)
 
 data class StatsUiState(

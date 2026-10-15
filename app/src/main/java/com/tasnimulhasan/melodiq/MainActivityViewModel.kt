@@ -7,6 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.designsystem.theme.fixedSeedColorOrNull
 import com.tasnimulhasan.domain.localusecase.datastore.GetAccentColorUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetThemeConfigUseCase
+import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
+import com.tasnimulhasan.melodiq.shortcut.AppShortcuts
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.tasnimulhasan.domain.localusecase.library.ScanLibraryUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.entity.enums.AccentColorOption
@@ -28,7 +32,8 @@ import javax.inject.Inject
 class MainActivityViewModel @Inject constructor(
     getThemeConfigUseCase: GetThemeConfigUseCase,
     getAccentColorUseCase: GetAccentColorUseCase,
-    playerUseCases: PlayerUseCases,
+    private val playerUseCases: PlayerUseCases,
+    private val observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
     private val scanLibraryUseCase: ScanLibraryUseCase,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
@@ -48,6 +53,11 @@ class MainActivityViewModel @Inject constructor(
     // never re-runs on every progress tick since only songId is compared.
     init {
         AppIconManager.refresh(appContext)
+    }
+
+    /** Runs a launcher shortcut; true if playback started (so the caller can open the player). */
+    suspend fun runShortcut(action: String): Boolean = withContext(Dispatchers.Main) {
+        AppShortcuts.execute(action, playerUseCases, observeFavouriteIdsUseCase)
     }
 
     val accentSeedColor: StateFlow<Color?> = combine(

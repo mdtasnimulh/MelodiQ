@@ -15,6 +15,10 @@ interface MetadataRepository {
 
 interface FileManagementRepository {
     suspend fun deleteSong(songId: Long): FileOpResult
+    /** Deletes several songs. Files the app may delete directly go immediately; for the rest the
+     * result is [FileOpResult.NeedsPermission] - ONE system prompt covering all of them, whose
+     * approval means the system has already deleted them. */
+    suspend fun deleteSongs(songIds: List<Long>): FileOpResult
     suspend fun renameSong(songId: Long, newTitleOnDisk: String): FileOpResult
     suspend fun moveSong(songId: Long, newFolderRelativePath: String): FileOpResult
     /** Call after an operation the system itself completed (e.g. a user-approved delete

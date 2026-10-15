@@ -87,7 +87,24 @@ object PlayerModule {
 
     @Provides
     @Singleton
+    fun providePlaybackTuningManager(
+        @ApplicationContext context: Context,
+        exoPlayer: ExoPlayer,
+    ): com.tasnimulhasan.data.player.PlaybackTuningManager =
+        com.tasnimulhasan.data.player.PlaybackTuningManager(context, exoPlayer)
+
+    @Provides
+    fun providePlaybackTuningController(
+        manager: com.tasnimulhasan.data.player.PlaybackTuningManager,
+    ): com.tasnimulhasan.domain.player.PlaybackTuningController = manager
+
+    @Provides
+    @Singleton
     fun provideServiceHandler(
+        // Not used by the handler itself: listing it here makes Hilt create the tuning manager
+        // together with the player stack, so a song's remembered speed/pitch is applied even if
+        // playback starts from the notification and the player screen is never opened.
+        @Suppress("UNUSED_PARAMETER") tuningManager: com.tasnimulhasan.data.player.PlaybackTuningManager,
         exoPlayer: ExoPlayer,
         preferencesDataStoreRepository: PreferencesDataStoreRepository,
         @ApplicationContext context: Context,

@@ -1,6 +1,9 @@
 package com.tasnimulhasan.domain.localusecase.library
 
+import com.tasnimulhasan.domain.repository.local.FileManagementRepository
 import com.tasnimulhasan.domain.repository.local.LibraryRepository
+import com.tasnimulhasan.entity.metadata.FileOpResult
+import com.tasnimulhasan.entity.room.library.DuplicateGroup
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.library.ArtistPlay
 import com.tasnimulhasan.entity.room.library.ListeningStats
@@ -40,4 +43,17 @@ class ListeningInsightsUseCases @Inject constructor(private val repo: LibraryRep
         repo.observeTopArtistsSince(sinceMillis, limit)
 
     fun playTimes(sinceMillis: Long): Flow<List<PlayTimeRow>> = repo.observePlayTimesSince(sinceMillis)
+}
+
+/** Duplicate finder: the groups, and bulk delete of the copies the user marked. */
+class DuplicateFinderUseCases @Inject constructor(
+    private val library: LibraryRepository,
+    private val files: FileManagementRepository,
+) {
+    fun groups(): Flow<List<DuplicateGroup>> = library.observeDuplicateGroups()
+
+    suspend fun delete(songIds: List<Long>): FileOpResult = files.deleteSongs(songIds)
+
+    /** After the system itself performed an approved delete, so the library rescans. */
+    suspend fun notifyChanged() = files.notifyLibraryChanged()
 }

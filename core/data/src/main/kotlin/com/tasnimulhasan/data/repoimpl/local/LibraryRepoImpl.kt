@@ -1,21 +1,23 @@
 package com.tasnimulhasan.data.repoimpl.local
 
-import androidx.core.net.toUri
+import android.net.Uri
 import com.tasnimulhasan.data.library.MediaStoreLibraryScanner
 import com.tasnimulhasan.database.dao.LibrarySongDao
 import com.tasnimulhasan.database.dao.PlayHistoryDao
 import com.tasnimulhasan.domain.repository.local.LibraryRepository
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
-import com.tasnimulhasan.entity.room.library.AlbumSummary
+import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.library.ArtistPlay
+import com.tasnimulhasan.entity.room.library.DuplicateGroup
+import com.tasnimulhasan.entity.room.library.DuplicateSong
+import com.tasnimulhasan.entity.room.library.PlayTimeRow
+import com.tasnimulhasan.entity.room.library.AlbumSummary
 import com.tasnimulhasan.entity.room.library.ArtistSummary
 import com.tasnimulhasan.entity.room.library.FolderSummary
 import com.tasnimulhasan.entity.room.library.GenreSummary
 import com.tasnimulhasan.entity.room.library.LibrarySongEntity
-import com.tasnimulhasan.entity.room.library.ListeningStats
 import com.tasnimulhasan.entity.room.library.PlayHistoryEntity
-import com.tasnimulhasan.entity.room.library.PlayTimeRow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -23,6 +25,8 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 // Big enough that "Year in music" has a full year of plays to work with (rows are tiny).
+// Two files whose lengths differ by less than this count as the same recording.
+private const val DUPLICATE_DURATION_TOLERANCE_MS = 2_000L
 private const val HISTORY_KEEP_COUNT = 50_000
 
 class LibraryRepoImpl @Inject constructor(
@@ -129,6 +133,35 @@ class LibraryRepoImpl @Inject constructor(
     override fun observePlayTimesSince(sinceMillis: Long): Flow<List<PlayTimeRow>> =
         playHistoryDao.observePlayTimesSince(sinceMillis)
 
+    override fun observeDuplicateGroups(): Flow<List<DuplicateGroup>> =
+        librarySongDao.observeDuplicateCandidates().map { rows ->
+            rows.groupBy { it.titleKey to it.artistKey }.values.flatMap { sameName ->
+                // Split same-name songs into clusters of (nearly) equal length.
+                val clusters = mutableListOf<MutableList<LibrarySongEntity>>()
+                for (song in sameName.sortedBy { it.durationMs }) {
+                    val last = clusters.lastOrNull()
+                    if (last != null && song.durationMs - last.last().durationMs <= DUPLICATE_DURATION_TOLERANCE_MS) {
+                        last += song
+                    } else {
+                        clusters += mutableListOf(song)
+                    }
+                }
+                clusters.filter { it.size > 1 }.map { cluster ->
+                    // Best first: biggest file (usually best quality), then the oldest copy.
+                    val ordered = cluster.sortedWith(
+                        compareByDescending<LibrarySongEntity> { it.sizeBytes }.thenBy { it.dateAdded }
+                    )
+                    DuplicateGroup(
+                        title = ordered.first().title,
+                        artist = ordered.first().artist,
+                        songs = ordered.map {
+                            DuplicateSong(it.toMusicEntity(), it.sizeBytes, it.folderPath, it.durationMs)
+                        },
+                    )
+                }
+            }.sortedBy { it.title.lowercase() }
+        }.flowOn(Dispatchers.Default)
+
     private fun SortType.toColumnAndDirection(): Pair<String, Boolean> = when (this) {
         SortType.NAME_ASC -> "title" to true
         SortType.NAME_DESC -> "title" to false
@@ -141,7 +174,7 @@ class LibraryRepoImpl @Inject constructor(
     }
 
     private fun LibrarySongEntity.toMusicEntity(): MusicEntity = MusicEntity(
-        contentUri = contentUriString.toUri(),
+        contentUri = Uri.parse(contentUriString),
         songId = songId,
         cover = null,
         songTitle = title,

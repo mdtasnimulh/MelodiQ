@@ -107,7 +107,10 @@ import com.tasnimulhasan.featureplayer.components.FavoriteButton
 import com.tasnimulhasan.featureplayer.components.PlayerAction
 import com.tasnimulhasan.featureplayer.components.PlayerActionChips
 import com.tasnimulhasan.featureplayer.components.PlayerTopBar
+import com.tasnimulhasan.featureplayer.components.PlaybackSpeedBottomSheet
 import com.tasnimulhasan.featureplayer.components.SleepTimerBottomSheet
+import com.tasnimulhasan.featureplayer.components.formatSpeed
+import androidx.compose.material.icons.filled.Speed
 import com.tasnimulhasan.featureplayer.components.SleepTimerOption
 import com.tasnimulhasan.featureplayer.components.expressiveEntrance
 import com.tasnimulhasan.ui.image.AlbumArt
@@ -164,6 +167,8 @@ internal fun SharedTransitionScope.PlayerScreen(
     val thresholdFraction = 0.6f
 
     val showBottomSheet = remember { mutableStateOf(false) }
+    val showSpeedSheet = remember { mutableStateOf(false) }
+    val tuning by viewModel.tuning.collectAsStateWithLifecycle()
 
     val sleepTimerRunning by viewModel.sleepTimerActive.collectAsStateWithLifecycle()
     val sleepTimerRemainingMillis by viewModel.sleepTimerRemainingMillis.collectAsStateWithLifecycle()
@@ -707,6 +712,12 @@ internal fun SharedTransitionScope.PlayerScreen(
                                 onClick = { showBottomSheet.value = true },
                             ),
                             PlayerAction(
+                                icon = Icons.Default.Speed,
+                                label = if (tuning.isDefault) "Speed" else formatSpeed(tuning.speed),
+                                active = !tuning.isDefault,
+                                onClick = { showSpeedSheet.value = true },
+                            ),
+                            PlayerAction(
                                 icon = Icons.Default.GraphicEq,
                                 label = "Equalizer",
                                 onClick = { navigateToEqualizerScreen.invoke() },
@@ -749,6 +760,16 @@ internal fun SharedTransitionScope.PlayerScreen(
                             viewModel.startSleepTimer((h * 3600L + m * 60L + s) * 1000L, fadeOutSeconds)
                         },
                         onCancelTimer = { viewModel.cancelSleepTimer() }
+                    )
+                }
+
+                if (showSpeedSheet.value) {
+                    PlaybackSpeedBottomSheet(
+                        tuning = tuning,
+                        onDismiss = { showSpeedSheet.value = false },
+                        onChange = { speed, pitch -> viewModel.setTuning(speed, pitch) },
+                        onRememberChange = { viewModel.setRememberTuning(it) },
+                        onReset = { viewModel.resetTuning() },
                     )
                 }
 

@@ -1,4 +1,3 @@
-// app/src/main/java/com/tasnimulhasan/melodiq/MainActivity.kt
 package com.tasnimulhasan.melodiq
 
 import android.Manifest
@@ -9,6 +8,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
+import com.tasnimulhasan.melodiq.shortcut.AppShortcuts
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -63,6 +66,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         openPlayerRequested.value = intent?.getBooleanExtra(AppConstants.EXTRA_OPEN_PLAYER, false) == true
+
+        // Long-press launcher shortcuts. Published once per launch off the main thread; a
+        // shortcut tap that cold-starts the app arrives here, one that hits a running
+        // activity arrives in onNewIntent.
+        lifecycleScope.launch(Dispatchers.Default) { AppShortcuts.publish(applicationContext) }
+        if (savedInstanceState == null) handleShortcut(intent)
 
         setContent {
             val appState = rememberMelodiQAppState()
@@ -138,9 +147,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleShortcut(intent: Intent?) {
+        val action = intent?.action
+        if (!AppShortcuts.isShortcutAction(action)) return
+        // Consume it so a later recreation (rotation, theme change) doesn't run it again.
+        intent?.action = null
+        lifecycleScope.launch {
+            if (mainActivityViewModel.runShortcut(action!!)) openPlayerRequested.value = true
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleShortcut(intent)
         if (intent.getBooleanExtra(AppConstants.EXTRA_OPEN_PLAYER, false)) {
             openPlayerRequested.value = true
         }

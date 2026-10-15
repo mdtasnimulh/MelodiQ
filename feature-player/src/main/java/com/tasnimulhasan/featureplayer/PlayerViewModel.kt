@@ -12,6 +12,8 @@ import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.player.PlaybackState
+import com.tasnimulhasan.domain.player.PlaybackTuning
+import com.tasnimulhasan.domain.player.PlaybackTuningController
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,13 +40,14 @@ class PlayerViewModel @Inject constructor(
     private val observeFavouriteIdsUseCase: com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase,
     private val toggleFavouriteUseCase: com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
-    private val exoPlayer: ExoPlayer, // volume-boost only
+    private val exoPlayer: ExoPlayer,
     private val sleepTimerController: SleepTimerController,
+    private val tuningController: PlaybackTuningController,
     savedStateHandle: SavedStateHandle,
     context: Context,
 ) : BaseViewModel() {
 
-    // The song this screen was navigated to for. Read once from the nav arg via
+    // The song this screen was navigated to for. Read once from the nav arg via// volume-boost only
     // SavedStateHandle (Navigation Compose populates this automatically for a type-safe
     // route) - NOT from any Compose-observed ViewModel state, which is what made the old
     // "is this already the current song" check in PlayerScreen racy: currentSelectedAudio
@@ -142,6 +145,12 @@ class PlayerViewModel @Inject constructor(
     private val repeatListener = object : androidx.media3.common.Player.Listener {
         override fun onRepeatModeChanged(repeatMode: Int) = syncRepeatFlags(repeatMode)
     }
+
+    // Speed / pitch (with optional per-song memory) - see PlaybackTuningManager.
+    val tuning: StateFlow<PlaybackTuning> = tuningController.tuning
+    fun setTuning(speed: Float, pitch: Float) = tuningController.setTuning(speed, pitch)
+    fun setRememberTuning(enabled: Boolean) = tuningController.setRememberForSong(enabled)
+    fun resetTuning() = tuningController.reset()
 
     val sleepTimerActive: StateFlow<Boolean> = sleepTimerController.isRunning
     val sleepTimerRemainingMillis: StateFlow<Long> = sleepTimerController.remainingMillis

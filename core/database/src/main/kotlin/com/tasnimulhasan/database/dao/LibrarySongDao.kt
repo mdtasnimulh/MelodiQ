@@ -157,6 +157,21 @@ interface LibrarySongDao {
     )
     fun observeNotPlayedSince(beforeMillis: Long, limit: Int): Flow<List<LibrarySongEntity>>
 
+    /** Duplicate finder, step 1: every song that shares its title + artist with another song.
+     * (Concatenated key instead of a row-value IN, which Room's SQL checker may not parse.)
+     * The repository then splits these by duration so two different songs that merely share
+     * a title aren't reported as duplicates. */
+    @Query(
+        """SELECT * FROM library_song_table
+           WHERE titleKey != ''
+             AND titleKey || '|' || artistKey IN (
+                 SELECT titleKey || '|' || artistKey FROM library_song_table
+                 WHERE titleKey != '' GROUP BY titleKey, artistKey HAVING COUNT(*) > 1
+             )
+           ORDER BY titleKey ASC, artistKey ASC, durationMs ASC"""
+    )
+    fun observeDuplicateCandidates(): Flow<List<LibrarySongEntity>>
+
     @Query("SELECT * FROM library_song_table WHERE songId = :songId LIMIT 1")
     suspend fun getById(songId: Long): LibrarySongEntity?
 

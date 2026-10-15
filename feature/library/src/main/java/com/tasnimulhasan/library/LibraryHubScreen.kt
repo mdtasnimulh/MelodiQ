@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -50,8 +51,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tasnimulhasan.ui.motion.pressFeedback
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun LibraryHubRoute(
@@ -65,6 +64,7 @@ internal fun LibraryHubRoute(
     navigateToAlbums: () -> Unit,
     navigateToSmartPlaylists: () -> Unit,
     navigateToStats: () -> Unit,
+    navigateToDuplicates: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(
@@ -97,6 +97,11 @@ internal fun LibraryHubRoute(
                 WideRow(Icons.Filled.BarChart, "Listening stats", "Your time, top songs and artists, year in music", navigateToStats)
             }
         }
+
+        SectionLabel("Clean up")
+        Reveal(3) {
+            WideRow(Icons.Filled.ContentCopy, "Duplicate finder", "Find repeated songs and free up space", navigateToDuplicates)
+        }
         Spacer(Modifier.height(24.dp))
     }
 }
@@ -105,7 +110,7 @@ internal fun LibraryHubRoute(
 private fun Reveal(index: Int, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay((index * 60L).milliseconds)
+        kotlinx.coroutines.delay(index * 60L)
         visible = true
     }
     AnimatedVisibility(

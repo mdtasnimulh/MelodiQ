@@ -31,7 +31,7 @@ data class LibrarySongEntity(
     val songId: Long,
     val title: String,
     // Lowercased copies used for fast, index-backed LIKE search - keeps the search query
-    // itself simple and case-insensitive without a COLLATE NO CASE scan on every row.
+    // itself simple and case-insensitive without a COLLATE NOCASE scan on every row.
     val titleKey: String,
     val artist: String,
     val artistKey: String,
@@ -132,4 +132,20 @@ data class ArtistPlay(
     val artist: String,
     val playCount: Int,
     val coverSong: com.tasnimulhasan.entity.home.MusicEntity?,
+)
+
+/** One copy of a song inside a [DuplicateGroup]. */
+data class DuplicateSong(
+    val song: com.tasnimulhasan.entity.home.MusicEntity,
+    val sizeBytes: Long,
+    val folderPath: String,
+    val durationMs: Long,
+)
+
+/** Files that are the same song: same title and artist, and (nearly) the same length.
+ * [songs] is ordered best first - the largest file, i.e. usually the highest quality. */
+data class DuplicateGroup(
+    val title: String,
+    val artist: String,
+    val songs: List<DuplicateSong>,
 )
