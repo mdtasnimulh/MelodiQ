@@ -6,9 +6,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,28 +22,26 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -59,9 +57,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * How much room the floating bar takes at the bottom of the screen. Lists add this to their
@@ -105,7 +104,7 @@ fun MelodiqFloatingNavBar(
     val selected = selectedIndex.coerceIn(0, n - 1)
     val lensPos = remember { Animatable(selected.toFloat()) }
     var dragging by remember { mutableStateOf(false) }
-    var widthPx by remember { mutableStateOf(0) }
+    var widthPx by remember { mutableIntStateOf(0) }
 
     // Follow external selection changes (drawer shortcuts, back navigation) unless the user
     // is currently dragging the lens.
@@ -124,7 +123,7 @@ fun MelodiqFloatingNavBar(
         label = "barSide",
     )
     val lensScale by animateFloatAsState(
-        if (dragging) 1.16f else 1f,
+        if (dragging) 1.12f else 1f,
         spring(dampingRatio = 0.55f, stiffness = 500f),
         label = "lensScale",
     )
@@ -136,28 +135,7 @@ fun MelodiqFloatingNavBar(
     val edge = Brush.linearGradient(
         listOf(Color.White.copy(alpha = 0.60f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.32f))
     )
-    val sheen = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.20f), Color.White.copy(alpha = 0.02f)))
-    val rainbowRim = Brush.sweepGradient(
-        listOf(
-            Color(0xFF7FD8FF).copy(alpha = 0.75f),
-            Color.White.copy(alpha = 0.90f),
-            Color(0xFFFF8FD8).copy(alpha = 0.70f),
-            Color(0xFFFFE08A).copy(alpha = 0.70f),
-            Color.White.copy(alpha = 0.90f),
-            Color(0xFF7FD8FF).copy(alpha = 0.75f),
-        )
-    )
-
-    // The lens is taller and wider than one tab and spills over the bar, like a glass bead.
-    val lensOverflow = 8.dp
-    val lensHeightDp = barHeight + lensOverflow * 2
-    val lensWidthPx = itemWidthPx * 1.32f
-    val lensWidthDp = with(density) { lensWidthPx.toDp() }
-    val slackPx = with(density) { 4.dp.toPx() }
-    val lensLeftPx = if (itemWidthPx > 0f) {
-        ((lensPos.value + 0.5f) * itemWidthPx - lensWidthPx / 2f)
-            .coerceIn(-slackPx, (widthPx - lensWidthPx + slackPx).coerceAtLeast(-slackPx))
-    } else 0f
+    val sheen = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.02f)))
 
     Box(
         modifier = modifier
@@ -168,6 +146,16 @@ fun MelodiqFloatingNavBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(barHeight)
+                .shadow(
+                    elevation = 18.dp,
+                    shape = CircleShape,
+                    ambientColor = Color.Black.copy(alpha = 0.18f),
+                    spotColor = Color.Black.copy(alpha = 0.28f),
+                )
+                .clip(CircleShape)
+                .background(scheme.surfaceContainerHigh.copy(alpha = 0.74f))
+                .background(sheen)
+                .border(0.8.dp, edge, CircleShape)
                 .onSizeChanged { widthPx = it.width }
                 .pointerInput(n, widthPx) {
                     if (widthPx == 0) return@pointerInput
@@ -199,7 +187,8 @@ fun MelodiqFloatingNavBar(
                             if (change.isConsumed) { cancelled = true; break }
                         }
 
-                        dragging = false
+                        // Keep the lens up briefly so a quick tap still shows it pop and melt.
+                        scope.launch { delay(170.milliseconds); dragging = false }
                         val target = if (cancelled) selected else indexAt(lastX).roundToInt()
                         scope.launch { lensPos.animateTo(target.toFloat(), LensSpring) }
                         if (target != selected) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
@@ -208,23 +197,26 @@ fun MelodiqFloatingNavBar(
                     }
                 },
         ) {
-            // ── Glass body ─────────────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .shadow(
-                        elevation = 20.dp,
-                        shape = CircleShape,
-                        ambientColor = Color.Black.copy(alpha = 0.16f),
-                        spotColor = Color.Black.copy(alpha = 0.30f),
-                    )
-                    .clip(CircleShape)
-                    .background(scheme.surfaceContainerHigh.copy(alpha = 0.70f))
-                    .background(sheen)
-                    .border(0.8.dp, edge, CircleShape)
-            )
+            // The selection capsule: slides between tabs with a springy overshoot and swells
+            // while a finger is down.
+            if (itemWidthPx > 0f) {
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset((lensPos.value * itemWidthPx).roundToInt(), 0) }
+                        .width(itemWidthDp)
+                        .fillMaxHeight()
+                        .padding(5.dp)
+                        .scale(lensScale)
+                        .clip(CircleShape)
+                        .background(scheme.primary.copy(alpha = if (dragging) 0.26f else 0.18f))
+                        .border(
+                            0.8.dp,
+                            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.45f), Color.White.copy(alpha = 0.05f))),
+                            CircleShape,
+                        ),
+                )
+            }
 
-            // ── Normal tabs ────────────────────────────────────────────────────────────
             NavTabsRow(
                 items = items,
                 activeIndex = activeIndex,
@@ -232,74 +224,6 @@ fun MelodiqFloatingNavBar(
                 activeTint = scheme.primary,
                 inactiveTint = scheme.onSurfaceVariant,
             )
-
-            // ── Glass lens ─────────────────────────────────────────────────────────────
-            if (itemWidthPx > 0f) {
-                val lensShape = RoundedCornerShape(percent = 50)
-                Box(
-                    modifier = Modifier
-                        .offset { IntOffset(lensLeftPx.roundToInt(), -lensOverflow.roundToPx()) }
-                        .requiredSize(lensWidthDp, lensHeightDp)
-                        .graphicsLayer {
-                            // Stretch along the direction of travel, squash a little across it.
-                            val stretch = (abs(lensPos.velocity) * 0.035f).coerceAtMost(0.26f)
-                            scaleX = lensScale * (1f + stretch)
-                            scaleY = lensScale * (1f - stretch * 0.45f)
-                        }
-                        .shadow(
-                            elevation = if (dragging) 16.dp else 9.dp,
-                            shape = lensShape,
-                            ambientColor = Color.Black.copy(alpha = 0.18f),
-                            spotColor = Color.Black.copy(alpha = 0.34f),
-                        )
-                        .clip(lensShape)
-                        .background(
-                            Brush.radialGradient(
-                                0.0f to Color.White.copy(alpha = 0.10f),
-                                0.70f to Color.White.copy(alpha = 0.18f),
-                                1.0f to Color.White.copy(alpha = 0.42f),
-                            )
-                        ),
-                ) {
-                    // Magnified copy of the tabs, seen "through" the lens: bigger and tinted.
-                    val pivotX = ((lensLeftPx + lensWidthPx / 2f) / widthPx.coerceAtLeast(1)).coerceIn(0f, 1f)
-                    Box(
-                        modifier = Modifier
-                            .requiredSize(with(density) { widthPx.toDp() }, barHeight)
-                            .align(Alignment.CenterStart)
-                            .offset { IntOffset(-lensLeftPx.roundToInt(), 0) }
-                            .graphicsLayer {
-                                transformOrigin = TransformOrigin(pivotX, 0.5f)
-                                scaleX = 1.26f
-                                scaleY = 1.26f
-                            },
-                    ) {
-                        NavTabsRow(
-                            items = items,
-                            activeIndex = activeIndex,
-                            minimized = minimized,
-                            activeTint = scheme.primary,
-                            inactiveTint = scheme.primary,
-                        )
-                    }
-                    // Rim light: rainbow dispersion on the edge + a bright top highlight.
-                    Box(
-                        Modifier
-                            .matchParentSize()
-                            .border(1.6.dp, rainbowRim, lensShape)
-                    )
-                    Box(
-                        Modifier
-                            .matchParentSize()
-                            .padding(2.dp)
-                            .border(
-                                1.dp,
-                                Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.85f), Color.Transparent, Color.White.copy(alpha = 0.35f))),
-                                lensShape,
-                            )
-                    )
-                }
-            }
         }
     }
 }
