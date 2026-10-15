@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * State and actions behind the iPod-style UI (Player B). It reads the very same shared player
@@ -366,7 +367,7 @@ internal class IpodViewModel @Inject constructor(
     fun stopEverything(afterStopped: () -> Unit) {
         viewModelScope.launch {
             withContext(NonCancellable) { runCatching { playerUseCases.stopPlayback() } }
-            delay(250)
+            delay(500.milliseconds)
             afterStopped()
         }
     }

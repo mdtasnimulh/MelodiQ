@@ -92,11 +92,24 @@ internal fun IpodApp(
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val minimize = remember(activity) { { activity?.moveTaskToBack(true); Unit } }
-    val exitApp = remember(activity, viewModel) {
+    val exitApp = remember(activity, viewModel, context) {
         {
             viewModel.stopEverything {
-                activity?.finishAndRemoveTask()
-                Process.killProcess(Process.myPid())
+                // Stop the playback service for good BEFORE the process dies: if it were only
+                // killed, Android restarts the service in the background and its
+                // startForeground() then throws ForegroundServiceStartNotAllowedException.
+                runCatching {
+                    context.stopService(
+                        android.content.Intent().setClassName(
+                            context.packageName,
+                            "com.tasnimulhasan.data.player.MelodiqPlayerService",
+                        )
+                    )
+                }
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    activity?.finishAndRemoveTask()
+                    Process.killProcess(Process.myPid())
+                }, 400)
             }
         }
     }
