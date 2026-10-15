@@ -30,6 +30,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -95,7 +101,11 @@ internal fun IpodApp(
         }
     }
 
-    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp)
+    // null = dialog closed; otherwise whether the playing song should go into the new playlist.
+    var newPlaylistFor by remember { mutableStateOf<Boolean?>(null) }
+    val onNewPlaylist = remember { { addCurrent: Boolean -> newPlaylistFor = addCurrent } }
+
+    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp, onNewPlaylist)
     val latestData by rememberUpdatedState(data)
     val latestSwitch by rememberUpdatedState(onSwitchToClassic)
 
@@ -112,6 +122,33 @@ internal fun IpodApp(
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    }
+
+    newPlaylistFor?.let { addCurrent ->
+        var name by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { newPlaylistFor = null },
+            title = { Text("New Playlist") },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    placeholder = { Text("Playlist name") },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = name.isNotBlank(),
+                    onClick = {
+                        viewModel.createPlaylist(name, addCurrent)
+                        if (addCurrent) viewModel.closeMenu()
+                        newPlaylistFor = null
+                    },
+                ) { Text("Create") }
+            },
+            dismissButton = { TextButton(onClick = { newPlaylistFor = null }) { Text("Cancel") } },
+        )
     }
 
     val contentTop = viewModel.content.last()
@@ -351,7 +388,7 @@ private fun emptyTextFor(page: IpodPage) = when (page) {
     IpodPage.ALBUMS -> "No albums"
     IpodPage.GENRES -> "No genres"
     IpodPage.FAVOURITES -> "No favourites yet.\nHeart a song in Player A."
-    IpodPage.PLAYLISTS -> "No playlists yet"
+    IpodPage.PLAYLISTS -> ""
     else -> ""
 }
 
@@ -368,6 +405,7 @@ internal class IpodData(
     val color: IpodColor,
     val onMinimize: () -> Unit,
     val onExit: () -> Unit,
+    val onNewPlaylist: (addCurrent: Boolean) -> Unit,
 )
 
 /** Rows are rebuilt only when what they are made from changes - not on every recomposition. */
@@ -485,10 +523,9 @@ internal fun buildRows(
             )
         }
 
-        IpodPage.ADD_TO_PLAYLIST -> if (d.playlists.isEmpty()) {
-            listOf(IpodRow("no_playlists", "No playlists yet", chevron = false) { })
-        } else {
-            d.playlists.map { p ->
+        IpodPage.ADD_TO_PLAYLIST -> buildList {
+            add(IpodRow("new_playlist_add", "New Playlist…", chevron = false) { d.onNewPlaylist(true) })
+            d.playlists.forEach { p -> add(
                 IpodRow(
                     id = "add_${p.id}",
                     title = p.playlistName,
@@ -497,7 +534,7 @@ internal fun buildRows(
                         vm.addCurrentToPlaylist(p)
                         vm.closeMenu()
                     },
-                )
+                ))
             }
         }
 
@@ -510,8 +547,11 @@ internal fun buildRows(
             IpodRow("favourites", "Favourites", chevron = false) { vm.pushContent(IpodPage.FAVOURITES, "Favourites", fromRoot = true) },
         )
 
-        IpodPage.PLAYLISTS -> d.playlists.map { p ->
-            IpodRow(id = "playlist_${p.id}", title = p.playlistName, onSelect = { vm.openPlaylist(p.id, p.playlistName) })
+        IpodPage.PLAYLISTS -> buildList {
+            add(IpodRow("new_playlist", "New Playlist…", chevron = false) { d.onNewPlaylist(false) })
+            d.playlists.forEach { p ->
+                add(IpodRow(id = "playlist_${p.id}", title = p.playlistName, onSelect = { vm.openPlaylist(p.id, p.playlistName) }))
+            }
         }
 
         IpodPage.SETTINGS -> listOf(

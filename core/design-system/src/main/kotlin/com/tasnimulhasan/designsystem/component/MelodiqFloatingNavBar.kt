@@ -188,10 +188,9 @@ fun MelodiqFloatingNavBar(
                         dragging = false
                         val target = if (cancelled) selected else indexAt(lastX).roundToInt()
                         scope.launch { lensPos.animateTo(target.toFloat(), LensSpring) }
-                        if (target != selected) {
-                            haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                            onSelect(target)
-                        }
+                        if (target != selected) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        // Always report it: tapping the current tab means "take me to its root".
+                        onSelect(target)
                     }
                 },
         ) {

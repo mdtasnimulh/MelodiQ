@@ -75,7 +75,13 @@ class MelodiQAppState(
         }
 
         when (topLevelDestination) {
-            TopLevelDestination.HOME -> navController.navigateToHome(topLevelNavOptions)
+            // Home is the start destination: just pop back to it (reliable from every tab and
+            // sub-screen); navigate only if it is somehow not on the back stack.
+            TopLevelDestination.HOME -> {
+                if (!navController.popBackStack(HomeRoute, inclusive = false)) {
+                    navController.navigateToHome(topLevelNavOptions)
+                }
+            }
             TopLevelDestination.SONGS -> navController.navigateToSongs(topLevelNavOptions)
             TopLevelDestination.LIBRARY -> navController.navigateToLibraryHub {
                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }

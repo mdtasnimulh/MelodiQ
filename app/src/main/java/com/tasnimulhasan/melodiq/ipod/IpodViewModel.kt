@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
 import com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlistdetails.IsSongInPlaylistUseCase
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
@@ -53,6 +54,7 @@ internal class IpodViewModel @Inject constructor(
     private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
     private val insertMusicToPlaylistUseCase: InsertMusicToPlaylistUseCase,
     private val isSongInPlaylistUseCase: IsSongInPlaylistUseCase,
+    private val insertPlaylistUseCase: InsertPlaylistUseCase,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -333,6 +335,29 @@ internal class IpodViewModel @Inject constructor(
                 )
             )
             _messages.send("Added to ${playlist.playlistName}")
+        }
+    }
+
+    /** Creates a playlist called [name]; with [addCurrent] the playing song goes straight into it. */
+    fun createPlaylist(name: String, addCurrent: Boolean) {
+        val clean = name.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            val createdAt = System.currentTimeMillis()
+            insertPlaylistUseCase(
+                InsertPlaylistUseCase.Params(
+                    PlaylistEntity(playlistName = clean, playlistDescription = "", createdAt = createdAt)
+                )
+            )
+            if (!addCurrent) {
+                _messages.send("Playlist \"$clean\" created")
+                return@launch
+            }
+            // insertPlaylist returns nothing, so find the new row (newest with this name).
+            val created = getAllPlaylistUseCase().first()
+                .filter { it.playlistName == clean && it.createdAt == createdAt }
+                .maxByOrNull { it.id }
+            if (created != null) addCurrentToPlaylist(created) else _messages.send("Couldn't add to playlist")
         }
     }
 
