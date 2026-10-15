@@ -67,6 +67,17 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+
+    applicationVariants.all {
+        if (buildType.name == "release") {
+            outputs.all {
+                val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+                output.outputFileName =
+                    "MelodiQ_V${versionName}_C${versionCode}.apk"
+            }
+        }
+    }
 }
 
 dependencies {
