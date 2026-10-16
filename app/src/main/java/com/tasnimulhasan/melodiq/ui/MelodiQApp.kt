@@ -73,6 +73,7 @@ import com.tasnimulhasan.designsystem.component.FloatingNavAction
 import com.tasnimulhasan.designsystem.component.MelodiqFloatingNavBar
 import androidx.compose.material.icons.filled.Headphones
 import com.tasnimulhasan.featureaudiobook.navigation.AudioBookDetailsRoute
+import com.tasnimulhasan.featureaudiobook.navigation.BookReaderRoute
 import com.tasnimulhasan.featureaudiobook.navigation.AudioBookRoute
 import com.tasnimulhasan.designsystem.component.MelodiqSearchTopBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
@@ -250,7 +251,8 @@ internal fun MmApp(
                 // The Audio Book screens draw their own header, so the app bar is hidden there.
                 val hideAppBar = currentDestination.isRouteInHierarchy(PlayerRoute::class) ||
                     currentDestination.isRouteInHierarchy(AudioBookRoute::class) ||
-                    currentDestination.isRouteInHierarchy(AudioBookDetailsRoute::class)
+                    currentDestination.isRouteInHierarchy(AudioBookDetailsRoute::class) ||
+                    currentDestination.isRouteInHierarchy(BookReaderRoute::class)
                 if (!hideAppBar) {
                     val onSearch = currentDestination.isRouteInHierarchy(SearchNavRoute::class)
                     val onSettings = currentDestination.isRouteInHierarchy(SettingsRoute::class)

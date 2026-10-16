@@ -60,6 +60,7 @@ import kotlin.math.sin
 internal fun BookDetailsRouteScreen(
     bookId: String,
     navigateBack: () -> Unit,
+    navigateToReader: (String) -> Unit,
     viewModel: AudioBookViewModel = hiltViewModel(),
 ) {
     val books by viewModel.books.collectAsStateWithLifecycle()
@@ -80,13 +81,7 @@ internal fun BookDetailsRouteScreen(
             viewModel.remove(book.id)
             navigateBack()
         },
-        onOpenPdf = {
-            val intent = Intent(Intent.ACTION_VIEW)
-                .setDataAndType(Uri.parse(book.uri), "application/pdf")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { context.startActivity(intent) }
-                .onFailure { Toast.makeText(context, "No app can open this PDF", Toast.LENGTH_SHORT).show() }
-        },
+        onOpenPdf = { navigateToReader(book.id) },
         onComingSoon = viewModel::comingSoon,
         onBack = navigateBack,
     )
@@ -185,7 +180,7 @@ internal fun BookDetailsScreen(
                     .clickable(onClick = onOpenPdf)
                     .padding(horizontal = 22.dp, vertical = 12.dp),
             ) {
-                Text("Open PDF", fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
+                Text("Read Book", fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
             }
             RoundAction(onClick = onRemove, tint = scheme.onSurfaceVariant) { tint ->
                 Icon(Icons.Filled.Delete, "Remove from library", tint = tint, modifier = Modifier.size(22.dp))

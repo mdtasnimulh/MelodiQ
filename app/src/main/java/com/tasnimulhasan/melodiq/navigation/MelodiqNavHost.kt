@@ -11,6 +11,7 @@ import com.tasnimulhasan.featurefavourite.navigation.favouriteScreen
 import com.tasnimulhasan.featurefeedback.navigation.feedbackScreen
 import com.tasnimulhasan.featureaudiobook.navigation.audioBookScreens
 import com.tasnimulhasan.featureaudiobook.navigation.navigateToBookDetails
+import com.tasnimulhasan.featureaudiobook.navigation.navigateToBookReader
 import com.tasnimulhasan.featureplayer.navigation.lyricsScreen
 import com.tasnimulhasan.featureplayer.navigation.navigateToLyrics
 import com.tasnimulhasan.featureplayer.navigation.playerScreen
@@ -87,6 +88,7 @@ fun MelodiQNavHost(
         aboutScreen()
         audioBookScreens(
             navigateToDetails = { bookId -> navController.navigateToBookDetails(bookId) },
+            navigateToReader = { bookId -> navController.navigateToBookReader(bookId) },
             navigateBack = navigateBack,
         )
         feedbackScreen()
