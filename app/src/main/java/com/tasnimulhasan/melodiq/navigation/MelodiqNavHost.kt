@@ -88,7 +88,7 @@ fun MelodiQNavHost(
         aboutScreen()
         audioBookScreens(
             navigateToDetails = { bookId -> navController.navigateToBookDetails(bookId) },
-            navigateToReader = { bookId -> navController.navigateToBookReader(bookId) },
+            navigateToReader = { bookId, autoPlay -> navController.navigateToBookReader(bookId, autoPlay) },
             navigateBack = navigateBack,
         )
         feedbackScreen()

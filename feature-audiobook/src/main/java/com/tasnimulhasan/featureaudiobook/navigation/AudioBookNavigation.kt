@@ -15,17 +15,18 @@ import kotlinx.serialization.Serializable
 
 @Serializable class AudioBookDetailsRoute(val bookId: String)
 
-@Serializable class BookReaderRoute(val bookId: String)
+@Serializable class BookReaderRoute(val bookId: String, val autoPlay: Boolean = false)
 
 fun NavController.navigateToAudioBook(navOptions: NavOptions? = null) = navigate(route = AudioBookRoute, navOptions)
 
 fun NavController.navigateToBookDetails(bookId: String) = navigate(route = AudioBookDetailsRoute(bookId))
 
-fun NavController.navigateToBookReader(bookId: String) = navigate(route = BookReaderRoute(bookId))
+fun NavController.navigateToBookReader(bookId: String, autoPlay: Boolean = false) =
+    navigate(route = BookReaderRoute(bookId, autoPlay))
 
 fun NavGraphBuilder.audioBookScreens(
     navigateToDetails: (bookId: String) -> Unit,
-    navigateToReader: (bookId: String) -> Unit,
+    navigateToReader: (bookId: String, autoPlay: Boolean) -> Unit,
     navigateBack: () -> Unit,
 ) {
     composable<AudioBookRoute> {
@@ -51,6 +52,6 @@ fun NavGraphBuilder.audioBookScreens(
         popExitTransition = { MelodiqMotion.popExit() },
     ) { entry ->
         val route = entry.toRoute<BookReaderRoute>()
-        BookReaderRouteScreen(bookId = route.bookId, navigateBack = navigateBack)
+        BookReaderRouteScreen(bookId = route.bookId, autoPlay = route.autoPlay, navigateBack = navigateBack)
     }
 }

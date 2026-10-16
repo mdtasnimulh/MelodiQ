@@ -14,9 +14,11 @@ import javax.inject.Inject
 internal class AudioBookViewModel @Inject constructor(
     private val repository: AudioBookRepository,
     val covers: BookCovers,
+    private val speaker: BookSpeaker,
 ) : ViewModel() {
 
     val books: StateFlow<List<Book>> = repository.books
+    val progress: StateFlow<Map<String, Progress>> = repository.progress
 
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
@@ -31,14 +33,14 @@ internal class AudioBookViewModel @Inject constructor(
                 when (repository.add(it)) {
                     AddResult.ADDED -> added++
                     AddResult.DUPLICATE -> duplicates++
-                    AddResult.FAILED -> failed++
+                    AddResult.FAILED, AddResult.UNSUPPORTED -> failed++
                 }
             }
             _messages.send(
                 when {
                     added > 0 -> if (added == 1) "Book added" else "$added books added"
                     duplicates > 0 -> "Already in your library"
-                    else -> "Couldn't open that PDF"
+                    else -> "Couldn't open that file. Choose a PDF or EPUB book"
                 } + if (failed > 0 && added > 0) " ($failed couldn't be opened)" else ""
             )
         }
@@ -47,11 +49,8 @@ internal class AudioBookViewModel @Inject constructor(
     fun toggleFavourite(id: String) = repository.toggleFavourite(id)
 
     fun remove(id: String) {
+        speaker.onBookRemoved(id)
         repository.remove(id)
         viewModelScope.launch { _messages.send("Removed from library") }
-    }
-
-    fun comingSoon() {
-        viewModelScope.launch { _messages.send("Audio narration is coming soon") }
     }
 }

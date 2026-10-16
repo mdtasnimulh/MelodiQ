@@ -60,11 +60,12 @@ import kotlin.math.sin
 internal fun BookDetailsRouteScreen(
     bookId: String,
     navigateBack: () -> Unit,
-    navigateToReader: (String) -> Unit,
+    navigateToReader: (String, Boolean) -> Unit,
     viewModel: AudioBookViewModel = hiltViewModel(),
 ) {
     val books by viewModel.books.collectAsStateWithLifecycle()
     val book = books.firstOrNull { it.id == bookId }
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
@@ -81,15 +82,15 @@ internal fun BookDetailsRouteScreen(
             viewModel.remove(book.id)
             navigateBack()
         },
-        onOpenPdf = { navigateToReader(book.id) },
-        onComingSoon = viewModel::comingSoon,
+        progress = progress[book.id] ?: Progress(),
+        onRead = { navigateToReader(book.id, false) },
+        onListen = { navigateToReader(book.id, true) },
         onBack = navigateBack,
     )
 }
 
 /**
- * Book details. The narration controls are a placeholder for now - audio from the PDF comes
- * in a later step - so they only show a "coming soon" message.
+ * Book details: cover, progress, and the entry points to reading and listening.
  */
 @Composable
 internal fun BookDetailsScreen(
@@ -97,11 +98,14 @@ internal fun BookDetailsScreen(
     covers: BookCovers,
     onToggleFavourite: () -> Unit,
     onRemove: () -> Unit,
-    onOpenPdf: () -> Unit,
-    onComingSoon: () -> Unit,
+    progress: Progress,
+    onRead: () -> Unit,
+    onListen: () -> Unit,
     onBack: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val started = progress.page > 0 || progress.permille > 0
+    val currentPage = progress.page.coerceIn(0, (book.pages - 1).coerceAtLeast(0)) + 1
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -147,7 +151,7 @@ internal fun BookDetailsScreen(
             modifier = Modifier.padding(top = 12.dp),
         )
         Text(
-            text = "PDF document",
+            text = if (book.isEpub) "EPUB book" else "PDF document",
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 2.dp),
@@ -159,7 +163,7 @@ internal fun BookDetailsScreen(
         ) {
             StatChip(if (book.pages == 1) "1 page" else "${book.pages} pages")
             StatChip(formatSize(book.sizeBytes))
-            StatChip("PDF")
+            StatChip(book.formatLabel)
         }
 
         Row(
@@ -177,10 +181,10 @@ internal fun BookDetailsScreen(
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(scheme.surfaceContainerHigh)
-                    .clickable(onClick = onOpenPdf)
+                    .clickable(onClick = onRead)
                     .padding(horizontal = 22.dp, vertical = 12.dp),
             ) {
-                Text("Read Book", fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
+                Text(if (started) "Continue Reading" else "Read Book", fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
             }
             RoundAction(onClick = onRemove, tint = scheme.onSurfaceVariant) { tint ->
                 Icon(Icons.Filled.Delete, "Remove from library", tint = tint, modifier = Modifier.size(22.dp))
@@ -193,39 +197,39 @@ internal fun BookDetailsScreen(
             color = scheme.primary,
         )
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("0:00", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-            Text("--:--", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text("Page $currentPage", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text(if (book.pages == 1) "1 page" else "${book.pages} pages", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
         }
 
-        // Narration controls (placeholder).
+        // Narration: Play opens the reader and starts reading aloud from where the book was left.
         Row(
             modifier = Modifier
-                .padding(top = 14.dp)
+                .padding(top = 14.dp, bottom = 24.dp)
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(72.dp)
                 .shadow(12.dp, CircleShape)
                 .clip(CircleShape)
                 .background(Color(0xFF1C1C1E))
-                .padding(horizontal = 18.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                .clickable(onClick = onListen)
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.SkipPrevious, "Previous", tint = Color(0xFF8E8E93), modifier = Modifier.size(28.dp).clickable(onClick = onComingSoon))
             Box(
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(scheme.primary).clickable(onClick = onComingSoon),
+                modifier = Modifier.size(48.dp).clip(CircleShape).background(scheme.primary),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.PlayArrow, "Play", tint = scheme.onPrimary, modifier = Modifier.size(28.dp))
+                Icon(Icons.Filled.PlayArrow, "Listen", tint = scheme.onPrimary, modifier = Modifier.size(28.dp))
             }
-            Icon(Icons.Filled.SkipNext, "Next", tint = Color(0xFF8E8E93), modifier = Modifier.size(28.dp).clickable(onClick = onComingSoon))
+            Column {
+                Text("Listen to this book", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (started) "Continues from page $currentPage of ${book.pages}" else "Read aloud with a narrator voice",
+                    color = Color(0xFF8E8E93),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
-        Text(
-            text = "Audio narration from this book is coming soon.",
-            style = MaterialTheme.typography.bodySmall,
-            color = scheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
-        )
     }
 }
 

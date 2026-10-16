@@ -1,0 +1,551 @@
+package com.tasnimulhasan.featureaudiobook
+
+import android.content.Context
+import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
+import androidx.core.content.ContextCompat
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicInteger
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.math.min
+
+/** What the listener and the reader see. Positions are a zero-based page plus thousandths of that page. */
+data class SpeechState(
+    val bookId: String? = null,
+    val title: String = "",
+    val pageCount: Int = 0,
+    val playing: Boolean = false,
+    val page: Int = 0,
+    val permille: Int = 0,
+    /** Character range of the sentence being read on [page], or -1 when nothing is being read. */
+    val chunkStart: Int = -1,
+    val chunkEnd: Int = -1,
+    /** Bumped whenever the position is moved on purpose (skip, restart) so the reader scrolls to it. */
+    val seekNonce: Int = 0,
+)
+
+/** One of the four narrator choices. [voiceName] is the engine voice behind it, null for the engine default. */
+data class VoicePreset(val label: String, val voiceName: String?, val pitch: Float)
+
+/**
+ * Reads a book aloud with the phone's text-to-speech engine and remembers where it stopped.
+ * One book at a time; it lives for the whole process so listening carries on when the reader
+ * screen is closed (the notification service keeps the process alive).
+ */
+@Singleton
+class BookSpeaker @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val repository: AudioBookRepository,
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val prefs = context.getSharedPreferences("audio_book_voice", Context.MODE_PRIVATE)
+    private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+    private val _state = MutableStateFlow(SpeechState())
+    val state: StateFlow<SpeechState> = _state.asStateFlow()
+
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
+
+    private val _presets = MutableStateFlow(defaultPresets())
+    val presets: StateFlow<List<VoicePreset>> = _presets.asStateFlow()
+
+    private val _presetIndex = MutableStateFlow(prefs.getInt("preset", 0).coerceIn(0, 3))
+    val presetIndex: StateFlow<Int> = _presetIndex.asStateFlow()
+
+    private val _rate = MutableStateFlow(prefs.getFloat("rate", 1f).coerceIn(0.5f, 2f))
+    val rate: StateFlow<Float> = _rate.asStateFlow()
+
+    internal var source: BookSource? = null
+        private set
+    private var book: Book? = null
+    private val loadLock = Mutex()
+
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
+    private var pendingStart: (() -> Unit)? = null
+    private var voices: List<Voice> = emptyList()
+
+    private val gen = AtomicInteger(0)
+    @Volatile private var queuedPage = -1
+    @Volatile private var endQueued = false
+    private var lastSaveAt = 0L
+    private var focusRequest: AudioFocusRequest? = null
+    private var resumeOnFocusGain = false
+    private var serviceStarted = false
+
+    init {
+        // Leftovers from a previous run (the temporary copy a book is read from while open).
+        runCatching { booksTempDir(context).listFiles()?.forEach { it.delete() } }
+    }
+
+    /** Opens [book] for reading/listening, restoring where it was left. Keeps an already-open book as it is. */
+    suspend fun load(book: Book): Boolean = loadLock.withLock {
+        if (this.book?.id == book.id && source != null) return@withLock true
+        stop()
+        val src = openBookSource(context, book) ?: return@withLock false
+        if (src.pageCount <= 0) {
+            src.close()
+            return@withLock false
+        }
+        source = src
+        this.book = book
+        val p = repository.progressOf(book.id)
+        _state.value = SpeechState(
+            bookId = book.id,
+            title = book.title,
+            pageCount = src.pageCount,
+            page = p.page.coerceIn(0, src.pageCount - 1),
+            permille = p.permille.coerceIn(0, 1000),
+        )
+        true
+    }
+
+    // ---- controls ----------------------------------------------------------------------------
+
+    fun play() {
+        if (source == null) return
+        if (_state.value.playing) return
+        ensureTts {
+            val s = _state.value
+            // Atom of resume: the exact sentence we paused on, else the saved position.
+            startFrom(s.page, s.permille, s.chunkStart.takeIf { it >= 0 })
+        }
+    }
+
+    fun pause() {
+        if (!_state.value.playing) return
+        gen.incrementAndGet()
+        runCatching { tts?.stop() }
+        resumeOnFocusGain = false
+        abandonFocus()
+        _state.update { it.copy(playing = false) }
+        persistNow()
+    }
+
+    fun togglePlay() = if (_state.value.playing) pause() else play()
+
+    /** Moves to the start of another page, keeping playback going if it was on. */
+    fun skipPage(delta: Int) {
+        val s = _state.value
+        if (source == null) return
+        val target = (s.page + delta).coerceIn(0, s.pageCount - 1)
+        moveTo(target, 0)
+    }
+
+    /** Jumps to a position chosen by the reader (e.g. the user scrolled while paused). */
+    fun seek(page: Int, permille: Int) {
+        val s = _state.value
+        if (source == null || s.playing) return
+        val p = page.coerceIn(0, s.pageCount - 1)
+        val m = permille.coerceIn(0, 1000)
+        if (p == s.page && m == s.permille) return
+        _state.update { it.copy(page = p, permille = m, chunkStart = -1, chunkEnd = -1) }
+        persistNow()
+    }
+
+    private fun moveTo(page: Int, permille: Int) {
+        val wasPlaying = _state.value.playing
+        _state.update { it.copy(page = page, permille = permille, chunkStart = -1, chunkEnd = -1, seekNonce = it.seekNonce + 1) }
+        persistNow()
+        if (wasPlaying) {
+            gen.incrementAndGet()
+            runCatching { tts?.stop() }
+            _state.update { it.copy(playing = false) }
+            ensureTts { startFrom(page, permille, null) }
+        }
+    }
+
+    /** Ends the session: stops speech, saves the position, closes the book and removes the notification. */
+    fun stop() {
+        gen.incrementAndGet()
+        runCatching { tts?.stop() }
+        abandonFocus()
+        resumeOnFocusGain = false
+        pendingStart = null
+        if (book != null) persistNow()
+        source?.close()
+        source = null
+        book = null
+        _state.value = SpeechState()
+        if (serviceStarted) {
+            serviceStarted = false
+            runCatching { context.stopService(Intent(context, BookSpeechService::class.java)) }
+        }
+    }
+
+    fun onBookRemoved(id: String) {
+        if (book?.id == id) stop()
+    }
+
+    fun selectPreset(index: Int) {
+        val i = index.coerceIn(0, 3)
+        if (i == _presetIndex.value) return
+        _presetIndex.value = i
+        prefs.edit().putInt("preset", i).apply()
+        applyVoiceSettings()
+        restartIfPlaying()
+    }
+
+    fun setRate(rate: Float) {
+        val r = rate.coerceIn(0.5f, 2f)
+        _rate.value = r
+        prefs.edit().putFloat("rate", r).apply()
+        applyVoiceSettings()
+        restartIfPlaying()
+    }
+
+    /** Speaks a short sample in the given voice without touching the book position. */
+    fun preview(index: Int) {
+        if (_state.value.playing) pause()
+        ensureTts {
+            val preset = _presets.value.getOrNull(index) ?: return@ensureTts
+            val engine = tts ?: return@ensureTts
+            gen.incrementAndGet()
+            engine.stop()
+            applyPreset(engine, preset)
+            engine.speak("Hello, this is how I will read your book.", TextToSpeech.QUEUE_FLUSH, null, "preview")
+        }
+    }
+
+    private fun restartIfPlaying() {
+        val s = _state.value
+        if (!s.playing) return
+        gen.incrementAndGet()
+        runCatching { tts?.stop() }
+        _state.update { it.copy(playing = false) }
+        ensureTts { startFrom(s.page, s.permille, s.chunkStart.takeIf { it >= 0 }) }
+    }
+
+    // ---- speech ------------------------------------------------------------------------------
+
+    private fun ensureTts(block: () -> Unit) {
+        if (ttsReady) {
+            block()
+            return
+        }
+        pendingStart = block
+        if (tts == null) tts = TextToSpeech(context, ::onTtsInit)
+    }
+
+    private fun onTtsInit(status: Int) {
+        val engine = tts
+        if (status != TextToSpeech.SUCCESS || engine == null) {
+            runCatching { engine?.shutdown() }
+            tts = null
+            pendingStart = null
+            _messages.tryEmit("Text-to-speech isn't available on this device")
+            return
+        }
+        engine.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+        )
+        engine.setOnUtteranceProgressListener(listener)
+        voices = runCatching { engine.voices?.toList() }.getOrNull().orEmpty()
+        _presets.value = buildPresets(voices)
+        ttsReady = true
+        applyVoiceSettings()
+        pendingStart?.invoke()
+        pendingStart = null
+    }
+
+    private fun applyVoiceSettings() {
+        val engine = tts ?: return
+        if (!ttsReady) return
+        _presets.value.getOrNull(_presetIndex.value)?.let { applyPreset(engine, it) }
+    }
+
+    private fun applyPreset(engine: TextToSpeech, preset: VoicePreset) {
+        preset.voiceName?.let { name -> voices.firstOrNull { it.name == name }?.let { engine.setVoice(it) } }
+        engine.setPitch(preset.pitch)
+        engine.setSpeechRate(_rate.value)
+    }
+
+    /**
+     * Starts reading at a page, [permille] through it. [exactChunkStart] (a character offset on
+     * that page) wins when given, so resuming after a pause repeats nothing.
+     */
+    private fun startFrom(page: Int, permille: Int, exactChunkStart: Int?) {
+        val src = source ?: return
+        val engine = tts ?: return
+        if (!requestFocus()) {
+            _messages.tryEmit("Couldn't get audio focus")
+            return
+        }
+        val myGen = gen.incrementAndGet()
+        engine.stop()
+        applyVoiceSettings()
+        _state.update { it.copy(playing = true, page = page, permille = permille) }
+        queuedPage = -1
+        endQueued = false
+        if (!serviceStarted) {
+            serviceStarted = true
+            runCatching {
+                ContextCompat.startForegroundService(context, Intent(context, BookSpeechService::class.java))
+            }
+        }
+        scope.launch {
+            var p = page
+            var text = src.text(p)
+            var from = exactChunkStart ?: (permille * text.length + 999) / 1000
+            while (text.isBlank() && p < src.pageCount - 1) {
+                p++
+                text = src.text(p)
+                from = 0
+            }
+            if (gen.get() != myGen) return@launch
+            if (text.isBlank()) {
+                _messages.tryEmit("This book has no readable text (it may be scanned images)")
+                pause()
+                return@launch
+            }
+            if (p != page) _state.update { it.copy(page = p, permille = 0, seekNonce = it.seekNonce + 1) }
+            enqueue(myGen, p, text, from)
+        }
+    }
+
+    private fun enqueue(myGen: Int, page: Int, text: String, from: Int) {
+        val engine = tts ?: return
+        val chunks = SpeechChunker.split(text, from)
+        if (chunks.isEmpty()) return
+        queuedPage = page
+        chunks.forEachIndexed { i, (s, e) ->
+            if (gen.get() != myGen) return
+            val last = if (i == chunks.lastIndex) 1 else 0
+            engine.speak(text.substring(s, e).trim(), TextToSpeech.QUEUE_ADD, null, "$myGen|$page|$s|$e|$last|${text.length}")
+        }
+    }
+
+    /** Queues the next page that has text while the current one's last sentence is still being read. */
+    private fun prefetchNext(myGen: Int, page: Int) {
+        val src = source ?: return
+        scope.launch {
+            var p = page + 1
+            while (p < src.pageCount) {
+                val text = src.text(p)
+                if (gen.get() != myGen) return@launch
+                if (text.isNotBlank()) {
+                    enqueue(myGen, p, text, 0)
+                    return@launch
+                }
+                p++
+            }
+            endQueued = true
+        }
+    }
+
+    private val listener = object : UtteranceProgressListener() {
+        override fun onStart(utteranceId: String?) {
+            val id = parse(utteranceId) ?: return
+            if (id.gen != gen.get()) return
+            _state.update {
+                it.copy(
+                    playing = true,
+                    page = id.page,
+                    permille = ceilPermille(id.start, id.length),
+                    chunkStart = id.start,
+                    chunkEnd = id.end,
+                )
+            }
+            val now = System.currentTimeMillis()
+            if (now - lastSaveAt > 1500) persistNow()
+            if (id.last && id.page == queuedPage && !endQueued) prefetchNext(id.gen, id.page)
+        }
+
+        override fun onDone(utteranceId: String?) {
+            val id = parse(utteranceId) ?: return
+            if (id.gen != gen.get()) return
+            if (id.last && endQueued && id.page == queuedPage) finishBook()
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onError(utteranceId: String?) {
+            val id = parse(utteranceId) ?: return
+            if (id.gen != gen.get()) return
+            _messages.tryEmit("Narration stopped because of a speech engine error")
+            pause()
+        }
+    }
+
+    private fun finishBook() {
+        val s = _state.value
+        gen.incrementAndGet()
+        abandonFocus()
+        // Rewind so the next Play starts from the beginning of the book.
+        repository.saveProgress(s.bookId ?: return, 0, 0)
+        _state.update { it.copy(playing = false, page = 0, permille = 0, chunkStart = -1, chunkEnd = -1, seekNonce = it.seekNonce + 1) }
+        _messages.tryEmit("Finished the book")
+    }
+
+    private fun persistNow() {
+        val s = _state.value
+        val id = s.bookId ?: return
+        lastSaveAt = System.currentTimeMillis()
+        repository.saveProgress(id, s.page, s.permille)
+    }
+
+    // ---- audio focus -------------------------------------------------------------------------
+
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            AudioManager.AUDIOFOCUS_LOSS -> scope.launch { pause() }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                if (_state.value.playing) {
+                    resumeOnFocusGain = true
+                    scope.launch { pause() }
+                }
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> if (resumeOnFocusGain) {
+                resumeOnFocusGain = false
+                scope.launch { play() }
+            }
+            else -> Unit
+        }
+    }
+
+    private fun requestFocus(): Boolean {
+        val request = focusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            .setOnAudioFocusChangeListener(focusListener)
+            .build()
+            .also { focusRequest = it }
+        return audio.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    }
+
+    private fun abandonFocus() {
+        focusRequest?.let { runCatching { audio.abandonAudioFocusRequest(it) } }
+    }
+
+    // ---- helpers -----------------------------------------------------------------------------
+
+    private class UtteranceId(val gen: Int, val page: Int, val start: Int, val end: Int, val last: Boolean, val length: Int)
+
+    private fun parse(id: String?): UtteranceId? {
+        val parts = id?.split('|') ?: return null
+        if (parts.size != 6) return null
+        return runCatching {
+            UtteranceId(parts[0].toInt(), parts[1].toInt(), parts[2].toInt(), parts[3].toInt(), parts[4] == "1", parts[5].toInt())
+        }.getOrNull()
+    }
+
+    private fun ceilPermille(start: Int, length: Int): Int =
+        if (length <= 0) 0 else min(1000, (start * 1000 + length - 1) / length)
+
+    private fun defaultPresets() = listOf(
+        VoicePreset("Female 1", null, 1.15f),
+        VoicePreset("Male 1", null, 0.8f),
+        VoicePreset("Female 2", null, 1.3f),
+        VoicePreset("Male 2", null, 0.92f),
+    )
+
+    /**
+     * Android doesn't report a voice's gender, so voices whose name says "female"/"male" are used for the
+     * matching slots and the rest fill in; each slot also has its own pitch so the four always sound
+     * different, even on a phone with a single installed voice.
+     */
+    private fun buildPresets(all: List<Voice>): List<VoicePreset> {
+        val english = all.filter { it.locale.language == "en" }
+        val offline = english.filter { !it.isNetworkConnectionRequired }
+        val pool = (if (offline.size >= 2) offline else english)
+            .sortedWith(compareByDescending<Voice> { it.quality }.thenBy { it.name })
+            .distinctBy { it.name }
+        if (pool.isEmpty()) return defaultPresets()
+
+        fun female(v: Voice) = v.name.contains("female", ignoreCase = true)
+        fun male(v: Voice) = !female(v) && v.name.contains("male", ignoreCase = true)
+        val females = pool.filter(::female)
+        val males = pool.filter(::male)
+        val others = pool.filter { !female(it) && !male(it) }
+
+        val used = HashSet<String>()
+        fun pick(preferred: List<Voice>, slot: Int): String {
+            val v = preferred.firstOrNull { it.name !in used }
+                ?: others.firstOrNull { it.name !in used }
+                ?: pool.firstOrNull { it.name !in used }
+                ?: pool[slot % pool.size]
+            used.add(v.name)
+            return v.name
+        }
+        return listOf(
+            VoicePreset("Female 1", pick(females, 0), 1.1f),
+            VoicePreset("Male 1", pick(males, 1), 0.8f),
+            VoicePreset("Female 2", pick(females, 2), 1.25f),
+            VoicePreset("Male 2", pick(males, 3), 0.92f),
+        )
+    }
+}
+
+/** Splits page text into sentence-sized pieces so speech can start, pause and be followed precisely. */
+internal object SpeechChunker {
+    private const val MAX = 350
+    private const val MIN = 60
+    private const val SENTENCE_END = ".!?।\n"
+    private const val CLOSERS = "\"'”’)]"
+
+    /** Returns (start, end) character ranges covering [text] from the sentence that contains [from]. */
+    fun split(text: String, from: Int): List<Pair<Int, Int>> {
+        val len = text.length
+        var s = from.coerceIn(0, len)
+        if (s > 0 && s < len) {
+            val limit = maxOf(0, s - 400)
+            var i = s
+            while (i > limit && text[i - 1] !in ".!?\n") i--
+            s = if (i > limit) i else (text.lastIndexOf(' ', s).takeIf { it >= limit }?.plus(1) ?: s)
+        }
+        while (s < len && text[s].isWhitespace()) s++
+
+        val out = ArrayList<Pair<Int, Int>>()
+        while (s < len) {
+            val windowEnd = min(len, s + MAX)
+            var cut = -1
+            var i = s
+            while (i < windowEnd) {
+                if (text[i] in SENTENCE_END) {
+                    var j = i + 1
+                    while (j < len && text[j] in CLOSERS) j++
+                    if ((j >= len || text[j].isWhitespace()) && (j - s >= MIN || j >= len)) {
+                        cut = j
+                        break
+                    }
+                    i = j
+                } else {
+                    i++
+                }
+            }
+            if (cut == -1) {
+                cut = if (windowEnd >= len) len else (text.lastIndexOf(' ', windowEnd).takeIf { it > s } ?: windowEnd)
+            }
+            if (text.substring(s, cut).isNotBlank()) out.add(s to cut)
+            s = cut
+            while (s < len && text[s].isWhitespace()) s++
+        }
+        return out
+    }
+}

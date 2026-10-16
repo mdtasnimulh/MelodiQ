@@ -26,7 +26,10 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class AddResult { ADDED, DUPLICATE, FAILED }
+enum class AddResult { ADDED, DUPLICATE, FAILED, UNSUPPORTED }
+
+/** Where the reader stopped: a zero-based [page] and how far through it, in thousandths. */
+data class Progress(val page: Int = 0, val permille: Int = 0)
 
 /**
  * The audio-book library. It keeps a list of books the user added through the document picker
@@ -39,8 +42,29 @@ class AudioBookRepository @Inject constructor(
     private val prefs = context.getSharedPreferences("audio_books", Context.MODE_PRIVATE)
     private val gson = Gson()
 
+    private val progressPrefs = context.getSharedPreferences("audio_book_progress", Context.MODE_PRIVATE)
+
     private val _books = MutableStateFlow(load())
     val books: StateFlow<List<Book>> = _books.asStateFlow()
+
+    private val _progress = MutableStateFlow(loadProgress())
+
+    /** Reading/listening position of every book that has one. */
+    val progress: StateFlow<Map<String, Progress>> = _progress.asStateFlow()
+
+    private fun loadProgress(): Map<String, Progress> = runCatching {
+        progressPrefs.all.keys.filter { it.endsWith(".page") }.associate { key ->
+            val id = key.removeSuffix(".page")
+            id to Progress(progressPrefs.getInt(key, 0), progressPrefs.getInt("$id.permille", 0))
+        }
+    }.getOrDefault(emptyMap())
+
+    fun progressOf(id: String): Progress = _progress.value[id] ?: Progress()
+
+    fun saveProgress(id: String, page: Int, permille: Int) {
+        progressPrefs.edit().putInt("$id.page", page).putInt("$id.permille", permille).apply()
+        _progress.update { it + (id to Progress(page, permille)) }
+    }
 
     private fun load(): List<Book> = runCatching {
         gson.fromJson(prefs.getString(KEY, "[]"), Array<Book>::class.java).toList()
@@ -73,14 +97,26 @@ class AudioBookRepository @Inject constructor(
                 }
             }
         }
-        val pages = runCatching {
-            context.contentResolver.openFileDescriptor(uri, "r")?.use { fd ->
-                PdfRenderer(fd).use { it.pageCount }
-            } ?: 0
-        }.getOrElse { return@withContext AddResult.FAILED }
+        val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull().orEmpty()
+        val lower = name.lowercase()
+        val epub = lower.endsWith(".epub") || mime == "application/epub+zip"
+        val pdf = lower.endsWith(".pdf") || mime == "application/pdf"
+        if (!epub && !pdf) return@withContext AddResult.UNSUPPORTED
 
-        val title = name.removeSuffix(".pdf").removeSuffix(".PDF").replace('_', ' ').replace('-', ' ').trim().ifEmpty { "Book" }
-        _books.update { listOf(Book(id, uri.toString(), title, size, pages, false, System.currentTimeMillis())) + it }
+        val pages = runCatching {
+            if (epub) {
+                Epub.pageCount(context, uri)
+            } else {
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { fd ->
+                    PdfRenderer(fd).use { it.pageCount }
+                } ?: 0
+            }
+        }.getOrElse { return@withContext AddResult.FAILED }
+        if (pages <= 0) return@withContext AddResult.FAILED
+
+        val title = name.replace(Regex("(?i)\\.(pdf|epub)$"), "").replace('_', ' ').replace('-', ' ').trim().ifEmpty { "Book" }
+        val format = if (epub) "epub" else "pdf"
+        _books.update { listOf(Book(id, uri.toString(), title, size, pages, false, System.currentTimeMillis(), format)) + it }
         save()
         AddResult.ADDED
     }
@@ -98,6 +134,8 @@ class AudioBookRepository @Inject constructor(
         }
         _books.update { list -> list.filterNot { it.id == id } }
         save()
+        progressPrefs.edit().remove("$id.page").remove("$id.permille").apply()
+        _progress.update { it - id }
     }
 
     private companion object {
@@ -120,7 +158,11 @@ class BookCovers @Inject constructor(
         return withContext(Dispatchers.IO) {
             gate.withPermit {
                 // The book's real cover art first; the rendered first page only when there is none.
-                val bmp = embeddedCover(book, widthPx) ?: firstPage(book, widthPx)
+                val bmp = if (book.isEpub) {
+                    runCatching { Epub.cover(context, Uri.parse(book.uri), widthPx) }.getOrNull()
+                } else {
+                    embeddedCover(book, widthPx) ?: firstPage(book, widthPx)
+                }
                 bmp?.also { cache.put(book.id, it) }
             }
         }

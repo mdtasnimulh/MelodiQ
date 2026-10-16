@@ -100,7 +100,7 @@ internal fun AudioBookRouteScreen(
     AudioBookScreen(
         books = books,
         covers = viewModel.covers,
-        onAdd = { picker.launch(arrayOf("application/pdf")) },
+        onAdd = { picker.launch(arrayOf("application/pdf", "application/epub+zip", "application/octet-stream")) },
         onOpen = navigateToDetails,
         onToggleFavourite = viewModel::toggleFavourite,
         onRemove = viewModel::remove,
@@ -389,7 +389,7 @@ private fun EmptyState(favouritesTab: Boolean, onAdd: () -> Unit) {
         )
         Text(
             text = if (favouritesTab) "Long-press a book or open it to add it here."
-            else "Add a book (PDF) from your phone to start your library. The file stays where it is.",
+            else "Add a book (PDF or EPUB) from your phone to start your library. The file stays where it is.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
