@@ -12,6 +12,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.DisposableEffect
 import com.tasnimulhasan.entity.enums.PlayerType
 import com.tasnimulhasan.melodiq.ipod.IpodApp
+import com.tasnimulhasan.melodiq.onboarding.OnboardingPrefs
+import com.tasnimulhasan.melodiq.onboarding.OnboardingScreen
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.tasnimulhasan.melodiq.shortcut.AppShortcuts
@@ -96,8 +98,17 @@ class MainActivity : ComponentActivity() {
             val audioGranted = permissionsState.permissions.firstOrNull { it.permission == audioPermission }?.status?.isGranted == true
             var askedOnce by rememberSaveable { mutableStateOf(false) }
 
+            // First launch shows the intro before anything is asked. People who already granted access
+            // (installed before the intro existed) never see it.
+            var onboardingDone by rememberSaveable {
+                mutableStateOf(audioGranted || OnboardingPrefs.isDone(applicationContext))
+            }
             LaunchedEffect(Unit) {
-                if (!audioGranted && !askedOnce) {
+                if (audioGranted) OnboardingPrefs.markDone(applicationContext)
+            }
+
+            LaunchedEffect(onboardingDone) {
+                if (onboardingDone && !audioGranted && !askedOnce) {
                     askedOnce = true
                     permissionsState.launchMultiplePermissionRequest()
                 }
@@ -131,7 +142,14 @@ class MainActivity : ComponentActivity() {
                     onDispose { }
                 }
 
-                if (audioGranted) {
+                if (!onboardingDone) {
+                    OnboardingScreen(
+                        onFinish = {
+                            OnboardingPrefs.markDone(applicationContext)
+                            onboardingDone = true
+                        },
+                    )
+                } else if (audioGranted) {
                     val shouldOpenPlayer by openPlayerRequested
                     when (playerType) {
                         // Saved choice not read yet (a few ms): show nothing rather than the wrong UI.

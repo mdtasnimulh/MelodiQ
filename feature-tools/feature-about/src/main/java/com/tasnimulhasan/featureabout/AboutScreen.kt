@@ -42,7 +42,11 @@ import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
@@ -100,7 +104,12 @@ private val features = listOf(
     FeatureItem(Icons.Filled.Shortcut, "App shortcuts", "Press and hold the launcher icon for Shuffle all, Favourites and Continue listening."),
     FeatureItem(Icons.Filled.ContentCopy, "Duplicate finder", "Scan your library for repeated songs (same title, artist and length) and delete the extra copies in one go."),
     FeatureItem(Icons.Filled.MusicNote, "Player B: iPod style", "In Settings, switch Player type to B for a whole-app iPod look. It opens on a Cover Flow of your songs; press MENU on the click wheel for the menu (MENU again closes it). Turn the wheel or drag the display to browse, press the centre or tap to play, and use the labels for previous, next and play / pause."),
+    FeatureItem(Icons.Filled.Headphones, "Audio Books", "Add PDF or EPUB books from your phone (they stay where they are, nothing is copied) and keep them in a shelf with All and Favourites tabs. Book covers come from the book itself."),
+    FeatureItem(Icons.Filled.MenuBook, "Built-in book reader", "Read books inside the app with page-by-page scrolling, zoom for PDFs and adjustable text size for EPUBs."),
+    FeatureItem(Icons.Filled.RecordVoiceOver, "Read aloud", "Press play to have a book narrated, with four narrator voices (two female, two male), speed from 0.75x to 2x, sentence highlighting for EPUBs and playback controls in the notification."),
+    FeatureItem(Icons.Filled.Bookmark, "Resume where you stopped", "The page and the spot on it are remembered for every book, for reading and listening alike."),
     FeatureItem(Icons.Filled.Bedtime, "Sleep timer", "Fall asleep to music; playback fades out and stops on its own."),
+    FeatureItem(Icons.Filled.Apps, "Floating navigation", "A floating bottom bar for Home, Songs, Library and Playlists, with a button that opens your Audio Books."),
     FeatureItem(Icons.Filled.Apps, "App icon switcher", "Pick your launcher icon from eight designs in Settings; the drawer logo and theme can follow it."),
     FeatureItem(Icons.Filled.Backup, "Backup & restore", "Export playlists, favourites, play history and settings to a file and restore them anytime."),
 )
@@ -161,7 +170,7 @@ internal fun AboutScreen(modifier: Modifier = Modifier) {
             ) {
                 HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Text(
-                    text = "Copyright © 2027 $DEV_NAME.",
+                    text = "Copyright © 2026 $DEV_NAME.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
