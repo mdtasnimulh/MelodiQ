@@ -35,8 +35,22 @@
         <!-- One launcher entry per selectable icon (Settings > App icon). Exactly one is enabled
              at a time; main_1 is the default. -->
         <activity-alias
-            android:name="com.tasnimulhasan.melodiq.alias.LogoMain1"
+            android:name="com.tasnimulhasan.melodiq.alias.LogoDefault"
             android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.tasnimulhasan.melodiq.alias.LogoMain"
+            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_alias_main_1"
             android:roundIcon="@mipmap/ic_alias_main_1"
