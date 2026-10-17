@@ -20,6 +20,12 @@ internal enum class IpodPage {
     MAIN, MUSIC, PLAYLISTS, SETTINGS, COLOUR, ADD_TO_PLAYLIST,
 }
 
+/** How the music pages (Songs, Albums, Artists, Genres, Favourites and their songs) are drawn. */
+internal enum class IpodMusicView(val label: String) {
+    COVER_FLOW("Cover Flow"),
+    LIST("List"),
+}
+
 internal val IpodPage.isMenuPage: Boolean
     get() = this == IpodPage.MAIN || this == IpodPage.MUSIC || this == IpodPage.PLAYLISTS ||
         this == IpodPage.SETTINGS || this == IpodPage.COLOUR || this == IpodPage.ADD_TO_PLAYLIST

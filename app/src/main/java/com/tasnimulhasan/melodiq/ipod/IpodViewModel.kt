@@ -38,7 +38,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * State and actions behind the iPod-style UI (Player B). It reads the very same shared player
@@ -367,7 +366,7 @@ internal class IpodViewModel @Inject constructor(
     fun stopEverything(afterStopped: () -> Unit) {
         viewModelScope.launch {
             withContext(NonCancellable) { runCatching { playerUseCases.stopPlayback() } }
-            delay(500.milliseconds)
+            delay(500)
             afterStopped()
         }
     }
@@ -389,6 +388,19 @@ internal class IpodViewModel @Inject constructor(
         prefs.edit().putString(KEY_COLOR, color.name).apply()
     }
 
+    private val _musicView = MutableStateFlow(
+        runCatching { IpodMusicView.valueOf(prefs.getString(KEY_VIEW, IpodMusicView.COVER_FLOW.name)!!) }
+            .getOrDefault(IpodMusicView.COVER_FLOW)
+    )
+    /** Cover Flow (default) or a plain list with thumbnails for the music pages. */
+    val musicView: StateFlow<IpodMusicView> = _musicView.asStateFlow()
+
+    fun toggleMusicView() {
+        val next = if (_musicView.value == IpodMusicView.COVER_FLOW) IpodMusicView.LIST else IpodMusicView.COVER_FLOW
+        _musicView.value = next
+        prefs.edit().putString(KEY_VIEW, next.name).apply()
+    }
+
     fun toggleClickFeedback() {
         val next = !_clickFeedback.value
         _clickFeedback.value = next
@@ -398,5 +410,6 @@ internal class IpodViewModel @Inject constructor(
     private companion object {
         const val KEY_CLICK = "click_feedback"
         const val KEY_COLOR = "body_color"
+        const val KEY_VIEW = "music_view"
     }
 }

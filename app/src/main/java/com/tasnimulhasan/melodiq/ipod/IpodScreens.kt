@@ -72,6 +72,14 @@ import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import coil.imageLoader
+import coil.request.ImageRequest
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.unit.Dp
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.library.AlbumSummary
 import com.tasnimulhasan.ui.image.AlbumArt
@@ -270,6 +278,46 @@ internal fun CoverImage(art: IpodArt, modifier: Modifier = Modifier) {
     )
 }
 
+/** The request a Cover Flow cover uses; prefetching with the very same request fills the memory cache for it. */
+private fun coverRequest(context: android.content.Context, art: IpodArt, px: Int): ImageRequest =
+    ImageRequest.Builder(context)
+        .data(AlbumArt(songId = art.songId, contentUri = art.uri, albumId = art.albumId))
+        .size(px)
+        .build()
+
+/**
+ * A cover and its reflection from ONE image load (the reflection used to load the picture a
+ * second time, showing the placeholder again on its own).
+ */
+@Composable
+private fun CoverWithReflection(art: IpodArt?, cover: Dp, coverPx: Int) {
+    val placeholder = painterResource(Res.drawable.default_cover)
+    if (art == null) {
+        Box(Modifier.size(cover).background(Color(0xFFD9DCE0)), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(cover / 2))
+        }
+        Box(Modifier.size(width = cover, height = cover * 0.4f)) {
+            Box(Modifier.fillMaxSize().background(Color(0xFFD9DCE0)))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color(0xFFF1F2F4)))))
+        }
+        return
+    }
+    val context = LocalContext.current
+    val request = remember(art.songId, art.albumId, coverPx) { coverRequest(context, art, coverPx) }
+    val painter = rememberAsyncImagePainter(model = request, placeholder = placeholder, error = placeholder)
+    Image(painter, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(cover))
+    // Reflection: the bottom of the cover, flipped, fading into the background.
+    Box(Modifier.size(width = cover, height = cover * 0.4f)) {
+        Box(Modifier.fillMaxSize().clipToBounds().graphicsLayer { scaleY = -1f }) {
+            Image(
+                painter, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.requiredSize(cover).align(Alignment.BottomCenter),
+            )
+        }
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color(0xFFF1F2F4)))))
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────────────────
 // Cover Flow
 // ─────────────────────────────────────────────────────────────────────────────────────────
@@ -336,44 +384,47 @@ internal fun CoverFlowView(
         val cover = min(maxWidth * 0.40f, maxHeight * 0.56f)
         val coverPx = with(density) { cover.toPx() }
 
+        // Load the covers around the selection BEFORE the wheel gets there, so a cover that scrolls in is
+        // already in memory instead of flashing the default picture first.
+        val context = LocalContext.current
+        val requested = remember(coverPx) { HashSet<Long>() }
+        LaunchedEffect(selected, items.size, coverPx) {
+            val loader = context.imageLoader
+            val px = coverPx.toInt().coerceAtLeast(1)
+            for (i in (selected - 8)..(selected + 8)) {
+                val art = items.getOrNull(i)?.art ?: continue
+                if (requested.add(art.songId)) loader.enqueue(coverRequest(context, art, px))
+            }
+        }
+
         val from = (floor(pos) - 4).toInt().coerceAtLeast(0)
         val to = (ceil(pos) + 4).toInt().coerceAtMost(items.lastIndex)
         // Farthest first so the middle cover is drawn on top of its neighbours.
         (from..to).sortedByDescending { abs(it - pos) }.forEach { i ->
-            val item = items[i]
-            val d = i - pos
-            val near = min(abs(d), 1f)
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp)
-                    .size(width = cover, height = cover * 1.4f)
-                    .zIndex(-abs(d))
-                    .graphicsLayer {
-                        // The first neighbour sits just beside the middle cover, the rest are
-                        // packed tightly behind it, each turned to face the centre.
-                        val gap = coverPx * 0.62f
-                        translationX = if (abs(d) <= 1f) d * gap else sign(d) * (gap + (abs(d) - 1f) * coverPx * 0.17f)
-                        rotationY = -sign(d) * 64f * near
-                        val s = 1f - 0.14f * near
-                        scaleX = s
-                        scaleY = s
-                        cameraDistance = 14f * density.density
-                    },
-            ) {
-                val art = item.art
-                if (art != null) CoverImage(art, Modifier.size(cover))
-                else Box(Modifier.size(cover).background(Color(0xFFD9DCE0)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(cover / 2))
-                }
-                // Reflection: the flipped bottom of the cover, fading into the background.
-                Box(Modifier.size(width = cover, height = cover * 0.4f)) {
-                    if (art != null) {
-                        CoverImage(art, Modifier.size(cover).graphicsLayer { scaleY = -1f })
-                    } else {
-                        Box(Modifier.fillMaxSize().background(Color(0xFFD9DCE0)))
-                    }
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color(0xFFF1F2F4)))))
+            // Keyed by position in the list: the draw order changes as the wheel turns, and without a key
+            // each slot was handed a different cover (and showed the default picture while it reloaded).
+            key(i) {
+                val d = i - pos
+                val near = min(abs(d), 1f)
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 8.dp)
+                        .size(width = cover, height = cover * 1.4f)
+                        .zIndex(-abs(d))
+                        .graphicsLayer {
+                            // The first neighbour sits just beside the middle cover, the rest are
+                            // packed tightly behind it, each turned to face the centre.
+                            val gap = coverPx * 0.62f
+                            translationX = if (abs(d) <= 1f) d * gap else sign(d) * (gap + (abs(d) - 1f) * coverPx * 0.17f)
+                            rotationY = -sign(d) * 64f * near
+                            val s = 1f - 0.14f * near
+                            scaleX = s
+                            scaleY = s
+                            cameraDistance = 14f * density.density
+                        },
+                ) {
+                    CoverWithReflection(items[i].art, cover, coverPx.toInt().coerceAtLeast(1))
                 }
             }
         }

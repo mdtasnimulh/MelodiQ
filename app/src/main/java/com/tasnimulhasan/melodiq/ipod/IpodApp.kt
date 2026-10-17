@@ -87,6 +87,7 @@ internal fun IpodApp(
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val clickFeedback by viewModel.clickFeedback.collectAsStateWithLifecycle()
     val bodyColor by viewModel.color.collectAsStateWithLifecycle()
+    val musicView by viewModel.musicView.collectAsStateWithLifecycle()
     val theme = remember(bodyColor) { ipodTheme(bodyColor) }
 
     val context = LocalContext.current
@@ -118,7 +119,7 @@ internal fun IpodApp(
     var newPlaylistFor by remember { mutableStateOf<Boolean?>(null) }
     val onNewPlaylist = remember { { addCurrent: Boolean -> newPlaylistFor = addCurrent } }
 
-    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp, onNewPlaylist)
+    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp, onNewPlaylist, musicView)
     val latestData by rememberUpdatedState(data)
     val latestSwitch by rememberUpdatedState(onSwitchToClassic)
 
@@ -361,13 +362,25 @@ private fun ContentPage(
         entry.page == IpodPage.NOW_PLAYING -> NowPlayingScreen(vm)
         entry.page.isCoverFlow -> {
             val rows = rememberRows(entry, data, vm, onSwitchToClassic)
-            CoverFlowView(
-                items = rows,
-                selected = entry.selected,
-                emptyText = emptyTextFor(entry.page),
-                onStep = onStep,
-                onActivate = { rows.getOrNull(entry.selected)?.onSelect?.invoke() },
-            )
+            if (data.musicView == IpodMusicView.COVER_FLOW) {
+                CoverFlowView(
+                    items = rows,
+                    selected = entry.selected,
+                    emptyText = emptyTextFor(entry.page),
+                    onStep = onStep,
+                    onActivate = { rows.getOrNull(entry.selected)?.onSelect?.invoke() },
+                )
+            } else {
+                IpodList(
+                    entry = entry,
+                    rows = rows,
+                    emptyText = emptyTextFor(entry.page),
+                    onRowTap = { index ->
+                        entry.selected = index
+                        rows.getOrNull(index)?.onSelect?.invoke()
+                    },
+                )
+            }
         }
     }
 }
@@ -419,6 +432,7 @@ internal class IpodData(
     val onMinimize: () -> Unit,
     val onExit: () -> Unit,
     val onNewPlaylist: (addCurrent: Boolean) -> Unit,
+    val musicView: IpodMusicView = IpodMusicView.COVER_FLOW,
 )
 
 /** Rows are rebuilt only when what they are made from changes - not on every recomposition. */
@@ -429,7 +443,7 @@ private fun rememberRows(
     vm: IpodViewModel,
     onSwitchToClassic: () -> Unit,
 ): List<IpodRow> = remember(
-    entry, d.songs, d.artists, d.albums, d.genres, d.playlists, d.favouriteIds, d.current, d.clickFeedback, d.color,
+    entry, d.songs, d.artists, d.albums, d.genres, d.playlists, d.favouriteIds, d.current, d.clickFeedback, d.color, d.musicView,
 ) { buildRows(entry, d, vm, onSwitchToClassic) }
 
 private fun rowCount(entry: IpodEntry, d: IpodData): Int = when (entry.page) {
@@ -568,6 +582,13 @@ internal fun buildRows(
         }
 
         IpodPage.SETTINGS -> listOf(
+            IpodRow(
+                id = "music_view",
+                title = "Music view: " + d.musicView.label,
+                subtitle = "Cover Flow or List",
+                chevron = false,
+                onSelect = { vm.toggleMusicView() },
+            ),
             IpodRow(
                 id = "click",
                 title = "Clicker: " + if (d.clickFeedback) "On" else "Off",
