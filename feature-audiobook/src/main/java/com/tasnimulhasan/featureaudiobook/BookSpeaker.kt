@@ -76,8 +76,15 @@ class BookSpeaker @Inject constructor(
     private val _presets = MutableStateFlow(defaultPresets())
     val presets: StateFlow<List<VoicePreset>> = _presets.asStateFlow()
 
-    private val _presetIndex = MutableStateFlow(prefs.getInt("preset", 0).coerceIn(0, 3))
+    private val _presetIndex = MutableStateFlow(0)
     val presetIndex: StateFlow<Int> = _presetIndex.asStateFlow()
+
+    /** Show every installed voice, not just those in the book's language. */
+    private val _allLanguages = MutableStateFlow(prefs.getBoolean("all_languages", false))
+    val allLanguages: StateFlow<Boolean> = _allLanguages.asStateFlow()
+
+    /** The chosen voice by its engine name, so the choice survives the list changing. */
+    private var savedVoice: String? = prefs.getString("voice_name", null)
 
     private val _rate = MutableStateFlow(prefs.getFloat("rate", 1f).coerceIn(0.5f, 2f))
     val rate: StateFlow<Float> = _rate.asStateFlow()
@@ -157,7 +164,7 @@ class BookSpeaker @Inject constructor(
         if (_state.value.bookId != bookId || tag == "und") return
         language = tag.substringBefore('-')
         if (ttsReady) {
-            _presets.value = buildPresets(voices, language)
+            applyPresets(buildPresets(voices, language, _allLanguages.value))
             applyVoiceSettings()
         }
     }
@@ -253,12 +260,29 @@ class BookSpeaker @Inject constructor(
     }
 
     fun selectPreset(index: Int) {
-        val i = index.coerceIn(0, 3)
-        if (i == _presetIndex.value) return
+        val list = _presets.value
+        if (list.isEmpty()) return
+        val i = index.coerceIn(0, list.lastIndex)
+        if (i == _presetIndex.value && list[i].voiceName == savedVoice) return
         _presetIndex.value = i
-        prefs.edit().putInt("preset", i).apply()
+        savedVoice = list[i].voiceName
+        prefs.edit().putString("voice_name", savedVoice).apply()
         applyVoiceSettings()
         restartIfPlaying()
+    }
+
+    fun setAllLanguages(all: Boolean) {
+        if (all == _allLanguages.value) return
+        _allLanguages.value = all
+        prefs.edit().putBoolean("all_languages", all).apply()
+        if (ttsReady) applyPresets(buildPresets(voices, language, all))
+    }
+
+    /** Publishes the voice list and keeps the previously chosen voice selected if it is still there. */
+    private fun applyPresets(list: List<VoicePreset>) {
+        _presets.value = list
+        val i = list.indexOfFirst { it.voiceName != null && it.voiceName == savedVoice }
+        _presetIndex.value = if (i >= 0) i else 0
     }
 
     fun setRate(rate: Float) {
@@ -319,7 +343,7 @@ class BookSpeaker @Inject constructor(
         )
         engine.setOnUtteranceProgressListener(listener)
         voices = runCatching { engine.voices?.toList() }.getOrNull().orEmpty()
-        _presets.value = buildPresets(voices, language)
+        applyPresets(buildPresets(voices, language, _allLanguages.value))
         ttsReady = true
         applyVoiceSettings()
         pendingStart?.invoke()
@@ -334,7 +358,7 @@ class BookSpeaker @Inject constructor(
         if (fresh.size == voices.size && fresh.map { it.name }.toSet() == voices.map { it.name }.toSet()) return
         voices = fresh
         languageWarned = false
-        _presets.value = buildPresets(voices, language)
+        applyPresets(buildPresets(voices, language, _allLanguages.value))
         applyVoiceSettings()
     }
 
@@ -557,39 +581,34 @@ class BookSpeaker @Inject constructor(
     )
 
     /**
-     * Android doesn't report a voice's gender, so voices whose name says "female"/"male" are used for the
-     * matching slots and the rest fill in; each slot also has its own pitch so the four always sound
-     * different, even on a phone with a single installed voice.
+     * Every installed voice of the book's language (or of all languages when asked), best quality first.
+     * Android doesn't report a voice's gender, so it is only shown when the voice's name says so.
      */
-    private fun buildPresets(all: List<Voice>, lang: String?): List<VoicePreset> {
-        val english = all.filter { it.locale.language == (lang ?: "en") }
-        val offline = english.filter { !it.isNetworkConnectionRequired }
-        val pool = (if (offline.size >= 2) offline else english)
-            .sortedWith(compareByDescending<Voice> { it.quality }.thenBy { it.name })
+    private fun buildPresets(all: List<Voice>, lang: String?, allLanguages: Boolean): List<VoicePreset> {
+        val wanted = lang ?: Locale.getDefault().language
+        val matching = if (allLanguages) all else all.filter { it.locale.language == wanted }
+        val pool = (if (matching.isEmpty()) all else matching)
             .distinctBy { it.name }
+            .sortedWith(
+                compareBy<Voice> { it.locale.getDisplayName(Locale.ENGLISH) }
+                    .thenByDescending { it.quality }
+                    .thenBy { it.name }
+            )
         if (pool.isEmpty()) return defaultPresets()
 
-        fun female(v: Voice) = v.name.contains("female", ignoreCase = true)
-        fun male(v: Voice) = !female(v) && v.name.contains("male", ignoreCase = true)
-        val females = pool.filter(::female)
-        val males = pool.filter(::male)
-        val others = pool.filter { !female(it) && !male(it) }
-
-        val used = HashSet<String>()
-        fun pick(preferred: List<Voice>, slot: Int): String {
-            val v = preferred.firstOrNull { it.name !in used }
-                ?: others.firstOrNull { it.name !in used }
-                ?: pool.firstOrNull { it.name !in used }
-                ?: pool[slot % pool.size]
-            used.add(v.name)
-            return v.name
+        val counters = HashMap<String, Int>()
+        return pool.map { v ->
+            val place = v.locale.getDisplayName(Locale.ENGLISH).ifBlank { v.locale.toLanguageTag() }
+            val n = (counters[place] ?: 0) + 1
+            counters[place] = n
+            val gender = when {
+                v.name.contains("female", ignoreCase = true) -> " · Female"
+                v.name.contains("male", ignoreCase = true) -> " · Male"
+                else -> ""
+            }
+            val online = if (v.isNetworkConnectionRequired) " · Online" else ""
+            VoicePreset("$place $n$gender$online", v.name, 1f)
         }
-        return listOf(
-            VoicePreset("Female 1", pick(females, 0), 1.1f),
-            VoicePreset("Male 1", pick(males, 1), 0.8f),
-            VoicePreset("Female 2", pick(females, 2), 1.25f),
-            VoicePreset("Male 2", pick(males, 3), 0.92f),
-        )
     }
 }
 

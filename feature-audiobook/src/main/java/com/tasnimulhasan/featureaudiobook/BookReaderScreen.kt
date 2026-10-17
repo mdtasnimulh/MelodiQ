@@ -26,6 +26,9 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -192,6 +195,7 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
     val presets by speaker.presets.collectAsStateWithLifecycle()
     val presetIndex by speaker.presetIndex.collectAsStateWithLifecycle()
     val rate by speaker.rate.collectAsStateWithLifecycle()
+    val allLanguages by speaker.allLanguages.collectAsStateWithLifecycle()
     val source = remember(book.id) { speaker.source }
 
     val pdf = remember(book.id) { if (book.isEpub) null else PdfPages(context, book.uri) }
@@ -371,6 +375,8 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
             onSelect = speaker::selectPreset,
             onPreview = speaker::preview,
             onRate = speaker::setRate,
+            allLanguages = allLanguages,
+            onAllLanguages = speaker::setAllLanguages,
             onGetVoices = { openVoiceInstaller(context) },
             onDismiss = { showVoices = false },
         )
@@ -808,6 +814,8 @@ private fun NarratorDialog(
     onSelect: (Int) -> Unit,
     onPreview: (Int) -> Unit,
     onRate: (Float) -> Unit,
+    allLanguages: Boolean,
+    onAllLanguages: (Boolean) -> Unit,
     onGetVoices: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -818,32 +826,46 @@ private fun NarratorDialog(
             "Pick a voice and tap the speaker to hear it.",
             fontSize = 13.sp, color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
         )
-        presets.chunked(2).forEachIndexed { rowIndex, row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                row.forEachIndexed { col, preset ->
-                    val index = rowIndex * 2 + col
-                    val on = index == selected
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (on) scheme.primaryContainer else scheme.surfaceContainerHigh)
-                            .border(if (on) 2.dp else 0.dp, if (on) scheme.primary else Color.Transparent, RoundedCornerShape(20.dp))
-                            .clickable { onSelect(index) }
-                            .padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            preset.label, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold,
-                            color = if (on) scheme.onPrimaryContainer else scheme.onSurface,
-                        )
-                        Box(
-                            Modifier.size(38.dp).clip(CircleShape).background(scheme.surface.copy(alpha = 0.6f)).clickable { onSelect(index); onPreview(index) },
-                            contentAlignment = Alignment.Center,
-                        ) { Icon(Icons.Filled.VolumeUp, "Preview ${preset.label}", tint = scheme.primary, modifier = Modifier.size(20.dp)) }
-                    }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 300.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            presets.forEachIndexed { index, preset ->
+                val on = index == selected
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(if (on) scheme.primaryContainer else scheme.surfaceContainerHigh)
+                        .border(if (on) 2.dp else 0.dp, if (on) scheme.primary else Color.Transparent, RoundedCornerShape(18.dp))
+                        .clickable { onSelect(index) }
+                        .padding(start = 16.dp, top = 6.dp, bottom = 6.dp, end = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        preset.label, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        color = if (on) scheme.onPrimaryContainer else scheme.onSurface,
+                    )
+                    Box(
+                        Modifier.size(38.dp).clip(CircleShape).background(scheme.surface.copy(alpha = 0.6f)).clickable { onSelect(index); onPreview(index) },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Filled.VolumeUp, "Preview ${preset.label}", tint = scheme.primary, modifier = Modifier.size(20.dp)) }
                 }
             }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Show voices of all languages", modifier = Modifier.weight(1f),
+                fontSize = 13.sp, color = scheme.onSurfaceVariant,
+            )
+            Switch(checked = allLanguages, onCheckedChange = onAllLanguages)
         }
         Text("Speed", style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp, bottom = 8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
