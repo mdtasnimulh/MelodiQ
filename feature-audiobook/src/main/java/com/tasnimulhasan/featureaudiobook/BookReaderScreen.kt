@@ -2,6 +2,8 @@
 
 package com.tasnimulhasan.featureaudiobook
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
@@ -35,15 +37,16 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -59,6 +62,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -85,6 +89,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -154,14 +159,19 @@ internal fun BookReaderRouteScreen(
     }
 }
 
+/** A run of selected words on one page (word indexes, either order). */
+private data class ReaderSelection(val page: Int, val anchor: Int, val focus: Int)
+
 /**
  * Reads a book inside the app and narrates it. The saved position is both the reading position and
  * the listening position: scrolling moves it, narration moves it, and reopening the book returns to it.
+ * While narrating, the sentence being read and the word being spoken are highlighted on the page.
  */
 @Composable
 internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Unit) {
     val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
     val state by speaker.state.collectAsStateWithLifecycle()
     val presets by speaker.presets.collectAsStateWithLifecycle()
     val presetIndex by speaker.presetIndex.collectAsStateWithLifecycle()
@@ -184,6 +194,8 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
     var restored by remember { mutableStateOf(false) }
     var userMoved by remember { mutableStateOf(false) }
     var showVoices by remember { mutableStateOf(false) }
+    var showGoTo by remember { mutableStateOf(false) }
+    var selection by remember { mutableStateOf<ReaderSelection?>(null) }
     val shownPage by remember { derivedStateOf { listState.firstVisibleItemIndex } }
 
     // Land exactly where the book was left, once that page has been measured.
@@ -191,7 +203,8 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
         val s = speaker.state.value
         val info = snapshotFlow { listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == s.page } }
             .filterNotNull().first()
-        listState.scrollToItem(s.page, (info.size * s.permille / 1000f).toInt())
+        val frac = fractionFor(source, book.isEpub, s.page, s.permille)
+        listState.scrollToItem(s.page, (info.size * frac).toInt())
         restored = true
     }
 
@@ -209,19 +222,27 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                 if (speaker.state.value.playing) return@collect
                 val size = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.size
                     ?.takeIf { it > 0 } ?: return@collect
-                speaker.seek(index, (offset * 1000f / size).toInt().coerceIn(0, 1000))
+                val frac = (offset.toFloat() / size).coerceIn(0f, 1f)
+                speaker.seek(index, permilleFor(source, book.isEpub, index, frac))
             }
     }
 
     // Follow the narration, unless the user is scrolling somewhere else.
     LaunchedEffect(state.chunkStart, state.page) {
         if (!restored || !state.playing || state.chunkStart < 0 || listState.isScrollInProgress) return@LaunchedEffect
-        listState.scrollToPosition(state.page, state.permille, animate = true)
+        val frac = if (book.isEpub) {
+            state.permille / 1000f
+        } else {
+            val c = source?.content(state.page)
+            val w = if (c != null) c.words.getOrNull(c.wordAt(state.chunkStart)) else null
+            w?.t ?: (state.permille / 1000f)
+        }
+        listState.followPosition(state.page, frac)
     }
     // Skips and restarts jump straight to the new place.
     LaunchedEffect(state.seekNonce) {
         if (!restored || state.seekNonce == 0) return@LaunchedEffect
-        listState.scrollToPosition(state.page, state.permille, animate = false)
+        listState.scrollToPosition(state.page, fractionFor(source, book.isEpub, state.page, state.permille), animate = false)
     }
 
     Column(Modifier.fillMaxSize().background(scheme.surfaceVariant)) {
@@ -237,7 +258,8 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                 )
                 Text(
                     "Page ${(shownPage + 1).coerceAtMost(pageCount)} of $pageCount",
-                    fontSize = 12.sp, color = scheme.onSurfaceVariant,
+                    fontSize = 12.sp, color = scheme.primary,
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { showGoTo = true },
                 )
             }
             ReaderButton(onClick = { zoom = (zoom - 0.5f).coerceAtLeast(1f) }) {
@@ -256,23 +278,69 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (pdf != null) {
-                PdfPagesList(pdf, pageCount, listState, zoom)
+                PdfPagesList(
+                    pdf = pdf,
+                    source = source,
+                    pageCount = pageCount,
+                    listState = listState,
+                    zoom = zoom,
+                    state = state,
+                    selection = selection,
+                    onSelect = { selection = it },
+                    onClear = { selection = null },
+                )
             } else {
                 EpubPagesList(source, pageCount, listState, zoom, state)
             }
         }
 
-        ListenBar(
-            playing = state.playing,
-            voiceLabel = presets.getOrNull(presetIndex)?.label ?: "Voice",
-            rateLabel = formatRate(rate),
-            canPrev = shownPage > 0,
-            canNext = shownPage < pageCount - 1,
-            onPlayPause = { speaker.togglePlay() },
-            onPrev = { speaker.skipPage(-1) },
-            onNext = { speaker.skipPage(1) },
-            onVoice = { showVoices = true },
-        )
+        val sel = selection
+        if (sel != null) {
+            val preview by produceState("", sel) {
+                value = source?.content(sel.page)?.textBetween(sel.anchor, sel.focus).orEmpty()
+            }
+            SelectionBar(
+                preview = preview,
+                onClose = { selection = null },
+                onCopy = {
+                    scope.launch {
+                        val text = source?.content(sel.page)?.textBetween(sel.anchor, sel.focus).orEmpty()
+                        if (text.isNotBlank()) {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("Book text", text))
+                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                        }
+                        selection = null
+                    }
+                },
+                onRead = {
+                    scope.launch {
+                        val c = source?.content(sel.page)
+                        val word = c?.words?.getOrNull(minOf(sel.anchor, sel.focus))
+                        selection = null
+                        if (word != null) speaker.playFrom(sel.page, word.start)
+                    }
+                },
+                onSelectAll = {
+                    scope.launch {
+                        val c = source?.content(sel.page) ?: return@launch
+                        if (c.words.isNotEmpty()) selection = ReaderSelection(sel.page, 0, c.words.lastIndex)
+                    }
+                },
+            )
+        } else {
+            ListenBar(
+                playing = state.playing,
+                voiceLabel = presets.getOrNull(presetIndex)?.label ?: "Voice",
+                rateLabel = formatRate(rate),
+                canPrev = shownPage > 0,
+                canNext = shownPage < pageCount - 1,
+                onPlayPause = { speaker.togglePlay() },
+                onPrev = { speaker.skipPage(-1) },
+                onNext = { speaker.skipPage(1) },
+                onVoice = { showVoices = true },
+            )
+        }
     }
 
     if (showVoices) {
@@ -286,21 +354,75 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
             onDismiss = { showVoices = false },
         )
     }
+    if (showGoTo) {
+        com.tasnimulhasan.ui.component.MelodiqInputSheet(
+            title = "Go to page",
+            confirmLabel = "Go",
+            label = "Page (1 to $pageCount)",
+            message = "You are on page ${(shownPage + 1).coerceAtMost(pageCount)}.",
+            onConfirm = { text ->
+                text.filter { it.isDigit() }.toIntOrNull()?.let { n ->
+                    speaker.skipPage((n - 1).coerceIn(0, pageCount - 1) - state.page)
+                }
+            },
+            onDismiss = { showGoTo = false },
+        )
+    }
 }
 
-private suspend fun LazyListState.scrollToPosition(page: Int, permille: Int, animate: Boolean) {
+/** Where on a page (0..1 of its height) a saved position [permille] falls. PDFs use the real layout of the text. */
+private suspend fun fractionFor(source: BookSource?, isEpub: Boolean, page: Int, permille: Int): Float {
+    if (isEpub || source == null) return permille / 1000f
+    val c = source.content(page)
+    if (c.words.isEmpty()) return permille / 1000f
+    val offset = c.text.length * permille / 1000
+    return c.words.getOrNull(c.wordAt(offset))?.t ?: (permille / 1000f)
+}
+
+/** The reverse: the saved position (thousandths of the page text) for a place 0..1 down the page. */
+private suspend fun permilleFor(source: BookSource?, isEpub: Boolean, page: Int, fraction: Float): Int {
+    val plain = (fraction * 1000f).toInt().coerceIn(0, 1000)
+    if (isEpub || source == null) return plain
+    val c = source.content(page)
+    if (c.words.isEmpty() || c.text.isEmpty()) return plain
+    val first = c.words.firstOrNull { it.b >= fraction } ?: return plain
+    return (first.start * 1000 / c.text.length).coerceIn(0, 1000)
+}
+
+private suspend fun LazyListState.scrollToPosition(page: Int, fraction: Float, animate: Boolean) {
     var info = layoutInfo.visibleItemsInfo.firstOrNull { it.index == page }
     if (info == null) {
         scrollToItem(page)
         info = layoutInfo.visibleItemsInfo.firstOrNull { it.index == page } ?: return
     }
     val viewport = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
-    val target = (info.size * permille / 1000f - viewport * 0.3f).toInt().coerceAtLeast(0)
+    val target = (info.size * fraction - viewport * 0.3f).toInt().coerceIn(0, info.size)
     if (animate) animateScrollToItem(page, target) else scrollToItem(page, target)
 }
 
+/** Scrolls only when the place being read has drifted out of the upper-middle of the screen. */
+private suspend fun LazyListState.followPosition(page: Int, fraction: Float) {
+    val info = layoutInfo.visibleItemsInfo.firstOrNull { it.index == page }
+    if (info != null) {
+        val viewport = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+        val y = info.offset + info.size * fraction
+        if (y > viewport * 0.10f && y < viewport * 0.62f) return
+    }
+    scrollToPosition(page, fraction, animate = true)
+}
+
 @Composable
-private fun PdfPagesList(pdf: PdfPages, pageCount: Int, listState: LazyListState, zoom: Float) {
+private fun PdfPagesList(
+    pdf: PdfPages,
+    source: BookSource?,
+    pageCount: Int,
+    listState: LazyListState,
+    zoom: Float,
+    state: SpeechState,
+    selection: ReaderSelection?,
+    onSelect: (ReaderSelection) -> Unit,
+    onClear: () -> Unit,
+) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val pageWidth = maxWidth * zoom
@@ -316,6 +438,10 @@ private fun PdfPagesList(pdf: PdfPages, pageCount: Int, listState: LazyListState
                 items(pageCount, key = { it }) { index ->
                     val bitmap by produceState<Bitmap?>(null, index, renderPx) {
                         value = pdf.render(index, renderPx)
+                    }
+                    // The words of the page (with their boxes) make it selectable and followable.
+                    val content by produceState<PageContent?>(null, index, source) {
+                        value = source?.content(index)
                     }
                     val bmp = bitmap
                     Box(
@@ -336,6 +462,23 @@ private fun PdfPagesList(pdf: PdfPages, pageCount: Int, listState: LazyListState
                         } else {
                             CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
                         }
+                        val words = content?.words.orEmpty()
+                        if (bmp != null && words.isNotEmpty()) {
+                            val active = state.page == index && state.chunkStart >= 0
+                            val sel = selection?.takeIf { it.page == index }
+                            PdfTextLayer(
+                                words = words,
+                                sentenceStart = if (active) state.chunkStart else -1,
+                                sentenceEnd = if (active) state.chunkEnd else -1,
+                                wordStart = if (active) state.wordStart else -1,
+                                wordEnd = if (active) state.wordEnd else -1,
+                                selStart = sel?.anchor ?: -1,
+                                selEnd = sel?.focus ?: -1,
+                                onSelect = { a, f -> onSelect(ReaderSelection(index, a, f)) },
+                                onClear = { if (selection?.page == index) onClear() },
+                                modifier = Modifier.matchParentSize(),
+                            )
+                        }
                     }
                 }
             }
@@ -347,7 +490,8 @@ private fun PdfPagesList(pdf: PdfPages, pageCount: Int, listState: LazyListState
 private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyListState, zoom: Float, state: SpeechState) {
     val scheme = MaterialTheme.colorScheme
     val fontSize = 15f + (zoom - 1f) * 4f
-    val highlight = scheme.primary.copy(alpha = 0.28f)
+    val sentenceBg = scheme.primary.copy(alpha = 0.22f)
+    val wordBg = scheme.primary.copy(alpha = 0.55f)
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -356,12 +500,16 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
     ) {
         items(pageCount, key = { it }) { index ->
             val text = source?.cachedText(index).orEmpty()
-            val hs = if (state.playing && state.page == index) state.chunkStart else -1
-            val he = if (hs >= 0) state.chunkEnd else -1
-            val annotated = remember(text, hs, he, highlight) {
+            val active = state.page == index && state.chunkStart >= 0
+            val ss = if (active) state.chunkStart else -1
+            val se = if (active) state.chunkEnd else -1
+            val ws = if (active) state.wordStart else -1
+            val we = if (active) state.wordEnd else -1
+            val annotated = remember(text, ss, se, ws, we, sentenceBg, wordBg) {
                 buildAnnotatedString {
                     append(text)
-                    if (hs >= 0 && he in (hs + 1)..text.length) addStyle(SpanStyle(background = highlight), hs, he)
+                    if (ss >= 0 && se in (ss + 1)..text.length) addStyle(SpanStyle(background = sentenceBg), ss, se)
+                    if (ws >= 0 && we in (ws + 1)..text.length) addStyle(SpanStyle(background = wordBg, fontWeight = FontWeight.SemiBold), ws, we)
                 }
             }
             Column(
@@ -371,13 +519,16 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
                     .background(scheme.surface)
                     .padding(horizontal = 18.dp, vertical = 16.dp),
             ) {
-                Text(
-                    text = annotated,
-                    fontFamily = FontFamily.Serif,
-                    fontSize = fontSize.sp,
-                    lineHeight = (fontSize * 1.55f).sp,
-                    color = scheme.onSurface,
-                )
+                // Selectable like any text: long-press, drag the handles, copy.
+                SelectionContainer {
+                    Text(
+                        text = annotated,
+                        fontFamily = FontFamily.Serif,
+                        fontSize = fontSize.sp,
+                        lineHeight = (fontSize * 1.55f).sp,
+                        color = scheme.onSurface,
+                    )
+                }
                 Text(
                     text = "${index + 1}",
                     fontSize = 11.sp,
@@ -387,6 +538,44 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
                 )
             }
         }
+    }
+}
+
+/** Replaces the listen bar while text is selected: what is selected, and what can be done with it. */
+@Composable
+private fun SelectionBar(
+    preview: String,
+    onClose: () -> Unit,
+    onCopy: () -> Unit,
+    onRead: () -> Unit,
+    onSelectAll: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .fillMaxWidth()
+            .height(64.dp)
+            .clip(CircleShape)
+            .background(Color(0xFF1C1C1E))
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Filled.Close, "Clear selection", tint = Color.White, modifier = Modifier.size(22.dp)) }
+        Text(
+            text = preview.replace('\n', ' ').ifBlank { "Selected" },
+            color = Color(0xFFD1D1D6),
+            fontSize = 12.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        BarChip("Copy", onCopy)
+        BarChip("Read", onRead)
+        BarChip("All", onSelectAll)
     }
 }
 

@@ -2,6 +2,7 @@ package com.tasnimulhasan.featureaudiobook
 
 import android.graphics.Bitmap
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Spring
@@ -12,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,27 +30,40 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,25 +71,36 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.tasnimulhasan.designsystem.component.Icon
 import com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding
-import kotlin.math.roundToInt
+import com.tasnimulhasan.ui.component.MelodiqConfirmSheet
+import com.tasnimulhasan.ui.component.MelodiqSheet
+import com.tasnimulhasan.ui.component.SheetHeader
+import com.tasnimulhasan.ui.component.SheetPrimaryButton
+import kotlin.math.abs
+import kotlin.math.min
 
-/** Soft glass-shelf colours, cycled shelf by shelf. */
-private val ShelfColors = listOf(
-    Color(0xFFF4A94E), Color(0xFF4DA3FF), Color(0xFFFF9EB5), Color(0xFFC79BFF), Color(0xFF6FD6A3),
+/** Glass-shelf colours a shelf can be given. */
+private val ShelfPalette = listOf(
+    Color(0xFFB57EDC), Color(0xFFF08A73), Color(0xFF4DB6AC), Color(0xFFF4A94E),
+    Color(0xFF4DA3FF), Color(0xFFFF8FB1), Color(0xFF6FD6A3), Color(0xFF8D99AE),
 )
+private const val MAIN_COLOR_INDEX = 4
+private const val MAIN_SHELF = "__main__"
+private const val MAX_COVERS = 5
 
 private val CoverFallbacks = listOf(
     listOf(Color(0xFF8E2C2C), Color(0xFF3B1E3F)),
@@ -90,102 +116,686 @@ internal fun AudioBookRouteScreen(
     viewModel: AudioBookViewModel = hiltViewModel(),
 ) {
     val books by viewModel.books.collectAsStateWithLifecycle()
+    val shelves by viewModel.shelves.collectAsStateWithLifecycle()
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // The shelf the next picked books go onto (null = the main shelf).
+    var target by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        viewModel.addBooks(uris)
+        viewModel.addBooks(uris, target)
     }
     AudioBookScreen(
         books = books,
+        shelves = shelves,
+        progress = progress,
         covers = viewModel.covers,
-        onAdd = { picker.launch(arrayOf("application/pdf", "application/epub+zip", "application/octet-stream")) },
+        onAdd = { shelfId ->
+            target = shelfId
+            picker.launch(arrayOf("application/pdf", "application/epub+zip", "application/octet-stream"))
+        },
         onOpen = navigateToDetails,
         onToggleFavourite = viewModel::toggleFavourite,
         onRemove = viewModel::remove,
+        onCreateShelf = viewModel::createShelf,
+        onUpdateShelf = viewModel::updateShelf,
+        onDeleteShelf = viewModel::deleteShelf,
+        onMove = viewModel::moveToShelf,
     )
+}
+
+private sealed interface Sheet {
+    data class BookActions(val book: Book) : Sheet
+    data class MoveBook(val book: Book) : Sheet
+    data class ConfirmRemove(val book: Book) : Sheet
+
+    /** [shelf] null = the main shelf. */
+    data class ShelfActions(val shelf: Shelf?) : Sheet
+
+    /** [shelf] null = a new shelf. */
+    data class EditShelf(val shelf: Shelf?) : Sheet
+    data class DeleteShelf(val shelf: Shelf) : Sheet
 }
 
 @Composable
 internal fun AudioBookScreen(
     books: List<Book>,
+    shelves: List<Shelf>,
+    progress: Map<String, Progress>,
     covers: BookCovers,
-    onAdd: () -> Unit,
+    onAdd: (shelfId: String?) -> Unit,
     onOpen: (String) -> Unit,
     onToggleFavourite: (String) -> Unit,
     onRemove: (String) -> Unit,
+    onCreateShelf: (name: String, colorIndex: Int) -> Unit,
+    onUpdateShelf: (id: String, name: String, colorIndex: Int) -> Unit,
+    onDeleteShelf: (String) -> Unit,
+    onMove: (bookId: String, shelfId: String?) -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val favourites = remember(books) { books.filter { it.favourite } }
-    val shown = if (tab == 0) books else favourites
+    var openShelf by rememberSaveable { mutableStateOf<String?>(null) }
+    var sheet by remember { mutableStateOf<Sheet?>(null) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 20.dp, end = 20.dp, top = 8.dp,
-            bottom = LocalFloatingBarPadding.current + 24.dp,
-        ),
-    ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = "My Books",
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 34.sp,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Text(
-                        text = if (books.size == 1) "1 book" else "${books.size} books",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+    val favourites = remember(books) { books.filter { it.favourite } }
+    val reading = remember(books, progress) {
+        books.filter { b -> progress[b.id]?.let { it.page > 0 || it.permille > 0 } == true }
+    }
+    // A shelf that was deleted while open goes back to the library.
+    LaunchedEffect(shelves, openShelf) {
+        val o = openShelf
+        if (o != null && o != MAIN_SHELF && shelves.none { it.id == o }) openShelf = null
+    }
+    BackHandler(enabled = openShelf != null) { openShelf = null }
+
+    val bottomPad = LocalFloatingBarPadding.current + 24.dp
+    val open = openShelf
+    if (open != null) {
+        val shelf = shelves.firstOrNull { it.id == open }
+        ShelfPage(
+            name = shelf?.name ?: "My Books",
+            color = ShelfPalette[(shelf?.colorIndex ?: MAIN_COLOR_INDEX) % ShelfPalette.size],
+            books = books.filter { (it.shelfId ?: MAIN_SHELF) == open },
+            progress = progress,
+            covers = covers,
+            bottomPad = bottomPad,
+            onBack = { openShelf = null },
+            onAdd = { onAdd(shelf?.id) },
+            onMenu = { sheet = Sheet.ShelfActions(shelf) },
+            onOpen = onOpen,
+            onBookMenu = { sheet = Sheet.BookActions(it) },
+        )
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = bottomPad),
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "My Library",
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 34.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Text(
+                            text = if (books.size == 1) "1 book" else "${books.size} books",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    // Only once the library has books; the empty state has its own "Add Book" button.
+                    if (books.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .shadow(8.dp, CircleShape)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                                .clickable { onAdd(null) }
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("Add Book", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
                 }
-                // Only once the library has books; the empty state has its own "Add Book" button.
-                if (books.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .shadow(8.dp, CircleShape)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                            .clickable(onClick = onAdd)
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("Add Book", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
+            }
+
+            item {
+                FloatingTabs(
+                    labels = listOf("All (${books.size})", "Reading (${reading.size})", "Favourites (${favourites.size})"),
+                    selected = tab,
+                    onSelect = { tab = it },
+                    modifier = Modifier.padding(top = 18.dp, bottom = 6.dp),
+                )
+            }
+
+            item {
+                TextButton(onClick = { sheet = Sheet.EditShelf(null) }) {
+                    Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("New Shelf", fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            if (tab == 0) {
+                val mainBooks = books.filter { it.shelfId == null || shelves.none { s -> s.id == it.shelfId } }
+                if (books.isEmpty() && shelves.isEmpty()) {
+                    item { EmptyState(favouritesTab = false, readingTab = false, onAdd = { onAdd(null) }) }
+                } else {
+                    if (mainBooks.isNotEmpty() || shelves.isEmpty()) {
+                        item(key = "shelf-main") {
+                            ShelfCard(
+                                name = "My Books",
+                                color = ShelfPalette[MAIN_COLOR_INDEX],
+                                books = mainBooks,
+                                covers = covers,
+                                onOpen = { openShelf = MAIN_SHELF },
+                                onAdd = { onAdd(null) },
+                                onMenu = { sheet = Sheet.ShelfActions(null) },
+                            )
+                        }
+                    }
+                    items(shelves, key = { "shelf-${it.id}" }) { shelf ->
+                        ShelfCard(
+                            name = shelf.name,
+                            color = ShelfPalette[shelf.colorIndex % ShelfPalette.size],
+                            books = books.filter { it.shelfId == shelf.id },
+                            covers = covers,
+                            onOpen = { openShelf = shelf.id },
+                            onAdd = { onAdd(shelf.id) },
+                            onMenu = { sheet = Sheet.ShelfActions(shelf) },
+                        )
+                    }
+                }
+            } else {
+                val shown = if (tab == 1) reading else favourites
+                if (shown.isEmpty()) {
+                    item { EmptyState(favouritesTab = tab == 2, readingTab = tab == 1, onAdd = { onAdd(null) }) }
+                } else {
+                    items(shown.chunked(3), key = { row -> "row-${row.first().id}" }) { row ->
+                        BookRow(row, progress, covers, onOpen) { sheet = Sheet.BookActions(it) }
                     }
                 }
             }
         }
+    }
 
-        item {
-            FloatingTabs(
-                labels = listOf("All (${books.size})", "Favourites (${favourites.size})"),
-                selected = tab,
-                onSelect = { tab = it },
-                modifier = Modifier.padding(vertical = 18.dp),
+    // ---- sheets ------------------------------------------------------------------------------
+    when (val s = sheet) {
+        null -> Unit
+        is Sheet.BookActions -> {
+            val book = books.firstOrNull { it.id == s.book.id } ?: s.book
+            MelodiqSheet(onDismiss = { sheet = null }) { dismiss ->
+                SheetHeader(title = book.title, message = "${book.formatLabel} · ${book.pages} pages")
+                Spacer(Modifier.height(10.dp))
+                SheetActionRow(
+                    icon = if (book.favourite) Icons.Filled.FavoriteBorder else Icons.Filled.Favorite,
+                    title = if (book.favourite) "Remove from favourites" else "Add to favourites",
+                ) { onToggleFavourite(book.id); dismiss() }
+                SheetActionRow(icon = Icons.Filled.CollectionsBookmark, title = "Move to shelf") { sheet = Sheet.MoveBook(book) }
+                SheetActionRow(icon = Icons.Filled.Delete, title = "Remove from library", destructive = true) {
+                    sheet = Sheet.ConfirmRemove(book)
+                }
+            }
+        }
+        is Sheet.MoveBook -> {
+            val book = books.firstOrNull { it.id == s.book.id } ?: s.book
+            val current = book.shelfId?.takeIf { id -> shelves.any { it.id == id } }
+            MelodiqSheet(onDismiss = { sheet = null }) { dismiss ->
+                SheetHeader(title = "Move to shelf", message = book.title)
+                Spacer(Modifier.height(10.dp))
+                SheetActionRow(
+                    icon = Icons.Filled.CollectionsBookmark,
+                    title = "My Books",
+                    checked = current == null,
+                ) { onMove(book.id, null); dismiss() }
+                shelves.forEach { shelf ->
+                    SheetActionRow(
+                        icon = Icons.Filled.CollectionsBookmark,
+                        title = shelf.name,
+                        checked = current == shelf.id,
+                        tint = ShelfPalette[shelf.colorIndex % ShelfPalette.size],
+                    ) { onMove(book.id, shelf.id); dismiss() }
+                }
+            }
+        }
+        is Sheet.ConfirmRemove -> MelodiqConfirmSheet(
+            title = "Remove from library?",
+            message = "“${s.book.title}” leaves your library and its reading position is forgotten. The file on your phone is not deleted.",
+            confirmLabel = "Remove",
+            destructive = true,
+            icon = Icons.Filled.Delete,
+            onConfirm = { onRemove(s.book.id) },
+            onDismiss = { sheet = null },
+        )
+        is Sheet.ShelfActions -> {
+            val shelf = s.shelf
+            MelodiqSheet(onDismiss = { sheet = null }) { dismiss ->
+                SheetHeader(title = shelf?.name ?: "My Books")
+                Spacer(Modifier.height(10.dp))
+                SheetActionRow(icon = Icons.Filled.Add, title = "Add books to this shelf") {
+                    onAdd(shelf?.id); dismiss()
+                }
+                if (shelf != null) {
+                    SheetActionRow(icon = Icons.Filled.Edit, title = "Edit shelf details", subtitle = "Name and colour") {
+                        sheet = Sheet.EditShelf(shelf)
+                    }
+                    SheetActionRow(icon = Icons.Filled.Delete, title = "Delete shelf", subtitle = "Its books stay in your library", destructive = true) {
+                        sheet = Sheet.DeleteShelf(shelf)
+                    }
+                }
+            }
+        }
+        is Sheet.EditShelf -> ShelfEditorSheet(
+            title = if (s.shelf == null) "New shelf" else "Edit shelf",
+            confirmLabel = if (s.shelf == null) "Create shelf" else "Save",
+            initialName = s.shelf?.name.orEmpty(),
+            initialColor = s.shelf?.colorIndex ?: (shelves.size + 1) % ShelfPalette.size,
+            onConfirm = { name, color ->
+                if (s.shelf == null) onCreateShelf(name, color) else onUpdateShelf(s.shelf.id, name, color)
+            },
+            onDismiss = { sheet = null },
+        )
+        is Sheet.DeleteShelf -> MelodiqConfirmSheet(
+            title = "Delete shelf?",
+            message = "“${s.shelf.name}” will be removed. Its books are not deleted; they move back to My Books.",
+            confirmLabel = "Delete shelf",
+            destructive = true,
+            icon = Icons.Filled.Delete,
+            onConfirm = { onDeleteShelf(s.shelf.id) },
+            onDismiss = { sheet = null },
+        )
+    }
+}
+
+// ---- shelf card ------------------------------------------------------------------------------
+
+/**
+ * One shelf: up to the five latest covers fanned out (the newest in the middle), a glass bar laid
+ * over their lower half with the shelf's "+" (add books here) and "…" (shelf menu) buttons, and the
+ * shelf's name and book count underneath.
+ */
+@Composable
+private fun ShelfCard(
+    name: String,
+    color: Color,
+    books: List<Book>,
+    covers: BookCovers,
+    onOpen: () -> Unit,
+    onAdd: () -> Unit,
+    onMenu: () -> Unit,
+) {
+    val latest = remember(books) { books.sortedByDescending { it.addedAt }.take(MAX_COVERS) }
+    // Newest in the centre, the others alternating to its right and left.
+    val arranged = remember(latest) {
+        val n = latest.size
+        val slots = arrayOfNulls<Book>(n)
+        val c = (n - 1) / 2
+        latest.forEachIndexed { k, book ->
+            val offset = (k + 1) / 2
+            slots[if (k == 0) c else if (k % 2 == 1) c + offset else c - offset] = book
+        }
+        slots.filterNotNull()
+    }
+
+    Column(Modifier.fillMaxWidth().padding(bottom = 26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxWidth()
+                .height(178.dp)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onOpen),
+        ) {
+            val coverH = 140.dp
+            val coverW = coverH * 0.68f
+            val slotsCount = if (arranged.isEmpty()) 3 else arranged.size
+            val reserved = 60.dp // keeps the fan clear of the buttons
+            val area = maxWidth - reserved
+            val step = if (slotsCount > 1) min(coverW.value * 0.62f, (area - coverW).value / (slotsCount - 1)).dp else 0.dp
+            val total = coverW + step * (slotsCount - 1)
+            val startX = (area - total) / 2 + 8.dp
+            val centre = (slotsCount - 1) / 2f
+
+            for (i in 0 until slotsCount) {
+                val dist = abs(i - centre)
+                val scale = 1f - 0.07f * dist
+                val w = coverW * scale
+                val h = coverH * scale
+                val book = arranged.getOrNull(i)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = startX + step * i + (coverW - w) / 2, y = (-12).dp)
+                        .zIndex(10f - dist * 2f)
+                        .size(w, h)
+                        .shadow(10.dp, RoundedCornerShape(7.dp))
+                        .clip(RoundedCornerShape(7.dp)),
+                ) {
+                    if (book != null) {
+                        BookCover(book = book, covers = covers, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f))
+                        )
+                    }
+                }
+            }
+
+            // The shelf: coloured glass over the lower part of the covers.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(20f)
+                    .fillMaxWidth()
+                    .height(84.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Brush.verticalGradient(listOf(color.copy(alpha = 0.50f), color.copy(alpha = 0.78f))))
+                    .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(28.dp)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 14.dp)
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(Color.White.copy(alpha = 0.78f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = name.firstOrNull()?.uppercase() ?: "•",
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = color.copy(alpha = 1f),
+                    )
+                }
+                Column(
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    GlassButton(Icons.Filled.Add, "Add books to $name", onAdd)
+                    GlassButton(Icons.Filled.MoreHoriz, "Shelf options", onMenu)
+                }
+            }
+        }
+        Text(
+            text = name,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(7.dp).clip(CircleShape).background(color))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = if (books.size == 1) "1 book" else "${books.size} books",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
 
-        if (shown.isEmpty()) {
-            item { EmptyState(favouritesTab = tab == 1, onAdd = onAdd) }
+@Composable
+private fun GlassButton(icon: ImageVector, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .shadow(2.dp, CircleShape)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.9f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, description, tint = Color(0xFF2B2B2E), modifier = Modifier.size(19.dp))
+    }
+}
+
+// ---- one shelf opened ------------------------------------------------------------------------
+
+@Composable
+private fun ShelfPage(
+    name: String,
+    color: Color,
+    books: List<Book>,
+    progress: Map<String, Progress>,
+    covers: BookCovers,
+    bottomPad: Dp,
+    onBack: () -> Unit,
+    onAdd: () -> Unit,
+    onMenu: () -> Unit,
+    onOpen: (String) -> Unit,
+    onBookMenu: (Book) -> Unit,
+) {
+    val sorted = remember(books) { books.sortedByDescending { it.addedAt } }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = bottomPad),
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onBackground) }
+                Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                    Text(
+                        name, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 26.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(color))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            if (books.size == 1) "1 book" else "${books.size} books",
+                            fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                GlassIconOnSurface(Icons.Filled.Add, "Add books", onAdd)
+                Spacer(Modifier.width(8.dp))
+                GlassIconOnSurface(Icons.Filled.MoreHoriz, "Shelf options", onMenu)
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+        if (sorted.isEmpty()) {
+            item {
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("This shelf is empty", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.onBackground)
+                    Text(
+                        "Tap + to add books to it.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
+                    )
+                    Button(onClick = onAdd) { Text("Add Book") }
+                }
+            }
         } else {
-            itemsIndexed(shown.chunked(3), key = { _, row -> row.first().id }) { index, row ->
-                Shelf(
-                    label = if (index == 0) (if (tab == 0) "Recently added" else "Your favourites") else null,
-                    books = row,
-                    color = ShelfColors[index % ShelfColors.size],
-                    covers = covers,
-                    onOpen = onOpen,
-                    onToggleFavourite = onToggleFavourite,
-                    onRemove = onRemove,
-                )
+            items(sorted.chunked(3), key = { row -> "grid-${row.first().id}" }) { row ->
+                BookRow(row, progress, covers, onOpen, onBookMenu)
             }
         }
     }
 }
+
+@Composable
+private fun GlassIconOnSurface(icon: ImageVector, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .shadow(4.dp, CircleShape)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, description, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(22.dp)) }
+}
+
+@Composable
+private fun BookRow(
+    row: List<Book>,
+    progress: Map<String, Progress>,
+    covers: BookCovers,
+    onOpen: (String) -> Unit,
+    onMenu: (Book) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        row.forEach { book ->
+            BookTile(
+                book = book,
+                fraction = readFraction(book, progress[book.id]),
+                covers = covers,
+                onOpen = { onOpen(book.id) },
+                onMenu = { onMenu(book) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+    }
+}
+
+private fun readFraction(book: Book, p: Progress?): Float =
+    if (p == null || book.pages <= 0) 0f else ((p.page + p.permille / 1000f) / book.pages).coerceIn(0f, 1f)
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun BookTile(
+    book: Book,
+    fraction: Float,
+    covers: BookCovers,
+    onOpen: () -> Unit,
+    onMenu: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.68f)
+                .shadow(8.dp, RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .combinedClickable(onClick = onOpen, onLongClick = onMenu),
+        ) {
+            BookCover(book = book, covers = covers, modifier = Modifier.fillMaxSize())
+            if (book.favourite) {
+                Icon(
+                    Icons.Filled.Favorite, "Favourite",
+                    tint = Color(0xFFE5365B),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(5.dp).size(18.dp),
+                )
+            }
+            if (fraction > 0f) {
+                LinearProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.Black.copy(alpha = 0.35f),
+                )
+            }
+        }
+        Text(
+            text = book.title,
+            fontSize = 12.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+}
+
+// ---- sheets' pieces --------------------------------------------------------------------------
+
+@Composable
+private fun SheetActionRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    destructive: Boolean = false,
+    checked: Boolean = false,
+    tint: Color? = null,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val content = if (destructive) scheme.error else scheme.onSurface
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = tint ?: if (destructive) scheme.error else scheme.primary, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold, color = content)
+            if (subtitle != null) Text(subtitle, fontSize = 12.sp, color = scheme.onSurfaceVariant)
+        }
+        if (checked) Icon(Icons.Filled.Check, "Selected", tint = scheme.primary)
+    }
+}
+
+/** Name + colour of a shelf; used for both creating and editing. */
+@Composable
+private fun ShelfEditorSheet(
+    title: String,
+    confirmLabel: String,
+    initialName: String,
+    initialColor: Int,
+    onConfirm: (name: String, colorIndex: Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var name by remember { mutableStateOf(initialName) }
+    var color by remember { mutableIntStateOf(initialColor) }
+    MelodiqSheet(onDismiss = onDismiss) { dismiss ->
+        SheetHeader(title = title, message = "Give the shelf a name and a colour.", icon = Icons.Filled.CollectionsBookmark)
+        Spacer(Modifier.height(18.dp))
+        val submit = {
+            if (name.isNotBlank()) {
+                onConfirm(name.trim(), color)
+                dismiss()
+            }
+        }
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it.take(32) },
+            label = { Text("Shelf name") },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(Modifier.padding(top = 16.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Palette, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Colour", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ShelfPalette.forEachIndexed { i, c ->
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(c)
+                        .border(
+                            width = if (i == color) 3.dp else 0.dp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            shape = CircleShape,
+                        )
+                        .clickable { color = i },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (i == color) Icon(Icons.Filled.Check, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        SheetPrimaryButton(text = confirmLabel, enabled = name.isNotBlank(), onClick = { submit() })
+        TextButton(onClick = dismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
+    }
+}
+
+// ---- shared pieces ---------------------------------------------------------------------------
 
 /** The floating tab switch: a raised capsule with a pill that springs between the tabs. */
 @Composable
@@ -232,7 +842,8 @@ private fun FloatingTabs(
                         Text(
                             text = label,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
+                            maxLines = 1,
                             color = if (i == selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -242,108 +853,7 @@ private fun FloatingTabs(
     }
 }
 
-/** Up to three covers standing on a translucent glass shelf. */
-@Composable
-private fun Shelf(
-    label: String?,
-    books: List<Book>,
-    color: Color,
-    covers: BookCovers,
-    onOpen: (String) -> Unit,
-    onToggleFavourite: (String) -> Unit,
-    onRemove: (String) -> Unit,
-) {
-    Column(Modifier.padding(bottom = 22.dp)) {
-        if (label != null) {
-            Text(
-                text = label,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 10.dp),
-            )
-        }
-        Box(Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                books.forEach { book ->
-                    BookTile(
-                        book = book,
-                        covers = covers,
-                        onOpen = { onOpen(book.id) },
-                        onToggleFavourite = { onToggleFavourite(book.id) },
-                        onRemove = { onRemove(book.id) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                repeat(3 - books.size) { Spacer(Modifier.weight(1f)) }
-            }
-            // The shelf: translucent coloured glass laid over the bottom of the covers.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(30.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(
-                        Brush.verticalGradient(listOf(color.copy(alpha = 0.55f), color.copy(alpha = 0.85f)))
-                    )
-                    .border(0.8.dp, Color.White.copy(alpha = 0.55f), RoundedCornerShape(4.dp)),
-            ) {
-                Box(Modifier.align(Alignment.CenterStart).padding(start = 8.dp).size(7.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
-                Box(Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(7.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
-            }
-        }
-    }
-}
-
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-private fun BookTile(
-    book: Book,
-    covers: BookCovers,
-    onOpen: () -> Unit,
-    onToggleFavourite: () -> Unit,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var menu by remember { mutableStateOf(false) }
-    Box(
-        modifier = modifier
-            .aspectRatio(0.68f)
-            .shadow(8.dp, RoundedCornerShape(6.dp))
-            .clip(RoundedCornerShape(6.dp))
-            .combinedClickable(onClick = onOpen, onLongClick = { menu = true }),
-    ) {
-        BookCover(book = book, covers = covers, modifier = Modifier.fillMaxSize())
-        if (book.favourite) {
-            Icon(
-                Icons.Filled.Favorite, "Favourite",
-                tint = Color(0xFFE5365B),
-                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp).size(18.dp),
-            )
-        }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(
-                text = { Text(if (book.favourite) "Remove from favourites" else "Add to favourites") },
-                leadingIcon = {
-                    Icon(if (book.favourite) Icons.Filled.FavoriteBorder else Icons.Filled.Favorite, null)
-                },
-                onClick = { menu = false; onToggleFavourite() },
-            )
-            DropdownMenuItem(
-                text = { Text("Remove from library") },
-                leadingIcon = { Icon(Icons.Filled.Delete, null) },
-                onClick = { menu = false; onRemove() },
-            )
-        }
-    }
-}
-
-/** First page of the PDF, or a coloured title card while it loads (or if it can't be read). */
+/** The book's cover (from its metadata / first page), or a coloured title card while it loads or if there is none. */
 @Composable
 internal fun BookCover(book: Book, covers: BookCovers, modifier: Modifier = Modifier) {
     val bitmap by produceState<Bitmap?>(null, book.id) { value = covers.load(book) }
@@ -364,38 +874,45 @@ internal fun BookCover(book: Book, covers: BookCovers, modifier: Modifier = Modi
                 color = Color.White,
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(10.dp),
+                modifier = Modifier.padding(8.dp),
             )
         }
     }
 }
 
 @Composable
-private fun EmptyState(favouritesTab: Boolean, onAdd: () -> Unit) {
+private fun EmptyState(favouritesTab: Boolean, readingTab: Boolean, onAdd: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 56.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = if (favouritesTab) "No favourite books yet" else "No books yet",
+            text = when {
+                favouritesTab -> "No favourite books yet"
+                readingTab -> "Nothing in progress"
+                else -> "No books yet"
+            },
             fontFamily = FontFamily.Serif,
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
-            text = if (favouritesTab) "Long-press a book or open it to add it here."
-            else "Add a book (PDF or EPUB) from your phone to start your library. The file stays where it is.",
+            text = when {
+                favouritesTab -> "Long-press a book or open it to add it here."
+                readingTab -> "Books you have started reading or listening to show up here."
+                else -> "Add a book (PDF or EPUB) from your phone to start your library. The file stays where it is."
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp, start = 24.dp, end = 24.dp),
         )
-        if (!favouritesTab) {
+        if (!favouritesTab && !readingTab) {
             Button(onClick = onAdd) { Text("Add Book") }
         }
     }

@@ -3,6 +3,7 @@ package com.tasnimulhasan.featureaudiobook
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,6 +48,9 @@ class AudioBookRepository @Inject constructor(
 
     private val _books = MutableStateFlow(load())
     val books: StateFlow<List<Book>> = _books.asStateFlow()
+
+    private val _shelves = MutableStateFlow(loadShelves())
+    val shelves: StateFlow<List<Shelf>> = _shelves.asStateFlow()
 
     private val _progress = MutableStateFlow(loadProgress())
 
@@ -74,9 +79,44 @@ class AudioBookRepository @Inject constructor(
         prefs.edit().putString(KEY, gson.toJson(_books.value)).apply()
     }
 
+    private fun loadShelves(): List<Shelf> = runCatching {
+        gson.fromJson(prefs.getString(SHELVES_KEY, "[]"), Array<Shelf>::class.java).toList()
+    }.getOrDefault(emptyList())
+
+    private fun saveShelves() {
+        prefs.edit().putString(SHELVES_KEY, gson.toJson(_shelves.value)).apply()
+    }
+
+    fun createShelf(name: String, colorIndex: Int): Shelf {
+        val shelf = Shelf(UUID.randomUUID().toString(), name.trim().ifEmpty { "New shelf" }, colorIndex, System.currentTimeMillis())
+        _shelves.update { it + shelf }
+        saveShelves()
+        return shelf
+    }
+
+    fun updateShelf(id: String, name: String, colorIndex: Int) {
+        _shelves.update { list ->
+            list.map { if (it.id == id) it.copy(name = name.trim().ifEmpty { it.name }, colorIndex = colorIndex) else it }
+        }
+        saveShelves()
+    }
+
+    /** Deletes the shelf. Its books are not deleted: they move to the main shelf. */
+    fun deleteShelf(id: String) {
+        _shelves.update { list -> list.filterNot { it.id == id } }
+        saveShelves()
+        _books.update { list -> list.map { if (it.shelfId == id) it.copy(shelfId = null) else it } }
+        save()
+    }
+
+    fun moveToShelf(bookId: String, shelfId: String?) {
+        _books.update { list -> list.map { if (it.id == bookId) it.copy(shelfId = shelfId) else it } }
+        save()
+    }
+
     fun find(id: String): Book? = _books.value.firstOrNull { it.id == id }
 
-    suspend fun add(uri: Uri): AddResult = withContext(Dispatchers.IO) {
+    suspend fun add(uri: Uri, shelfId: String? = null): AddResult = withContext(Dispatchers.IO) {
         val id = UUID.nameUUIDFromBytes(uri.toString().toByteArray()).toString()
         if (find(id) != null) return@withContext AddResult.DUPLICATE
 
@@ -116,7 +156,7 @@ class AudioBookRepository @Inject constructor(
 
         val title = name.replace(Regex("(?i)\\.(pdf|epub)$"), "").replace('_', ' ').replace('-', ' ').trim().ifEmpty { "Book" }
         val format = if (epub) "epub" else "pdf"
-        _books.update { listOf(Book(id, uri.toString(), title, size, pages, false, System.currentTimeMillis(), format)) + it }
+        _books.update { listOf(Book(id, uri.toString(), title, size, pages, false, System.currentTimeMillis(), format, shelfId)) + it }
         save()
         AddResult.ADDED
     }
@@ -134,16 +174,22 @@ class AudioBookRepository @Inject constructor(
         }
         _books.update { list -> list.filterNot { it.id == id } }
         save()
+        runCatching { BookCovers.fileFor(context, id).delete() }
         progressPrefs.edit().remove("$id.page").remove("$id.permille").apply()
         _progress.update { it - id }
     }
 
     private companion object {
         const val KEY = "books"
+        const val SHELVES_KEY = "shelves"
     }
 }
 
-/** A book's cover: the artwork embedded in its PDF, else the rendered first page. Small in-memory cache. */
+/**
+ * A book's cover. EPUBs carry it in their metadata; PDFs have none, so the big portrait picture on
+ * page one is used, else the rendered first page. Every cover is made once, saved as a small JPEG
+ * in the app's files and then simply decoded from there, so shelves open instantly and offline.
+ */
 @Singleton
 class BookCovers @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -152,17 +198,32 @@ class BookCovers @Inject constructor(
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
     private val gate = Semaphore(2)
+    private val missing = HashSet<String>()
 
     suspend fun load(book: Book, widthPx: Int = 420): Bitmap? {
         cache.get(book.id)?.let { return it }
+        if (synchronized(missing) { book.id in missing }) return null
         return withContext(Dispatchers.IO) {
             gate.withPermit {
-                // The book's real cover art first; the rendered first page only when there is none.
-                val bmp = if (book.isEpub) {
-                    runCatching { Epub.cover(context, Uri.parse(book.uri), widthPx) }.getOrNull()
-                } else {
-                    embeddedCover(book, widthPx) ?: firstPage(book, widthPx)
+                cache.get(book.id)?.let { return@withPermit it }
+                val file = fileFor(context, book.id)
+                var bmp = if (file.length() > 0) runCatching { BitmapFactory.decodeFile(file.path) }.getOrNull() else null
+                if (bmp == null) {
+                    // The book's real cover first; the rendered first page only when there is none.
+                    bmp = if (book.isEpub) {
+                        runCatching { Epub.cover(context, Uri.parse(book.uri), widthPx) }.getOrNull()
+                    } else {
+                        embeddedCover(book, widthPx) ?: firstPage(book, widthPx)
+                    }
+                    val made = bmp
+                    if (made != null) {
+                        runCatching {
+                            file.parentFile?.mkdirs()
+                            file.outputStream().use { made.compress(Bitmap.CompressFormat.JPEG, 88, it) }
+                        }
+                    }
                 }
+                if (bmp == null) synchronized(missing) { missing.add(book.id) }
                 bmp?.also { cache.put(book.id, it) }
             }
         }
@@ -174,51 +235,58 @@ class BookCovers @Inject constructor(
      */
     private fun embeddedCover(book: Book, widthPx: Int): Bitmap? {
         if (book.sizeBytes > MAX_SCAN_BYTES) return null
-        return runCatching {
+        val tmp = File(booksTempDir(context), "cover-${book.id}.pdf")
+        return try {
             PDFBoxResourceLoader.init(context)
             context.contentResolver.openInputStream(Uri.parse(book.uri))?.use { input ->
-                PDDocument.load(input).use { doc ->
-                    val resources = doc.getPage(0).resources ?: return@use null
-                    var best: PDImageXObject? = null
-                    for (name in resources.xObjectNames) {
-                        val image = resources.getXObject(name) as? PDImageXObject ?: continue
-                        val w = image.width
-                        val h = image.height
-                        val ratio = w.toFloat() / h
-                        if (w < 300 || h < 400 || w.toLong() * h > MAX_COVER_PIXELS) continue
-                        if (ratio !in 0.4f..1.0f) continue // not a portrait cover
-                        if (best == null || w.toLong() * h > best.width.toLong() * best.height) best = image
-                    }
-                    best?.image?.let { src ->
-                        val h = (widthPx.toFloat() * src.height / src.width).toInt().coerceAtLeast(1)
-                        Bitmap.createScaledBitmap(src, widthPx, h, true).also { if (it !== src) src.recycle() }
-                    }
+                tmp.outputStream().use { input.copyTo(it) }
+            } ?: return null
+            PDDocument.load(tmp).use { doc ->
+                val resources = doc.getPage(0).resources ?: return null
+                var best: PDImageXObject? = null
+                for (name in resources.xObjectNames) {
+                    val image = runCatching { resources.getXObject(name) as? PDImageXObject }.getOrNull() ?: continue
+                    val w = image.width
+                    val h = image.height
+                    if (w < 250 || h < 320 || w.toLong() * h > MAX_COVER_PIXELS) continue
+                    val ratio = w.toFloat() / h
+                    if (ratio !in 0.4f..1.0f) continue // not a portrait cover
+                    if (best == null || w.toLong() * h > best.width.toLong() * best.height) best = image
                 }
+                val src = best?.let { runCatching { it.image }.getOrNull() } ?: return null
+                val h = (widthPx.toFloat() * src.height / src.width).toInt().coerceAtLeast(1)
+                Bitmap.createScaledBitmap(src, widthPx, h, true).also { if (it !== src) src.recycle() }
             }
-        }.getOrNull()
+        } catch (_: Throwable) {
+            null
+        } finally {
+            tmp.delete()
+        }
     }
 
     private fun firstPage(book: Book, widthPx: Int): Bitmap? =
         runCatching {
-                    var fd: ParcelFileDescriptor? = null
-                    try {
-                        fd = context.contentResolver.openFileDescriptor(Uri.parse(book.uri), "r") ?: return@runCatching null
-                        PdfRenderer(fd).use { renderer ->
-                            renderer.openPage(0).use { page ->
-                                val h = (widthPx.toFloat() * page.height / page.width).toInt().coerceIn(widthPx / 2, widthPx * 3)
-                                val bmp = Bitmap.createBitmap(widthPx, h, Bitmap.Config.ARGB_8888)
-                                bmp.eraseColor(Color.WHITE)
-                                page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                                bmp
-                            }
-                        }
-                    } finally {
-                        runCatching { fd?.close() }
+            var fd: ParcelFileDescriptor? = null
+            try {
+                fd = context.contentResolver.openFileDescriptor(Uri.parse(book.uri), "r") ?: return@runCatching null
+                PdfRenderer(fd).use { renderer ->
+                    renderer.openPage(0).use { page ->
+                        val h = (widthPx.toFloat() * page.height / page.width).toInt().coerceIn(widthPx / 2, widthPx * 3)
+                        val bmp = Bitmap.createBitmap(widthPx, h, Bitmap.Config.ARGB_8888)
+                        bmp.eraseColor(Color.WHITE)
+                        page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        bmp
                     }
+                }
+            } finally {
+                runCatching { fd?.close() }
+            }
         }.getOrNull()
 
-    private companion object {
-        const val MAX_SCAN_BYTES = 80L * 1024 * 1024
-        const val MAX_COVER_PIXELS = 16_000_000L
+    companion object {
+        private const val MAX_SCAN_BYTES = 80L * 1024 * 1024
+        private const val MAX_COVER_PIXELS = 16_000_000L
+
+        internal fun fileFor(context: Context, bookId: String) = File(File(context.filesDir, "book_covers"), "$bookId.jpg")
     }
 }

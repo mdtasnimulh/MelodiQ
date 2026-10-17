@@ -90,6 +90,8 @@ class WidgetUpdater @Inject constructor(
                 MelodiqCoverWidgetReceiver::class.java,
                 MelodiqRecentWidgetReceiver::class.java,
                 MelodiqFavouritesWidgetReceiver::class.java,
+                MelodiqIpodDarkWidgetReceiver::class.java,
+                MelodiqIpodSilverWidgetReceiver::class.java,
             )
                 .any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
         }
@@ -101,6 +103,8 @@ class WidgetUpdater @Inject constructor(
             safely { MelodiqCoverWidget().updateAll(context) }
             safely { MelodiqRecentWidget().updateAll(context) }
             safely { MelodiqFavouritesWidget().updateAll(context) }
+            safely { MelodiqIpodDarkWidget().updateAll(context) }
+            safely { MelodiqIpodSilverWidget().updateAll(context) }
         }
 
         private suspend inline fun safely(block: () -> Unit) {

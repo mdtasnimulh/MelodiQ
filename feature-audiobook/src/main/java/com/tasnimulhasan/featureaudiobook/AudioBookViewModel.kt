@@ -18,19 +18,20 @@ internal class AudioBookViewModel @Inject constructor(
 ) : ViewModel() {
 
     val books: StateFlow<List<Book>> = repository.books
+    val shelves: StateFlow<List<Shelf>> = repository.shelves
     val progress: StateFlow<Map<String, Progress>> = repository.progress
 
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
 
-    fun addBooks(uris: List<Uri>) {
+    fun addBooks(uris: List<Uri>, shelfId: String? = null) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
             var added = 0
             var duplicates = 0
             var failed = 0
             uris.forEach {
-                when (repository.add(it)) {
+                when (repository.add(it, shelfId)) {
                     AddResult.ADDED -> added++
                     AddResult.DUPLICATE -> duplicates++
                     AddResult.FAILED, AddResult.UNSUPPORTED -> failed++
@@ -47,6 +48,19 @@ internal class AudioBookViewModel @Inject constructor(
     }
 
     fun toggleFavourite(id: String) = repository.toggleFavourite(id)
+
+    fun createShelf(name: String, colorIndex: Int) {
+        repository.createShelf(name, colorIndex)
+    }
+
+    fun updateShelf(id: String, name: String, colorIndex: Int) = repository.updateShelf(id, name, colorIndex)
+
+    fun deleteShelf(id: String) {
+        repository.deleteShelf(id)
+        viewModelScope.launch { _messages.send("Shelf deleted. Its books are back on My Books") }
+    }
+
+    fun moveToShelf(bookId: String, shelfId: String?) = repository.moveToShelf(bookId, shelfId)
 
     fun remove(id: String) {
         speaker.onBookRemoved(id)

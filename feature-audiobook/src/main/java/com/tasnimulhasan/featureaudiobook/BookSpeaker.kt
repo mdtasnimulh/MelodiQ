@@ -9,6 +9,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import androidx.core.content.ContextCompat
+import com.google.mlkit.nl.languageid.LanguageIdentification
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.Locale
+import kotlin.coroutines.resume
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,6 +43,9 @@ data class SpeechState(
     /** Character range of the sentence being read on [page], or -1 when nothing is being read. */
     val chunkStart: Int = -1,
     val chunkEnd: Int = -1,
+    /** Character range of the single word being spoken right now (a sub-range of the sentence), or -1. */
+    val wordStart: Int = -1,
+    val wordEnd: Int = -1,
     /** Bumped whenever the position is moved on purpose (skip, restart) so the reader scrolls to it. */
     val seekNonce: Int = 0,
 )
@@ -74,6 +81,10 @@ class BookSpeaker @Inject constructor(
 
     private val _rate = MutableStateFlow(prefs.getFloat("rate", 1f).coerceIn(0.5f, 2f))
     val rate: StateFlow<Float> = _rate.asStateFlow()
+
+    /** ISO language of the open book as detected by ML Kit ("en", "bn"...), null until known. */
+    @Volatile private var language: String? = null
+    private var languageWarned = false
 
     internal var source: BookSource? = null
         private set
@@ -117,7 +128,38 @@ class BookSpeaker @Inject constructor(
             page = p.page.coerceIn(0, src.pageCount - 1),
             permille = p.permille.coerceIn(0, 1000),
         )
+        language = null
+        languageWarned = false
+        scope.launch { detectLanguage(src, book.id) }
         true
+    }
+
+    /** Asks ML Kit which language the book is in, so the narrator uses a voice of that language. */
+    private suspend fun detectLanguage(src: BookSource, bookId: String) {
+        val start = _state.value.page
+        var sample = ""
+        for (p in listOf(start, start + 1, 0, 1, 2)) {
+            if (p !in 0 until src.pageCount) continue
+            val t = runCatching { src.text(p) }.getOrDefault("")
+            if (t.length >= 80) {
+                sample = t.take(1500)
+                break
+            }
+        }
+        if (sample.isEmpty()) return
+        val tag = runCatching {
+            suspendCancellableCoroutine<String> { cont ->
+                LanguageIdentification.getClient().identifyLanguage(sample)
+                    .addOnSuccessListener { cont.resume(it) }
+                    .addOnFailureListener { cont.resume("und") }
+            }
+        }.getOrDefault("und")
+        if (_state.value.bookId != bookId || tag == "und") return
+        language = tag.substringBefore('-')
+        if (ttsReady) {
+            _presets.value = buildPresets(voices, language)
+            applyVoiceSettings()
+        }
     }
 
     // ---- controls ----------------------------------------------------------------------------
@@ -142,6 +184,19 @@ class BookSpeaker @Inject constructor(
         persistNow()
     }
 
+    /** Starts reading at character [charStart] of [page] (e.g. from a selected word). */
+    fun playFrom(page: Int, charStart: Int) {
+        val s = _state.value
+        if (source == null) return
+        val p = page.coerceIn(0, s.pageCount - 1)
+        gen.incrementAndGet()
+        runCatching { tts?.stop() }
+        _state.update {
+            it.copy(playing = false, page = p, chunkStart = -1, chunkEnd = -1, wordStart = -1, wordEnd = -1, seekNonce = it.seekNonce + 1)
+        }
+        ensureTts { startFrom(p, 0, charStart.coerceAtLeast(0), snapToSentence = false) }
+    }
+
     fun togglePlay() = if (_state.value.playing) pause() else play()
 
     /** Moves to the start of another page, keeping playback going if it was on. */
@@ -159,13 +214,13 @@ class BookSpeaker @Inject constructor(
         val p = page.coerceIn(0, s.pageCount - 1)
         val m = permille.coerceIn(0, 1000)
         if (p == s.page && m == s.permille) return
-        _state.update { it.copy(page = p, permille = m, chunkStart = -1, chunkEnd = -1) }
+        _state.update { it.copy(page = p, permille = m, chunkStart = -1, chunkEnd = -1, wordStart = -1, wordEnd = -1) }
         persistNow()
     }
 
     private fun moveTo(page: Int, permille: Int) {
         val wasPlaying = _state.value.playing
-        _state.update { it.copy(page = page, permille = permille, chunkStart = -1, chunkEnd = -1, seekNonce = it.seekNonce + 1) }
+        _state.update { it.copy(page = page, permille = permille, chunkStart = -1, chunkEnd = -1, wordStart = -1, wordEnd = -1, seekNonce = it.seekNonce + 1) }
         persistNow()
         if (wasPlaying) {
             gen.incrementAndGet()
@@ -264,7 +319,7 @@ class BookSpeaker @Inject constructor(
         )
         engine.setOnUtteranceProgressListener(listener)
         voices = runCatching { engine.voices?.toList() }.getOrNull().orEmpty()
-        _presets.value = buildPresets(voices)
+        _presets.value = buildPresets(voices, language)
         ttsReady = true
         applyVoiceSettings()
         pendingStart?.invoke()
@@ -278,7 +333,19 @@ class BookSpeaker @Inject constructor(
     }
 
     private fun applyPreset(engine: TextToSpeech, preset: VoicePreset) {
-        preset.voiceName?.let { name -> voices.firstOrNull { it.name == name }?.let { engine.setVoice(it) } }
+        val voice = preset.voiceName?.let { name -> voices.firstOrNull { it.name == name } }
+        if (voice != null) {
+            engine.setVoice(voice)
+        } else {
+            // No named voice: at least speak in the book's language.
+            val lang = language ?: Locale.getDefault().language
+            val result = engine.setLanguage(Locale.forLanguageTag(lang))
+            if ((result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) && !languageWarned) {
+                languageWarned = true
+                val name = Locale.forLanguageTag(lang).getDisplayLanguage(Locale.ENGLISH)
+                _messages.tryEmit("No $name voice is installed. Add one in Settings > Text-to-speech so this book is read correctly")
+            }
+        }
         engine.setPitch(preset.pitch)
         engine.setSpeechRate(_rate.value)
     }
@@ -287,7 +354,7 @@ class BookSpeaker @Inject constructor(
      * Starts reading at a page, [permille] through it. [exactChunkStart] (a character offset on
      * that page) wins when given, so resuming after a pause repeats nothing.
      */
-    private fun startFrom(page: Int, permille: Int, exactChunkStart: Int?) {
+    private fun startFrom(page: Int, permille: Int, exactChunkStart: Int?, snapToSentence: Boolean = true) {
         val src = source ?: return
         val engine = tts ?: return
         if (!requestFocus()) {
@@ -322,13 +389,13 @@ class BookSpeaker @Inject constructor(
                 return@launch
             }
             if (p != page) _state.update { it.copy(page = p, permille = 0, seekNonce = it.seekNonce + 1) }
-            enqueue(myGen, p, text, from)
+            enqueue(myGen, p, text, from, snapToSentence && p == page)
         }
     }
 
-    private fun enqueue(myGen: Int, page: Int, text: String, from: Int) {
+    private fun enqueue(myGen: Int, page: Int, text: String, from: Int, snap: Boolean = true) {
         val engine = tts ?: return
-        val chunks = SpeechChunker.split(text, from)
+        val chunks = SpeechChunker.split(text, from, snap)
         if (chunks.isEmpty()) return
         queuedPage = page
         chunks.forEachIndexed { i, (s, e) ->
@@ -367,11 +434,23 @@ class BookSpeaker @Inject constructor(
                     permille = ceilPermille(id.start, id.length),
                     chunkStart = id.start,
                     chunkEnd = id.end,
+                    wordStart = -1,
+                    wordEnd = -1,
                 )
             }
             val now = System.currentTimeMillis()
             if (now - lastSaveAt > 1500) persistNow()
             if (id.last && id.page == queuedPage && !endQueued) prefetchNext(id.gen, id.page)
+        }
+
+        // The engine tells which part of the sentence it is saying right now: that is the highlighted word.
+        override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+            val id = parse(utteranceId) ?: return
+            if (id.gen != gen.get()) return
+            _state.update {
+                if (it.page != id.page) it
+                else it.copy(wordStart = id.start + start, wordEnd = id.start + end)
+            }
         }
 
         override fun onDone(utteranceId: String?) {
@@ -395,7 +474,7 @@ class BookSpeaker @Inject constructor(
         abandonFocus()
         // Rewind so the next Play starts from the beginning of the book.
         repository.saveProgress(s.bookId ?: return, 0, 0)
-        _state.update { it.copy(playing = false, page = 0, permille = 0, chunkStart = -1, chunkEnd = -1, seekNonce = it.seekNonce + 1) }
+        _state.update { it.copy(playing = false, page = 0, permille = 0, chunkStart = -1, chunkEnd = -1, wordStart = -1, wordEnd = -1, seekNonce = it.seekNonce + 1) }
         _messages.tryEmit("Finished the book")
     }
 
@@ -470,8 +549,8 @@ class BookSpeaker @Inject constructor(
      * matching slots and the rest fill in; each slot also has its own pitch so the four always sound
      * different, even on a phone with a single installed voice.
      */
-    private fun buildPresets(all: List<Voice>): List<VoicePreset> {
-        val english = all.filter { it.locale.language == "en" }
+    private fun buildPresets(all: List<Voice>, lang: String?): List<VoicePreset> {
+        val english = all.filter { it.locale.language == (lang ?: "en") }
         val offline = english.filter { !it.isNetworkConnectionRequired }
         val pool = (if (offline.size >= 2) offline else english)
             .sortedWith(compareByDescending<Voice> { it.quality }.thenBy { it.name })
@@ -510,10 +589,10 @@ internal object SpeechChunker {
     private const val CLOSERS = "\"'”’)]"
 
     /** Returns (start, end) character ranges covering [text] from the sentence that contains [from]. */
-    fun split(text: String, from: Int): List<Pair<Int, Int>> {
+    fun split(text: String, from: Int, snapToSentence: Boolean = true): List<Pair<Int, Int>> {
         val len = text.length
         var s = from.coerceIn(0, len)
-        if (s > 0 && s < len) {
+        if (snapToSentence && s > 0 && s < len) {
             val limit = maxOf(0, s - 400)
             var i = s
             while (i > limit && text[i - 1] !in ".!?\n") i--

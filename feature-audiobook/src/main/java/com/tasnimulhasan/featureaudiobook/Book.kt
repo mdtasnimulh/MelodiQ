@@ -15,7 +15,18 @@ data class Book(
     val addedAt: Long,
     /** "pdf" or "epub". Null on books saved before EPUB support, which are PDFs. */
     val format: String? = null,
+    /** The shelf the book stands on; null means the main "My Books" shelf. */
+    val shelfId: String? = null,
 ) {
     val isEpub: Boolean get() = format == "epub"
     val formatLabel: String get() = if (isEpub) "EPUB" else "PDF"
 }
+
+/** A named shelf (collection) the user made. Books without a shelf sit on the built-in "My Books" shelf. */
+data class Shelf(
+    val id: String,
+    val name: String,
+    /** Index into the shelf colour palette. */
+    val colorIndex: Int,
+    val createdAt: Long,
+)

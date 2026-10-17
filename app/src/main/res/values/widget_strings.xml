@@ -10,4 +10,8 @@
     <string name="widget_recent_description">Your latest songs, one tap to play</string>
     <string name="widget_favourites_name">MelodiQ Favourites</string>
     <string name="widget_favourites_description">A shelf of your favourite songs</string>
+    <string name="widget_ipod_dark_name">MelodiQ iPod (Graphite)</string>
+    <string name="widget_ipod_dark_description">A graphite iPod: cover on the screen, favourite on top, previous, play and next below</string>
+    <string name="widget_ipod_silver_name">MelodiQ iPod (Silver)</string>
+    <string name="widget_ipod_silver_description">A silver iPod: cover on the screen, favourite on top, previous, play and next below</string>
 </resources>
