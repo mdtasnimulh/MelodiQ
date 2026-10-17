@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -467,48 +468,49 @@ private fun NarratorDialog(
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Narrator") },
-        text = {
-            Column {
-                presets.forEachIndexed { index, preset ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clickable { onSelect(index) },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(selected = index == selected, onClick = { onSelect(index) })
-                        Text(preset.label, modifier = Modifier.weight(1f), color = scheme.onSurface)
-                        TextButton(onClick = { onSelect(index); onPreview(index) }) { Text("Preview") }
-                    }
-                }
-                Text(
-                    "Speed",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = scheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 14.dp, bottom = 6.dp),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { r ->
-                        val on = kotlin.math.abs(r - rate) < 0.01f
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(if (on) scheme.primary else scheme.surfaceContainerHigh)
-                                .clickable { onRate(r) }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                formatRate(r), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                                color = if (on) scheme.onPrimary else scheme.onSurface,
-                            )
-                        }
-                    }
+    com.tasnimulhasan.ui.component.MelodiqSheet(onDismiss = onDismiss) { dismiss ->
+        Text(
+            "Narrator",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        presets.forEachIndexed { index, preset ->
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { onSelect(index) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = index == selected, onClick = { onSelect(index) })
+                Text(preset.label, modifier = Modifier.weight(1f), color = scheme.onSurface)
+                TextButton(onClick = { onSelect(index); onPreview(index) }) { Text("Preview") }
+            }
+        }
+        Text(
+            "Speed",
+            style = MaterialTheme.typography.labelLarge,
+            color = scheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 14.dp, bottom = 6.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { r ->
+                val on = kotlin.math.abs(r - rate) < 0.01f
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(if (on) scheme.primary else scheme.surfaceContainerHigh)
+                        .clickable { onRate(r) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        formatRate(r), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        color = if (on) scheme.onPrimary else scheme.onSurface,
+                    )
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
-    )
+        }
+        Spacer(Modifier.height(16.dp))
+        com.tasnimulhasan.ui.component.SheetPrimaryButton(text = "Done", onClick = dismiss)
+    }
 }
 
 private fun formatRate(rate: Float): String =

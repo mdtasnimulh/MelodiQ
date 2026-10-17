@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
@@ -139,29 +141,16 @@ internal fun IpodApp(
     }
 
     newPlaylistFor?.let { addCurrent ->
-        var name by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { newPlaylistFor = null },
-            title = { Text("New Playlist") },
-            text = {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    singleLine = true,
-                    placeholder = { Text("Playlist name") },
-                )
+        com.tasnimulhasan.ui.component.MelodiqInputSheet(
+            title = "New Playlist",
+            label = "Playlist name",
+            confirmLabel = "Create",
+            icon = Icons.AutoMirrored.Filled.QueueMusic,
+            onConfirm = { name ->
+                viewModel.createPlaylist(name, addCurrent)
+                if (addCurrent) viewModel.closeMenu()
             },
-            confirmButton = {
-                TextButton(
-                    enabled = name.isNotBlank(),
-                    onClick = {
-                        viewModel.createPlaylist(name, addCurrent)
-                        if (addCurrent) viewModel.closeMenu()
-                        newPlaylistFor = null
-                    },
-                ) { Text("Create") }
-            },
-            dismissButton = { TextButton(onClick = { newPlaylistFor = null }) { Text("Cancel") } },
+            onDismiss = { newPlaylistFor = null },
         )
     }
 

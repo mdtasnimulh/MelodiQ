@@ -1,19 +1,13 @@
 package com.tasnimulhasan.home.components
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,13 +16,14 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
+import com.tasnimulhasan.ui.component.MelodiqSheet
 
+/** "Add to playlist" as a bottom sheet (the name is kept so existing callers still work). */
 @Composable
 fun AddToPlaylistDialog(
     show: MutableState<Boolean>,
@@ -40,65 +35,54 @@ fun AddToPlaylistDialog(
 ) {
     if (!show.value || song == null) return
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .padding(16.dp)
+    MelodiqSheet(onDismiss = onDismiss, modifier = modifier) { dismiss ->
+        Text(
+            text = "Add to Playlist",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
+        Text(
+            text = song.songTitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+        if (playlists.isEmpty()) {
+            Text(
+                text = "You have no playlists yet. Create one from the Playlists tab.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
+        }
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.weight(1f, fill = false),
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                // ── TITLE ─────────────────────────────────────────────────────
-                Text(
-                    text = "Add to Playlist",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-
-                // ── PLAYLIST LIST ─────────────────────────────────────────────
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f, fill = false)
-                ) {
-                    items(playlists.size) { index ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.LightGray,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clickable { onPlaylistSelected(playlists[index]) }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = playlists[index].playlistName,
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+            items(playlists, key = { it.id }) { playlist ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            onPlaylistSelected(playlist)
+                            dismiss()
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // ── CANCEL BUTTON ─────────────────────────────────────────────
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.End)
+                        .padding(horizontal = 12.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Cancel")
+                    Text(
+                        text = playlist.playlistName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
+        TextButton(onClick = dismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
     }
 }

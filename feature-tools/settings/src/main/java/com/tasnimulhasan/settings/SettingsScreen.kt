@@ -1,6 +1,8 @@
 package com.tasnimulhasan.settings
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,6 +27,18 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
+import com.tasnimulhasan.ui.component.MelodiqSheet
+import com.tasnimulhasan.ui.component.SheetHeader
+import com.tasnimulhasan.ui.component.SheetPrimaryButton
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.HorizontalDivider
 import com.tasnimulhasan.designsystem.component.Icon
@@ -53,6 +67,7 @@ import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.enums.VisualizerStyle
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 internal fun SettingsRoute(
     modifier: Modifier = Modifier,
@@ -71,22 +86,19 @@ internal fun SettingsRoute(
 
     // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
     // this app's own playback, not the microphone). Asked for only at the moment the user
-    // actually picks a style - never up front, and OFF never needs it.
+    // actually picks a style - never up front, and OFF never needs it. A bottom sheet explains
+    // why BEFORE Android's dialog, and again (rationale / settings) after a refusal.
     val context = LocalContext.current
     var pendingStyle by remember { mutableStateOf<VisualizerStyle?>(null) }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
+    var visualizerSheet by remember { mutableStateOf<VisualizerSheet?>(null) }
+    var askedForAudio by rememberSaveable { mutableStateOf(false) }
+    val recordPermission = rememberPermissionState(Manifest.permission.RECORD_AUDIO) { granted ->
         val style = pendingStyle
-        pendingStyle = null
         if (granted && style != null) {
+            pendingStyle = null
             viewModel.setVisualizerStyle(style)
-        } else {
-            Toast.makeText(
-                context,
-                "The visualizer needs audio permission to read this app's own playback. It stays off without it.",
-                Toast.LENGTH_LONG
-            ).show()
+        } else if (!granted) {
+            visualizerSheet = VisualizerSheet.DENIED
         }
     }
 
@@ -160,11 +172,69 @@ internal fun SettingsRoute(
                 viewModel.setVisualizerStyle(style)
             } else {
                 pendingStyle = style
-                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                visualizerSheet = if (askedForAudio) VisualizerSheet.DENIED else VisualizerSheet.EXPLAIN
             }
         },
     )
+
+    when (visualizerSheet) {
+        VisualizerSheet.EXPLAIN -> MelodiqSheet(onDismiss = { visualizerSheet = null }) { dismiss ->
+            SheetHeader(
+                title = "Allow audio access for the visualizer",
+                message = "The visualizer draws the sound MelodiQ itself is playing. Android lists this under " +
+                    "\"Record audio\", but the microphone is never used and nothing is recorded or sent anywhere.",
+                icon = Icons.Filled.GraphicEq,
+            )
+            Spacer(Modifier.height(22.dp))
+            SheetPrimaryButton(text = "Continue", onClick = {
+                askedForAudio = true
+                visualizerSheet = null
+                recordPermission.launchPermissionRequest()
+            })
+            TextButton(onClick = { pendingStyle = null; dismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+        }
+
+        VisualizerSheet.DENIED -> {
+            val canAskAgain = recordPermission.status.shouldShowRationale
+            MelodiqSheet(onDismiss = { visualizerSheet = null }) { dismiss ->
+                SheetHeader(
+                    title = if (canAskAgain) "The visualizer needs audio access" else "Turn on audio access in Settings",
+                    message = if (canAskAgain) {
+                        "Without this permission the visualizer can't read MelodiQ's playback, so it stays off. " +
+                            "Your microphone is not used."
+                    } else {
+                        "Android won't ask again. Open Settings, choose Permissions, then Microphone, and select Allow. " +
+                            "Then pick a visualizer style again."
+                    },
+                    icon = if (canAskAgain) Icons.Filled.GraphicEq else Icons.Filled.Settings,
+                )
+                Spacer(Modifier.height(22.dp))
+                SheetPrimaryButton(
+                    text = if (canAskAgain) "Try again" else "Open settings",
+                    onClick = {
+                        visualizerSheet = null
+                        if (canAskAgain) {
+                            recordPermission.launchPermissionRequest()
+                        } else {
+                            pendingStyle = null
+                            context.startActivity(
+                                Intent(
+                                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.fromParts("package", context.packageName, null),
+                                )
+                            )
+                        }
+                    },
+                )
+                TextButton(onClick = { pendingStyle = null; dismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+            }
+        }
+
+        null -> Unit
+    }
 }
+
+private enum class VisualizerSheet { EXPLAIN, DENIED }
 
 @Composable
 internal fun SettingsScreen(
@@ -214,6 +284,7 @@ internal fun SettingsScreen(
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
         item { SectionHeader("Sort songs by") }
+        item { SortPreview(sortType) }
         items(SortType.entries.toList()) { option ->
             SettingsRadioRow(
                 label = sortTypeLabel(option),
@@ -225,17 +296,18 @@ internal fun SettingsScreen(
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
         item { SectionHeader("Theme") }
-        items(DarkThemeConfig.entries.toList()) { option ->
-            SettingsRadioRow(
-                label = themeConfigLabel(option),
-                selected = option == themeConfig,
-                onClick = { onThemeConfigSelected(option) },
+        item {
+            ThemePicker(
+                selected = themeConfig,
+                label = themeConfigLabel,
+                onSelected = onThemeConfigSelected,
             )
         }
 
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
         item { SectionHeader("Accent color") }
+        item { AccentPreview() }
         item {
             AccentColorPicker(
                 selected = accentColor,
@@ -247,6 +319,7 @@ internal fun SettingsScreen(
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
         item { SectionHeader("Player cover art") }
+        item { CoverArtPreview(coverArtStyle) }
         items(CoverArtStyle.entries.toList()) { option ->
             SettingsRadioRow(
                 label = coverArtStyleLabel(option),
@@ -258,6 +331,7 @@ internal fun SettingsScreen(
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
         item { SectionHeader("Mini player position") }
+        item { MiniPlayerPreview(miniPlayerPosition) }
         items(com.tasnimulhasan.entity.enums.MiniPlayerPosition.entries.toList()) { option ->
             SettingsRadioRow(
                 label = miniPlayerPositionLabel(option),
@@ -269,6 +343,7 @@ internal fun SettingsScreen(
         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
         item { SectionHeader("Audio visualizer") }
+        item { VisualizerPreview(visualizerStyle) }
         items(VisualizerStyle.entries.toList()) { option ->
             SettingsRadioRow(
                 label = visualizerStyleLabel(option) +
@@ -302,6 +377,7 @@ internal fun SettingsScreen(
                 onCheckedChange = onReplayGainToggled,
             )
         }
+        item { NormalizationPreview(replayGainEnabled) }
         item {
             SettingsSwitchRow(
                 title = "Crossfade",
@@ -311,6 +387,7 @@ internal fun SettingsScreen(
             )
         }
         if (crossfadeEnabled) {
+            item { CrossfadePreview(crossfadeDurationMs) }
             item {
                 CrossfadeDurationSlider(
                     durationMs = crossfadeDurationMs,

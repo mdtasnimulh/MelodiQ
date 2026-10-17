@@ -235,35 +235,32 @@ internal fun SongsScreen(
 
     if (showSortMenu) {
         val options = com.tasnimulhasan.entity.enums.SortType.entries.toList()
-        Dialog(onDismissRequest = { showSortMenu = false }) {
-            androidx.compose.material3.Card(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Sort by",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 12.dp),
-                    )
-                    options.forEach { option ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onSortTypeSelected(option)
-                                    showSortMenu = false
-                                }
-                                .padding(vertical = 4.dp)
-                        ) {
-                            Checkbox(
-                                checked = sortType == option,
-                                onCheckedChange = {
-                                    onSortTypeSelected(option)
-                                    showSortMenu = false
-                                }
-                            )
-                            Text(text = sortTypeLabel(option))
+        com.tasnimulhasan.ui.component.MelodiqSheet(onDismiss = { showSortMenu = false }) { dismiss ->
+            Text(
+                text = "Sort by",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            options.forEach { option ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onSortTypeSelected(option)
+                            dismiss()
                         }
-                    }
+                        .padding(vertical = 2.dp)
+                ) {
+                    androidx.compose.material3.RadioButton(
+                        selected = sortType == option,
+                        onClick = {
+                            onSortTypeSelected(option)
+                            dismiss()
+                        }
+                    )
+                    Text(text = sortTypeLabel(option))
                 }
             }
         }

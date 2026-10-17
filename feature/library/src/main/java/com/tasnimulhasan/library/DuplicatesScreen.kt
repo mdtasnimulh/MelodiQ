@@ -220,14 +220,13 @@ internal fun DuplicatesRoute(
     }
 
     if (confirm) {
-        AlertDialog(
-            onDismissRequest = { confirm = false },
-            title = { Text("Delete ${state.marked.size} files?") },
-            text = { Text("This permanently removes ${formatSize(state.markedBytes)} from your device. Android will ask you to confirm.") },
-            confirmButton = {
-                TextButton(onClick = { confirm = false; viewModel.deleteMarked() }) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } },
+        com.tasnimulhasan.ui.component.MelodiqConfirmSheet(
+            title = "Delete ${state.marked.size} files?",
+            message = "This permanently removes ${formatSize(state.markedBytes)} from your device. Android will ask you to confirm.",
+            confirmLabel = "Delete",
+            destructive = true,
+            onConfirm = { viewModel.deleteMarked() },
+            onDismiss = { confirm = false },
         )
     }
 }

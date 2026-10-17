@@ -378,51 +378,35 @@ internal fun SongDetailsScreen(
     }
 
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete this song?") },
-            text = { Text("This permanently removes the file from your device.") },
-            confirmButton = {
-                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        com.tasnimulhasan.ui.component.MelodiqConfirmSheet(
+            title = "Delete this song?",
+            message = "This permanently removes the file from your device.",
+            confirmLabel = "Delete",
+            destructive = true,
+            onConfirm = { onDelete() },
+            onDismiss = { showDeleteConfirm = false },
         )
     }
 
     if (showRenameDialog) {
-        var newName by remember { mutableStateOf(title) }
-        AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text("Rename file") },
-            text = {
-                OutlinedTextField(value = newName, onValueChange = { newName = it }, singleLine = true)
-            },
-            confirmButton = {
-                TextButton(onClick = { showRenameDialog = false; onRename(newName) }) { Text("Rename") }
-            },
-            dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") } }
+        com.tasnimulhasan.ui.component.MelodiqInputSheet(
+            title = "Rename file",
+            label = "File name",
+            initialValue = title,
+            confirmLabel = "Rename",
+            onConfirm = { onRename(it) },
+            onDismiss = { showRenameDialog = false },
         )
     }
 
     if (showMoveDialog) {
-        var newFolder by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showMoveDialog = false },
-            title = { Text("Move to folder") },
-            text = {
-                Column {
-                    Text(
-                        "Enter the destination folder path (e.g. Music/English/Rock)",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
-                    OutlinedTextField(value = newFolder, onValueChange = { newFolder = it }, singleLine = true)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showMoveDialog = false; onMove(newFolder) }) { Text("Move") }
-            },
-            dismissButton = { TextButton(onClick = { showMoveDialog = false }) { Text("Cancel") } }
+        com.tasnimulhasan.ui.component.MelodiqInputSheet(
+            title = "Move to folder",
+            message = "Enter the destination folder path (for example Music/English/Rock)",
+            label = "Folder path",
+            confirmLabel = "Move",
+            onConfirm = { onMove(it) },
+            onDismiss = { showMoveDialog = false },
         )
     }
 }

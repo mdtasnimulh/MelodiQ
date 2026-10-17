@@ -14,6 +14,8 @@ import com.tasnimulhasan.entity.enums.PlayerType
 import com.tasnimulhasan.melodiq.ipod.IpodApp
 import com.tasnimulhasan.melodiq.onboarding.OnboardingPrefs
 import com.tasnimulhasan.melodiq.onboarding.OnboardingScreen
+import com.tasnimulhasan.melodiq.permission.PermissionScreen
+import com.tasnimulhasan.melodiq.permission.PermissionStage
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.tasnimulhasan.melodiq.shortcut.AppShortcuts
@@ -50,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -94,7 +97,9 @@ class MainActivity : ComponentActivity() {
                 add(audioPermission)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
             }
-            val permissionsState = rememberMultiplePermissionsState(permissions = requested)
+            // True while Android's own permission dialog is showing (the explanation sheet stays hidden).
+            var requesting by remember { mutableStateOf(false) }
+            val permissionsState = rememberMultiplePermissionsState(permissions = requested) { requesting = false }
             val audioGranted = permissionsState.permissions.firstOrNull { it.permission == audioPermission }?.status?.isGranted == true
             var askedOnce by rememberSaveable { mutableStateOf(false) }
 
@@ -107,12 +112,6 @@ class MainActivity : ComponentActivity() {
                 if (audioGranted) OnboardingPrefs.markDone(applicationContext)
             }
 
-            LaunchedEffect(onboardingDone) {
-                if (onboardingDone && !audioGranted && !askedOnce) {
-                    askedOnce = true
-                    permissionsState.launchMultiplePermissionRequest()
-                }
-            }
             LaunchedEffect(audioGranted) {
                 if (audioGranted) mainActivityViewModel.onStoragePermissionGranted()
             }
@@ -167,11 +166,19 @@ class MainActivity : ComponentActivity() {
                     }
                 } else {
                     val audioStatus = permissionsState.permissions.first { it.permission == audioPermission }.status
-                    val permanentlyDenied = askedOnce && !audioStatus.shouldShowRationale
-                    PermissionRequestScreen(
-                        permanentlyDenied = permanentlyDenied,
-                        onGrant = {
+                    // Never ask unprompted: explain first (EXPLAIN), explain again after a refusal
+                    // (RATIONALE), and point to Settings once Android won't show its dialog any more.
+                    val stage = when {
+                        !askedOnce -> PermissionStage.EXPLAIN
+                        audioStatus.shouldShowRationale -> PermissionStage.RATIONALE
+                        else -> PermissionStage.SETTINGS
+                    }
+                    PermissionScreen(
+                        stage = stage,
+                        requesting = requesting,
+                        onRequest = {
                             askedOnce = true
+                            requesting = true
                             permissionsState.launchMultiplePermissionRequest()
                         },
                         onOpenSettings = {
@@ -204,63 +211,6 @@ class MainActivity : ComponentActivity() {
         handleShortcut(intent)
         if (intent.getBooleanExtra(AppConstants.EXTRA_OPEN_PLAYER, false)) {
             openPlayerRequested.value = true
-        }
-    }
-}
-
-@Composable
-fun PermissionRequestScreen(
-    permanentlyDenied: Boolean,
-    onGrant: () -> Unit,
-    onOpenSettings: () -> Unit,
-) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .systemBarsPadding()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(112.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(com.tasnimulhasan.designsystem.R.drawable.ic_stat_music),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(52.dp),
-                )
-            }
-            Spacer(Modifier.height(32.dp))
-            Text(
-                text = "Let MelodiQ find your music",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = if (permanentlyDenied)
-                    "Access to audio was turned off. Open settings and allow \"Music and audio\" so MelodiQ can load your songs."
-                else
-                    "MelodiQ needs access to the audio files on your device to build your library, and notifications to show playback controls.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(32.dp))
-            Button(
-                onClick = if (permanentlyDenied) onOpenSettings else onGrant,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) {
-                Text(if (permanentlyDenied) "Open settings" else "Grant access")
-            }
         }
     }
 }

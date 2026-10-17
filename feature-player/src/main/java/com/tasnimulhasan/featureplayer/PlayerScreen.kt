@@ -811,77 +811,57 @@ internal fun SharedTransitionScope.PlayerScreen(
                         }
                     }
 
-                    Dialog(onDismissRequest = {
-                        showVolumeBoostDialog.value = false
-                    }) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            shape = RoundedCornerShape(16.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Volume Booster",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-
-                                val volumePercent = (volumeGain.floatValue * 200).toInt() // Display 0–200%
-
-                                val sliderColor = when {
-                                    volumePercent > 150 -> CreamRed
-                                    volumePercent > 100 -> PeachYellow
-                                    else -> MaterialTheme.colorScheme.primary
-                                }
-
-                                Text(
-                                    text = "$volumePercent%",
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-
-                                Slider(
-                                    value = volumeGain.floatValue,
-                                    onValueChange = {
-                                        volumeGain.floatValue = it
-                                        val newPercent = (it * 200).toInt()
-                                        viewModel.setVolumeWithBoost(newPercent, fromSlider = true)
-                                    },
-                                    valueRange = 0f..1f,
-                                    steps = 20,
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = sliderColor,
-                                        activeTrackColor = sliderColor,
-                                        inactiveTrackColor = Color.LightGray
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                Spacer(modifier = Modifier.height(24.dp))
-
-                                Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "OK",
-                                        color = MythicGreen,
-                                        modifier = Modifier
-                                            .clickable {
-                                                showVolumeBoostDialog.value = false
-                                            }
-                                            .padding(8.dp)
-                                    )
-                                }
-                            }
+                    com.tasnimulhasan.ui.component.MelodiqSheet(
+                        onDismiss = { showVolumeBoostDialog.value = false },
+                    ) { dismissSheet ->
+                        val volumePercent = (volumeGain.floatValue * 200).toInt() // Display 0–200%
+                        val sliderColor = when {
+                            volumePercent > 150 -> CreamRed
+                            volumePercent > 100 -> PeachYellow
+                            else -> MaterialTheme.colorScheme.primary
                         }
+                        Text(
+                            text = "Volume Booster",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                        Text(
+                            text = "$volumePercent%",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = sliderColor,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                        Text(
+                            text = if (volumePercent > 100) "Above 100% can distort the sound. Lower it if you hear crackling."
+                            else "Drag past 100% to boost quiet tracks.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                        Slider(
+                            value = volumeGain.floatValue,
+                            onValueChange = {
+                                volumeGain.floatValue = it
+                                val newPercent = (it * 200).toInt()
+                                viewModel.setVolumeWithBoost(newPercent, fromSlider = true)
+                            },
+                            valueRange = 0f..1f,
+                            steps = 20,
+                            colors = SliderDefaults.colors(
+                                thumbColor = sliderColor,
+                                activeTrackColor = sliderColor,
+                                inactiveTrackColor = Color.LightGray
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        com.tasnimulhasan.ui.component.SheetPrimaryButton(text = "Done", onClick = dismissSheet)
                     }
                 }
             }
