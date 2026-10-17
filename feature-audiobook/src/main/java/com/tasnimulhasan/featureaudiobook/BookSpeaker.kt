@@ -326,6 +326,18 @@ class BookSpeaker @Inject constructor(
         pendingStart = null
     }
 
+    /** Re-reads the engine's installed voices (after the user downloaded one) and rebuilds the four narrators. */
+    fun refreshVoices() {
+        val engine = tts ?: return
+        if (!ttsReady) return
+        val fresh = runCatching { engine.voices?.toList() }.getOrNull().orEmpty()
+        if (fresh.size == voices.size && fresh.map { it.name }.toSet() == voices.map { it.name }.toSet()) return
+        voices = fresh
+        languageWarned = false
+        _presets.value = buildPresets(voices, language)
+        applyVoiceSettings()
+    }
+
     private fun applyVoiceSettings() {
         val engine = tts ?: return
         if (!ttsReady) return

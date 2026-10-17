@@ -5,6 +5,10 @@ package com.tasnimulhasan.featureaudiobook
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.speech.tts.TextToSpeech
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.graphics.pdf.PdfRenderer
@@ -259,6 +263,9 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
         listState.scrollToPosition(state.page, fractionFor(source, book.isEpub, state.page, state.permille), animate = false)
     }
 
+    // Coming back from the voice download screen: pick up any newly installed voices.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { speaker.refreshVoices() }
+
     val paper = PaperTheme.entries[paperIndex.coerceIn(0, PaperTheme.entries.lastIndex)]
     val canvas = if (book.isEpub) paper.canvas else scheme.surfaceContainer
     Column(Modifier.fillMaxSize().background(canvas)) {
@@ -364,6 +371,7 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
             onSelect = speaker::selectPreset,
             onPreview = speaker::preview,
             onRate = speaker::setRate,
+            onGetVoices = { openVoiceInstaller(context) },
             onDismiss = { showVoices = false },
         )
     }
@@ -800,6 +808,7 @@ private fun NarratorDialog(
     onSelect: (Int) -> Unit,
     onPreview: (Int) -> Unit,
     onRate: (Float) -> Unit,
+    onGetVoices: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -853,11 +862,48 @@ private fun NarratorDialog(
                 }
             }
         }
+        Row(
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(scheme.secondaryContainer)
+                .clickable(onClick = onGetVoices)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.VolumeUp, null, tint = scheme.onSecondaryContainer, modifier = Modifier.size(22.dp))
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text("Get more voices", fontWeight = FontWeight.SemiBold, color = scheme.onSecondaryContainer)
+                Text(
+                    "Opens your phone's voice downloads",
+                    fontSize = 12.sp, color = scheme.onSecondaryContainer.copy(alpha = 0.8f),
+                )
+            }
+        }
         Spacer(Modifier.height(18.dp))
         com.tasnimulhasan.ui.component.SheetPrimaryButton(text = "Done", onClick = dismiss)
     }
 }
 
+/** Opens the speech engine's own "install voice data" screen, or the phone's text-to-speech settings. */
+private fun openVoiceInstaller(context: Context) {
+    val flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    val attempts = listOf(
+        Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).addFlags(flags),
+        Intent("com.android.settings.TTS_SETTINGS").addFlags(flags),
+        Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(flags),
+    )
+    for (intent in attempts) {
+        try {
+            context.startActivity(intent)
+            return
+        } catch (_: Exception) {
+            // try the next screen
+        }
+    }
+    Toast.makeText(context, "Open Settings > Text-to-speech to add voices", Toast.LENGTH_LONG).show()
+}
 
 private fun formatRate(rate: Float): String =
     (if (rate % 1f == 0f) rate.toInt().toString() else "%.2f".format(rate).trimEnd('0')) + "×"
