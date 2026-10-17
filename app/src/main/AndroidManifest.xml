@@ -32,8 +32,6 @@
             android:theme="@style/Theme.MelodiQ">
         </activity>
 
-        <!-- One launcher entry per selectable icon (Settings > App icon). Exactly one is enabled
-             at a time; main_1 is the default. -->
         <activity-alias
             android:name="com.tasnimulhasan.melodiq.alias.LogoDefault"
             android:enabled="true"
