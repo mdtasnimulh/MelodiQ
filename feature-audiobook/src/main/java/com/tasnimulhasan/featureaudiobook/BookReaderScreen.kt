@@ -13,6 +13,18 @@ import android.os.ParcelFileDescriptor
 import android.util.LruCache
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.Slider
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -195,6 +207,8 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
     var userMoved by remember { mutableStateOf(false) }
     var showVoices by remember { mutableStateOf(false) }
     var showGoTo by remember { mutableStateOf(false) }
+    var showDisplay by remember { mutableStateOf(false) }
+    var paperIndex by rememberSaveable { mutableIntStateOf(0) }
     var selection by remember { mutableStateOf<ReaderSelection?>(null) }
     val shownPage by remember { derivedStateOf { listState.firstVisibleItemIndex } }
 
@@ -245,36 +259,33 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
         listState.scrollToPosition(state.page, fractionFor(source, book.isEpub, state.page, state.permille), animate = false)
     }
 
-    Column(Modifier.fillMaxSize().background(scheme.surfaceVariant)) {
+    val paper = PaperTheme.entries[paperIndex.coerceIn(0, PaperTheme.entries.lastIndex)]
+    val canvas = if (book.isEpub) paper.canvas else scheme.surfaceContainer
+    Column(Modifier.fillMaxSize().background(canvas)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ReaderButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = scheme.onSurface) }
-            Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+            RoundIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Back", onBack)
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(
                     book.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = scheme.onSurface,
+                    fontWeight = FontWeight.Bold, fontSize = 16.sp, color = scheme.onSurface,
                 )
                 Text(
-                    "Page ${(shownPage + 1).coerceAtMost(pageCount)} of $pageCount",
-                    fontSize = 12.sp, color = scheme.primary,
-                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { showGoTo = true },
+                    "${book.formatLabel} · $pageCount pages",
+                    fontSize = 11.sp, color = scheme.onSurfaceVariant, maxLines = 1,
                 )
             }
-            ReaderButton(onClick = { zoom = (zoom - 0.5f).coerceAtLeast(1f) }) {
-                Icon(Icons.Filled.Remove, if (book.isEpub) "Smaller text" else "Zoom out", tint = scheme.onSurface)
-            }
-            ReaderButton(onClick = { zoom = (zoom + 0.5f).coerceAtMost(3f) }) {
-                Icon(Icons.Filled.Add, if (book.isEpub) "Larger text" else "Zoom in", tint = scheme.onSurface)
-            }
+            RoundIconButton(Icons.Filled.TextFields, "Display settings", onClick = { showDisplay = true })
         }
         LinearProgressIndicator(
             progress = { ((shownPage + 1).coerceAtMost(pageCount)).toFloat() / pageCount },
-            modifier = Modifier.fillMaxWidth().height(3.dp),
+            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(3.dp).clip(CircleShape),
             color = scheme.primary,
-            trackColor = scheme.outlineVariant,
+            trackColor = scheme.outlineVariant.copy(alpha = 0.5f),
         )
+        Spacer(Modifier.height(6.dp))
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (pdf != null) {
@@ -290,7 +301,7 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                     onClear = { selection = null },
                 )
             } else {
-                EpubPagesList(source, pageCount, listState, zoom, state)
+                EpubPagesList(source, pageCount, listState, zoom, state, PaperTheme.entries[paperIndex.coerceIn(0, PaperTheme.entries.lastIndex)])
             }
         }
 
@@ -329,16 +340,18 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                 },
             )
         } else {
-            ListenBar(
+            PlayerDock(
                 playing = state.playing,
+                page = shownPage.coerceIn(0, pageCount - 1),
+                pageCount = pageCount,
                 voiceLabel = presets.getOrNull(presetIndex)?.label ?: "Voice",
                 rateLabel = formatRate(rate),
-                canPrev = shownPage > 0,
-                canNext = shownPage < pageCount - 1,
                 onPlayPause = { speaker.togglePlay() },
                 onPrev = { speaker.skipPage(-1) },
                 onNext = { speaker.skipPage(1) },
                 onVoice = { showVoices = true },
+                onSeekPage = { target -> speaker.skipPage(target - state.page) },
+                onPageLabel = { showGoTo = true },
             )
         }
     }
@@ -352,6 +365,16 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
             onPreview = speaker::preview,
             onRate = speaker::setRate,
             onDismiss = { showVoices = false },
+        )
+    }
+    if (showDisplay) {
+        DisplaySheet(
+            isEpub = book.isEpub,
+            zoom = zoom,
+            onZoom = { zoom = it.coerceIn(1f, 3f) },
+            paperIndex = paperIndex,
+            onPaper = { paperIndex = it },
+            onDismiss = { showDisplay = false },
         )
     }
     if (showGoTo) {
@@ -447,7 +470,8 @@ private fun PdfPagesList(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.small)
+                            .shadow(3.dp, RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(6.dp))
                             .background(Color.White)
                             .aspectRatio(if (bmp != null) bmp.width.toFloat() / bmp.height else 0.707f),
                         contentAlignment = Alignment.Center,
@@ -487,7 +511,7 @@ private fun PdfPagesList(
 }
 
 @Composable
-private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyListState, zoom: Float, state: SpeechState) {
+private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyListState, zoom: Float, state: SpeechState, paper: PaperTheme) {
     val scheme = MaterialTheme.colorScheme
     val fontSize = 15f + (zoom - 1f) * 4f
     val sentenceBg = scheme.primary.copy(alpha = 0.22f)
@@ -515,9 +539,10 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(scheme.surface)
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                    .shadow(2.dp, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(paper.page)
+                    .padding(horizontal = 22.dp, vertical = 20.dp),
             ) {
                 // Selectable like any text: long-press, drag the handles, copy.
                 SelectionContainer {
@@ -525,14 +550,14 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
                         text = annotated,
                         fontFamily = FontFamily.Serif,
                         fontSize = fontSize.sp,
-                        lineHeight = (fontSize * 1.55f).sp,
-                        color = scheme.onSurface,
+                        lineHeight = (fontSize * 1.65f).sp,
+                        color = paper.text,
                     )
                 }
                 Text(
                     text = "${index + 1}",
                     fontSize = 11.sp,
-                    color = scheme.onSurfaceVariant,
+                    color = paper.text.copy(alpha = 0.5f),
                     textAlign = TextAlign.End,
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 )
@@ -541,7 +566,7 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
     }
 }
 
-/** Replaces the listen bar while text is selected: what is selected, and what can be done with it. */
+/** Replaces the player while text is selected: what is selected, and what can be done with it. */
 @Composable
 private fun SelectionBar(
     preview: String,
@@ -550,99 +575,220 @@ private fun SelectionBar(
     onRead: () -> Unit,
     onSelectAll: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-            .fillMaxWidth()
-            .height(64.dp)
-            .clip(CircleShape)
-            .background(Color(0xFF1C1C1E))
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(
-            Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onClose),
-            contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Filled.Close, "Clear selection", tint = Color.White, modifier = Modifier.size(22.dp)) }
-        Text(
-            text = preview.replace('\n', ' ').ifBlank { "Selected" },
-            color = Color(0xFFD1D1D6),
-            fontSize = 12.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        BarChip("Copy", onCopy)
-        BarChip("Read", onRead)
-        BarChip("All", onSelectAll)
+    val scheme = MaterialTheme.colorScheme
+    DockSurface {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = preview.replace('\n', ' ').ifBlank { "Selected text" },
+                color = scheme.onSurfaceVariant,
+                fontSize = 13.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
+            )
+            RoundIconButton(Icons.Filled.Close, "Clear selection", onClose)
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            ActionPill(Icons.Filled.ContentCopy, "Copy", onCopy, primary = true, modifier = Modifier.weight(1f))
+            ActionPill(Icons.Filled.RecordVoiceOver, "Read", onRead, modifier = Modifier.weight(1f))
+            ActionPill(Icons.Filled.SelectAll, "All", onSelectAll, modifier = Modifier.weight(1f))
+        }
     }
 }
 
+/** The floating player: a page scrubber, then narrator, previous / play / next and speed. */
 @Composable
-private fun ListenBar(
+private fun PlayerDock(
     playing: Boolean,
+    page: Int,
+    pageCount: Int,
     voiceLabel: String,
     rateLabel: String,
-    canPrev: Boolean,
-    canNext: Boolean,
     onPlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onVoice: () -> Unit,
+    onSeekPage: (Int) -> Unit,
+    onPageLabel: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val dim = Color(0xFF8E8E93)
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-            .fillMaxWidth()
-            .height(64.dp)
-            .clip(CircleShape)
-            .background(Color(0xFF1C1C1E))
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BarChip(voiceLabel, onVoice)
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Filled.SkipPrevious, "Previous page",
-                tint = if (canPrev) Color.White else dim.copy(alpha = 0.4f),
-                modifier = Modifier.size(28.dp).clip(CircleShape).clickable(enabled = canPrev, onClick = onPrev),
+    var scrub by remember { mutableStateOf<Float?>(null) }
+    val shown = scrub?.toInt() ?: page
+    DockSurface {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Page ${shown + 1} of $pageCount",
+                fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = scheme.primary,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onPageLabel).padding(vertical = 2.dp),
             )
-            Box(
-                modifier = Modifier.size(46.dp).clip(CircleShape).background(scheme.primary).clickable(onClick = onPlayPause),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    if (playing) "Pause" else "Play",
-                    tint = scheme.onPrimary,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-            Icon(
-                Icons.Filled.SkipNext, "Next page",
-                tint = if (canNext) Color.White else dim.copy(alpha = 0.4f),
-                modifier = Modifier.size(28.dp).clip(CircleShape).clickable(enabled = canNext, onClick = onNext),
-            )
+            Spacer(Modifier.weight(1f))
+            Text("${((shown + 1) * 100 / pageCount.coerceAtLeast(1))}% read", fontSize = 12.sp, color = scheme.onSurfaceVariant)
         }
-        BarChip(rateLabel, onVoice)
+        Slider(
+            value = scrub ?: page.toFloat(),
+            onValueChange = { scrub = it },
+            onValueChangeFinished = {
+                scrub?.let { onSeekPage(it.toInt().coerceIn(0, pageCount - 1)) }
+                scrub = null
+            },
+            valueRange = 0f..(pageCount - 1).coerceAtLeast(1).toFloat(),
+            modifier = Modifier.fillMaxWidth().height(32.dp),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            ChipButton(voiceLabel, Icons.Filled.RecordVoiceOver, onVoice, Modifier.weight(1f))
+            Row(
+                modifier = Modifier.weight(1.4f),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RoundIconButton(Icons.Filled.SkipPrevious, "Previous page", onPrev, enabled = page > 0)
+                Spacer(Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .shadow(8.dp, CircleShape, spotColor = scheme.primary)
+                        .clip(CircleShape)
+                        .background(scheme.primary)
+                        .clickable(onClick = onPlayPause),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        if (playing) "Pause" else "Listen",
+                        tint = scheme.onPrimary,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                RoundIconButton(Icons.Filled.SkipNext, "Next page", onNext, enabled = page < pageCount - 1)
+            }
+            ChipButton(rateLabel, Icons.Filled.Speed, onVoice, Modifier.weight(1f))
+        }
+    }
+}
+
+/** The raised rounded card the player and the selection actions sit in. */
+@Composable
+private fun DockSurface(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .shadow(14.dp, RoundedCornerShape(30.dp), ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.28f))
+            .clip(RoundedCornerShape(30.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        content = content,
+    )
+}
+
+@Composable
+private fun RoundIconButton(icon: ImageVector, description: String, onClick: () -> Unit, enabled: Boolean = true) {
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(scheme.surfaceContainerHighest.copy(alpha = if (enabled) 0.9f else 0.4f))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, description, tint = scheme.onSurface.copy(alpha = if (enabled) 1f else 0.35f), modifier = Modifier.size(22.dp))
     }
 }
 
 @Composable
-private fun BarChip(label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
+private fun ChipButton(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .padding(horizontal = 2.dp)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(scheme.secondaryContainer)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Icon(icon, null, tint = scheme.onSecondaryContainer, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(label, color = scheme.onSecondaryContainer, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun ActionPill(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean = false) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(if (primary) scheme.primary else scheme.secondaryContainer)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val c = if (primary) scheme.onPrimary else scheme.onSecondaryContainer
+        Icon(icon, null, tint = c, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, color = c, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    }
+}
+
+/** How EPUB pages look: paper, sepia or night. PDFs keep their own page colours. */
+private enum class PaperTheme(val label: String, val page: Color, val text: Color, val canvas: Color) {
+    Paper("Paper", Color(0xFFFBFAF7), Color(0xFF1D1B18), Color(0xFFEDEBE6)),
+    Sepia("Sepia", Color(0xFFF4ECD8), Color(0xFF4A3B2A), Color(0xFFE6DABF)),
+    Night("Night", Color(0xFF1C1C1E), Color(0xFFD8D6D2), Color(0xFF0C0C0D)),
+}
+
+@Composable
+private fun DisplaySheet(
+    isEpub: Boolean,
+    zoom: Float,
+    onZoom: (Float) -> Unit,
+    paperIndex: Int,
+    onPaper: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    com.tasnimulhasan.ui.component.MelodiqSheet(onDismiss = onDismiss) { dismiss ->
+        Text("Display", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(14.dp))
+        Text(if (isEpub) "Text size" else "Zoom", style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            RoundIconButton(Icons.Filled.Remove, "Smaller", { onZoom(zoom - 0.25f) }, enabled = zoom > 1f)
+            Slider(
+                value = zoom, onValueChange = onZoom, valueRange = 1f..3f,
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+            )
+            RoundIconButton(Icons.Filled.Add, "Larger", { onZoom(zoom + 0.25f) }, enabled = zoom < 3f)
+        }
+        if (isEpub) {
+            Text(
+                "Page colour", style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 18.dp, bottom = 8.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                PaperTheme.entries.forEachIndexed { i, t ->
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(t.page)
+                            .border(if (i == paperIndex) 2.5.dp else 1.dp, if (i == paperIndex) scheme.primary else scheme.outlineVariant, RoundedCornerShape(18.dp))
+                            .clickable { onPaper(i) }
+                            .padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text("Aa", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = t.text)
+                        Text(t.label, fontSize = 12.sp, color = t.text.copy(alpha = 0.75f))
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        com.tasnimulhasan.ui.component.SheetPrimaryButton(text = "Done", onClick = dismiss)
     }
 }
 
@@ -658,49 +804,60 @@ private fun NarratorDialog(
 ) {
     val scheme = MaterialTheme.colorScheme
     com.tasnimulhasan.ui.component.MelodiqSheet(onDismiss = onDismiss) { dismiss ->
+        Text("Narrator", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(
-            "Narrator",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 6.dp),
+            "Pick a voice and tap the speaker to hear it.",
+            fontSize = 13.sp, color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
         )
-        presets.forEachIndexed { index, preset ->
-            Row(
-                modifier = Modifier.fillMaxWidth().clickable { onSelect(index) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = index == selected, onClick = { onSelect(index) })
-                Text(preset.label, modifier = Modifier.weight(1f), color = scheme.onSurface)
-                TextButton(onClick = { onSelect(index); onPreview(index) }) { Text("Preview") }
+        presets.chunked(2).forEachIndexed { rowIndex, row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                row.forEachIndexed { col, preset ->
+                    val index = rowIndex * 2 + col
+                    val on = index == selected
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (on) scheme.primaryContainer else scheme.surfaceContainerHigh)
+                            .border(if (on) 2.dp else 0.dp, if (on) scheme.primary else Color.Transparent, RoundedCornerShape(20.dp))
+                            .clickable { onSelect(index) }
+                            .padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            preset.label, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold,
+                            color = if (on) scheme.onPrimaryContainer else scheme.onSurface,
+                        )
+                        Box(
+                            Modifier.size(38.dp).clip(CircleShape).background(scheme.surface.copy(alpha = 0.6f)).clickable { onSelect(index); onPreview(index) },
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(Icons.Filled.VolumeUp, "Preview ${preset.label}", tint = scheme.primary, modifier = Modifier.size(20.dp)) }
+                    }
+                }
             }
         }
-        Text(
-            "Speed",
-            style = MaterialTheme.typography.labelLarge,
-            color = scheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 14.dp, bottom = 6.dp),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Speed", style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp, bottom = 8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { r ->
                 val on = kotlin.math.abs(r - rate) < 0.01f
                 Box(
                     modifier = Modifier
+                        .weight(1f)
                         .clip(CircleShape)
                         .background(if (on) scheme.primary else scheme.surfaceContainerHigh)
                         .clickable { onRate(r) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        formatRate(r), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                        color = if (on) scheme.onPrimary else scheme.onSurface,
-                    )
+                    Text(formatRate(r), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (on) scheme.onPrimary else scheme.onSurface)
                 }
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(18.dp))
         com.tasnimulhasan.ui.component.SheetPrimaryButton(text = "Done", onClick = dismiss)
     }
 }
+
 
 private fun formatRate(rate: Float): String =
     (if (rate % 1f == 0f) rate.toInt().toString() else "%.2f".format(rate).trimEnd('0')) + "×"
