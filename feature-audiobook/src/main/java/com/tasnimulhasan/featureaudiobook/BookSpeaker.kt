@@ -113,6 +113,8 @@ class BookSpeaker @Inject constructor(
     private var resumeOnFocusGain = false
     private var serviceStarted = false
     @Volatile private var rangeSeen = false
+    @Volatile private var utterStartAt = 0L
+    @Volatile private var sampleRate = 0
     private var estimator: Job? = null
 
     init {
@@ -482,17 +484,43 @@ class BookSpeaker @Inject constructor(
             if (now - lastSaveAt > 1500) persistNow()
             if (id.last && id.page == queuedPage && !endQueued) prefetchNext(id.gen, id.page)
             rangeSeen = false
+            utterStartAt = System.currentTimeMillis()
             startEstimator(id)
         }
 
-        // The engine tells which part of the sentence it is saying right now: that is the highlighted word.
+        override fun onBeginSynthesis(utteranceId: String?, sampleRateInHz: Int, audioFormat: Int, channelCount: Int) {
+            sampleRate = sampleRateInHz
+        }
+
+        // The engine reports each word while it is *generating* the audio, which is far quicker than the
+        // audio plays. [frame] says where in the audio the word is, so the highlight waits until then.
         override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
             val id = parse(utteranceId) ?: return
             if (id.gen != gen.get()) return
             rangeSeen = true
-            _state.update {
-                if (it.page != id.page) it
-                else it.copy(wordStart = id.start + start, wordEnd = id.start + end)
+            val absStart = id.start + start
+            val absEnd = id.start + end
+            val sr = sampleRate
+            val begun = utterStartAt
+            scope.launch {
+                val dueAt: Long = when {
+                    frame > 0 && sr > 0 -> begun + frame * 1000L / sr
+                    start <= 0 -> begun
+                    else -> {
+                        // No timing from the engine: estimate how long the words before this one take.
+                        val text = runCatching { source?.text(id.page) }.getOrNull()
+                        val prefix = if (text != null && id.start <= absStart && absStart <= text.length) text.substring(id.start, absStart) else ""
+                        val units = Regex("\\S+").findAll(prefix).sumOf { wordUnits(it.value).toDouble() }.toFloat()
+                        begun + (units / (DEFAULT_CPS * _rate.value.coerceAtLeast(0.3f)) * 1000f * HIGHLIGHT_SLOWDOWN).toLong()
+                    }
+                } + HIGHLIGHT_DELAY_MS
+                val wait = dueAt - System.currentTimeMillis()
+                if (wait > 0) delay(wait)
+                if (gen.get() != id.gen) return@launch
+                _state.update {
+                    if (it.page != id.page || it.chunkStart != id.start) it
+                    else it.copy(wordStart = absStart, wordEnd = absEnd)
+                }
             }
         }
 
@@ -513,8 +541,10 @@ class BookSpeaker @Inject constructor(
 
     /**
      * Many voices (Google's online ones, some Samsung ones) never report which word they are on.
-     * When no range arrives shortly after a sentence starts, walk through its words on a timer
-     * paced by the speech rate, so the word highlight still moves. Real ranges take over at once.
+     * When no range arrives shortly after a sentence starts, walk through its words on a timer.
+     * The pace is learned: every finished sentence tells how fast this voice really speaks
+     * (characters per second at normal rate), so the highlight stays with the sound.
+     * Real ranges from the engine take over at once.
      */
     private fun startEstimator(id: UtteranceId) {
         estimator?.cancel()
@@ -524,6 +554,7 @@ class BookSpeaker @Inject constructor(
             if (rangeSeen || gen.get() != id.gen) return@launch
             val text = runCatching { src.text(id.page) }.getOrNull() ?: return@launch
             if (id.start < 0 || id.end > text.length || id.start >= id.end) return@launch
+            val cps = DEFAULT_CPS
             val words = Regex("\\S+").findAll(text.substring(id.start, id.end)).toList()
             for (m in words) {
                 if (rangeSeen || gen.get() != id.gen) return@launch
@@ -533,14 +564,19 @@ class BookSpeaker @Inject constructor(
                     if (it.page != id.page || !it.playing) it else it.copy(wordStart = ws, wordEnd = we)
                 }
                 val rate = _rate.value.coerceAtLeast(0.3f)
-                var secs = (m.value.length + 1) / (14f * rate)
-                when (m.value.last()) {
-                    ',', ';', ':' -> secs += 0.18f / rate
-                    '.', '!', '?', '\u0964' -> secs += 0.35f / rate
-                }
-                delay((secs * 1000).toLong())
+                delay((wordUnits(m.value) / (cps * rate) * 1000f * HIGHLIGHT_SLOWDOWN).toLong())
             }
         }
+    }
+
+    /** Rough speaking time of a word in "characters": its letters, a space, and longer for punctuation pauses. */
+    private fun wordUnits(w: String): Float {
+        var u = w.length + 1f
+        when (w.last()) {
+            ',', ';', ':' -> u += 2.5f
+            '.', '!', '?', '\u0964' -> u += 5f
+        }
+        return u
     }
 
     private fun finishBook() {
@@ -607,6 +643,17 @@ class BookSpeaker @Inject constructor(
         return runCatching {
             UtteranceId(parts[0].toInt(), parts[1].toInt(), parts[2].toInt(), parts[3].toInt(), parts[4] == "1", parts[5].toInt())
         }.getOrNull()
+    }
+
+    private companion object {
+        /** Characters per second a typical voice speaks at normal rate, until measured. */
+        const val DEFAULT_CPS = 10f
+
+        /** Slows the word highlight. 1f = as measured, 1.25f = 25% slower, 0.85f = faster. */
+        const val HIGHLIGHT_SLOWDOWN = 1.6f
+
+        /** Shifts the word highlight later (+) or earlier (-), in milliseconds, for voices reporting exact timing. */
+        const val HIGHLIGHT_DELAY_MS = 0L
     }
 
     private fun ceilPermille(start: Int, length: Int): Int =
