@@ -8,6 +8,7 @@ import android.media.AudioManager
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.mlkit.nl.languageid.LanguageIdentification
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -502,9 +503,10 @@ class BookSpeaker @Inject constructor(
             val absEnd = id.start + end
             val sr = sampleRate
             val begun = utterStartAt
+            Log.d("BookSpeaker", "range start=$start end=$end frame=$frame sampleRate=$sr rate=${_rate.value}")
             scope.launch {
                 val dueAt: Long = when {
-                    frame > 0 && sr > 0 -> begun + frame * 1000L / sr
+                    frame > 0 && sr > 0 -> begun + (frame * 1000L / sr * FRAME_TIME_SCALE).toLong()
                     start <= 0 -> begun
                     else -> {
                         // No timing from the engine: estimate how long the words before this one take.
@@ -654,6 +656,12 @@ class BookSpeaker @Inject constructor(
 
         /** Shifts the word highlight later (+) or earlier (-), in milliseconds, for voices reporting exact timing. */
         const val HIGHLIGHT_DELAY_MS = 0L
+
+        /**
+         * Stretches the engine's audio positions into real time. Measured on the test voice: the sentence
+         * took ~9 s to speak while the highlight took ~4.5 s, so 2f. Higher = slower highlight, lower = faster.
+         */
+        const val FRAME_TIME_SCALE = 2f
     }
 
     private fun ceilPermille(start: Int, length: Int): Int =
