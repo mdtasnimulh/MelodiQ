@@ -3,6 +3,8 @@ package com.tasnimulhasan.featureaudiobook
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -106,6 +108,11 @@ internal fun BookDetailsScreen(
     val scheme = MaterialTheme.colorScheme
     val started = progress.page > 0 || progress.permille > 0
     val currentPage = progress.page.coerceIn(0, (book.pages - 1).coerceAtLeast(0)) + 1
+    val fraction by animateFloatAsState(
+        targetValue = if (book.pages <= 0) 0f else ((progress.page + progress.permille / 1000f) / book.pages).coerceIn(0f, 1f),
+        animationSpec = tween(700),
+        label = "bookProgress",
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -193,11 +200,12 @@ internal fun BookDetailsScreen(
 
         Waveform(
             seed = book.id.hashCode(),
+            progress = fraction,
             modifier = Modifier.padding(top = 26.dp).fillMaxWidth().height(48.dp),
             color = scheme.primary,
         )
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Page $currentPage", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text("Page $currentPage · ${(fraction * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             Text(if (book.pages == 1) "1 page" else "${book.pages} pages", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
         }
 
@@ -257,18 +265,19 @@ private fun RoundAction(onClick: () -> Unit, tint: Color, content: @Composable (
     ) { content(tint) }
 }
 
-/** A decorative, fixed waveform (the real one comes with the audio feature). */
+/** A waveform-style bar: the part already read is solid, the rest is faded. */
 @Composable
-private fun Waveform(seed: Int, color: Color, modifier: Modifier = Modifier) {
+private fun Waveform(seed: Int, progress: Float, color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val bar = 3.dp.toPx()
         val gap = 3.dp.toPx()
         val count = (size.width / (bar + gap)).toInt().coerceAtLeast(1)
+        val played = progress.coerceIn(0f, 1f) * count
         for (i in 0 until count) {
             val v = abs(sin((i + (seed and 0xFF)) * 0.55f) * 0.55f + sin(i * 0.21f + 1f) * 0.35f)
             val h = (0.18f + v.coerceIn(0f, 0.8f)) * size.height
             drawRoundRect(
-                color = color.copy(alpha = 0.55f),
+                color = if (i + 0.5f <= played) color else color.copy(alpha = 0.25f),
                 topLeft = Offset(i * (bar + gap), (size.height - h) / 2f),
                 size = Size(bar, h),
                 cornerRadius = CornerRadius(bar / 2f),

@@ -536,7 +536,7 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
     val scheme = MaterialTheme.colorScheme
     val fontSize = 15f + (zoom - 1f) * 4f
     val sentenceBg = scheme.primary.copy(alpha = 0.22f)
-    val wordBg = scheme.primary.copy(alpha = 0.55f)
+    val wordBg = Color(0xFFFF9F0A).copy(alpha = 0.78f)
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -554,7 +554,7 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
                 buildAnnotatedString {
                     append(text)
                     if (ss >= 0 && se in (ss + 1)..text.length) addStyle(SpanStyle(background = sentenceBg), ss, se)
-                    if (ws >= 0 && we in (ws + 1)..text.length) addStyle(SpanStyle(background = wordBg, fontWeight = FontWeight.SemiBold), ws, we)
+                    if (ws >= 0 && we in (ws + 1)..text.length) addStyle(SpanStyle(background = wordBg, color = Color(0xFF1B1B1B), fontWeight = FontWeight.Bold), ws, we)
                 }
             }
             Column(

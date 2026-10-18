@@ -151,34 +151,62 @@ internal fun booksTempDir(context: Context): File = File(context.cacheDir, "book
 private class WordCollector : PDFTextStripper() {
     val raw = ArrayList<RawWord>()
 
-    // PDFBox calls this once per word.
+    // PDFBox hands over a run of text (often a whole line); split it into real words ourselves,
+    // at spaces and at visible gaps, so each word gets its own box.
     override fun writeString(text: String, textPositions: MutableList<TextPosition>) {
         if (textPositions.isEmpty()) return
         val pw = textPositions[0].pageWidth
         val ph = textPositions[0].pageHeight
         if (pw <= 0f || ph <= 0f) return
+        val sb = StringBuilder()
         var l = Float.MAX_VALUE
         var t = Float.MAX_VALUE
         var r = 0f
         var b = 0f
         var baseline = 0f
+        var prevRight = Float.NaN
+
+        fun flush() {
+            val word = sb.toString().trim()
+            if (word.isNotEmpty() && r > l && b > t) {
+                raw.add(
+                    RawWord(
+                        word,
+                        (l / pw).coerceIn(0f, 1f), (t / ph).coerceIn(0f, 1f),
+                        (r / pw).coerceIn(0f, 1f), (b / ph).coerceIn(0f, 1f),
+                        (baseline / ph).coerceIn(0f, 1f),
+                    )
+                )
+            }
+            sb.setLength(0)
+            l = Float.MAX_VALUE
+            t = Float.MAX_VALUE
+            r = 0f
+            b = 0f
+            prevRight = Float.NaN
+        }
+
         for (pos in textPositions) {
+            val ch = pos.unicode ?: ""
+            if (ch.isBlank()) {
+                flush()
+                continue
+            }
             val h = pos.heightDir.takeIf { it > 0f } ?: pos.fontSizeInPt
-            l = minOf(l, pos.xDirAdj)
-            r = maxOf(r, pos.xDirAdj + pos.widthDirAdj)
+            val x = pos.xDirAdj
+            if (!prevRight.isNaN()) {
+                val gapLimit = maxOf(pos.widthOfSpace * 0.5f, pos.fontSizeInPt * 0.22f)
+                if (x - prevRight > gapLimit || kotlin.math.abs(pos.yDirAdj - baseline) > h * 0.5f) flush()
+            }
+            sb.append(ch)
+            l = minOf(l, x)
+            r = maxOf(r, x + pos.widthDirAdj)
             t = minOf(t, pos.yDirAdj - h)
             b = maxOf(b, pos.yDirAdj + h * 0.22f)
             baseline = pos.yDirAdj
+            prevRight = x + pos.widthDirAdj
         }
-        if (r <= l || b <= t) return
-        raw.add(
-            RawWord(
-                text,
-                (l / pw).coerceIn(0f, 1f), (t / ph).coerceIn(0f, 1f),
-                (r / pw).coerceIn(0f, 1f), (b / ph).coerceIn(0f, 1f),
-                (baseline / ph).coerceIn(0f, 1f),
-            )
-        )
+        flush()
     }
 }
 

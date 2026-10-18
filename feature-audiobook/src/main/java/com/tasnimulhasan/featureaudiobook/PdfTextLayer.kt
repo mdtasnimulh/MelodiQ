@@ -44,7 +44,7 @@ internal fun PdfTextLayer(
 ) {
     val scheme = MaterialTheme.colorScheme
     val sentenceColor = scheme.primary.copy(alpha = 0.22f)
-    val wordColor = scheme.primary.copy(alpha = 0.55f)
+    val wordColor = Color(0xFFFF9F0A).copy(alpha = 0.62f) // the spoken word: orange, distinct from the sentence tint
     val selectColor = Color(0xFF2F7DF6).copy(alpha = 0.32f)
 
     var layerSize by remember { mutableStateOf(IntSize.Zero) }
