@@ -14,6 +14,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -110,6 +112,8 @@ class BookSpeaker @Inject constructor(
     private var focusRequest: AudioFocusRequest? = null
     private var resumeOnFocusGain = false
     private var serviceStarted = false
+    @Volatile private var rangeSeen = false
+    private var estimator: Job? = null
 
     init {
         // Leftovers from a previous run (the temporary copy a book is read from while open).
@@ -477,12 +481,15 @@ class BookSpeaker @Inject constructor(
             val now = System.currentTimeMillis()
             if (now - lastSaveAt > 1500) persistNow()
             if (id.last && id.page == queuedPage && !endQueued) prefetchNext(id.gen, id.page)
+            rangeSeen = false
+            startEstimator(id)
         }
 
         // The engine tells which part of the sentence it is saying right now: that is the highlighted word.
         override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
             val id = parse(utteranceId) ?: return
             if (id.gen != gen.get()) return
+            rangeSeen = true
             _state.update {
                 if (it.page != id.page) it
                 else it.copy(wordStart = id.start + start, wordEnd = id.start + end)
@@ -501,6 +508,38 @@ class BookSpeaker @Inject constructor(
             if (id.gen != gen.get()) return
             _messages.tryEmit("Narration stopped because of a speech engine error")
             pause()
+        }
+    }
+
+    /**
+     * Many voices (Google's online ones, some Samsung ones) never report which word they are on.
+     * When no range arrives shortly after a sentence starts, walk through its words on a timer
+     * paced by the speech rate, so the word highlight still moves. Real ranges take over at once.
+     */
+    private fun startEstimator(id: UtteranceId) {
+        estimator?.cancel()
+        val src = source ?: return
+        estimator = scope.launch {
+            delay(250)
+            if (rangeSeen || gen.get() != id.gen) return@launch
+            val text = runCatching { src.text(id.page) }.getOrNull() ?: return@launch
+            if (id.start < 0 || id.end > text.length || id.start >= id.end) return@launch
+            val words = Regex("\\S+").findAll(text.substring(id.start, id.end)).toList()
+            for (m in words) {
+                if (rangeSeen || gen.get() != id.gen) return@launch
+                val ws = id.start + m.range.first
+                val we = id.start + m.range.last + 1
+                _state.update {
+                    if (it.page != id.page || !it.playing) it else it.copy(wordStart = ws, wordEnd = we)
+                }
+                val rate = _rate.value.coerceAtLeast(0.3f)
+                var secs = (m.value.length + 1) / (14f * rate)
+                when (m.value.last()) {
+                    ',', ';', ':' -> secs += 0.18f / rate
+                    '.', '!', '?', '\u0964' -> secs += 0.35f / rate
+                }
+                delay((secs * 1000).toLong())
+            }
         }
     }
 

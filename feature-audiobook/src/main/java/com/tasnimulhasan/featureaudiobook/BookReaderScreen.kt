@@ -57,6 +57,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -667,12 +674,21 @@ private fun PlayerDock(
                         .clickable(onClick = onPlayPause),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        if (playing) "Pause" else "Listen",
-                        tint = scheme.onPrimary,
-                        modifier = Modifier.size(32.dp),
-                    )
+                    AnimatedContent(
+                        targetState = playing,
+                        transitionSpec = {
+                            (scaleIn(tween(200), initialScale = 0.5f) + fadeIn(tween(200))) togetherWith
+                                (scaleOut(tween(120), targetScale = 0.5f) + fadeOut(tween(120)))
+                        },
+                        label = "playPause",
+                    ) { isPlaying ->
+                        Icon(
+                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            if (isPlaying) "Pause" else "Listen",
+                            tint = scheme.onPrimary,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
                 }
                 Spacer(Modifier.width(10.dp))
                 RoundIconButton(Icons.Filled.SkipNext, "Next page", onNext, enabled = page < pageCount - 1)

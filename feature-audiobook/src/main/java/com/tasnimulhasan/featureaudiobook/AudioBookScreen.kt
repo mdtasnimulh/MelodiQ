@@ -6,12 +6,30 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.delay
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.runtime.key
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -190,7 +208,19 @@ internal fun AudioBookScreen(
     BackHandler(enabled = openShelf != null) { openShelf = null }
 
     val bottomPad = LocalFloatingBarPadding.current + 24.dp
-    val open = openShelf
+    AnimatedContent(
+        targetState = openShelf,
+        transitionSpec = {
+            if (targetState != null) {
+                (slideInHorizontally(tween(320, easing = FastOutSlowInEasing)) { it / 5 } + fadeIn(tween(320))) togetherWith
+                    (slideOutHorizontally(tween(320, easing = FastOutSlowInEasing)) { -it / 6 } + fadeOut(tween(200)))
+            } else {
+                (slideInHorizontally(tween(320, easing = FastOutSlowInEasing)) { -it / 6 } + fadeIn(tween(320))) togetherWith
+                    (slideOutHorizontally(tween(320, easing = FastOutSlowInEasing)) { it / 5 } + fadeOut(tween(200)))
+            }
+        },
+        label = "library",
+    ) { open ->
     if (open != null) {
         val shelf = shelves.firstOrNull { it.id == open }
         ShelfPage(
@@ -227,20 +257,6 @@ internal fun AudioBookScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    // Only once the library has books; the empty state has its own "Add Book" button.
-                    if (books.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .shadow(8.dp, CircleShape)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                                .clickable { onAdd(null) }
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text("Add Book", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
-                        }
-                    }
                 }
             }
 
@@ -269,6 +285,7 @@ internal fun AudioBookScreen(
                     if (mainBooks.isNotEmpty() || shelves.isEmpty()) {
                         item(key = "shelf-main") {
                             ShelfCard(
+                                modifier = Modifier.animateItem().entrance(0),
                                 name = "My Books",
                                 color = ShelfPalette[MAIN_COLOR_INDEX],
                                 books = mainBooks,
@@ -279,8 +296,9 @@ internal fun AudioBookScreen(
                             )
                         }
                     }
-                    items(shelves, key = { "shelf-${it.id}" }) { shelf ->
+                    itemsIndexed(shelves, key = { _, s -> "shelf-${s.id}" }) { index, shelf ->
                         ShelfCard(
+                            modifier = Modifier.animateItem().entrance((minOf(index + 1, 3)) * 80),
                             name = shelf.name,
                             color = ShelfPalette[shelf.colorIndex % ShelfPalette.size],
                             books = books.filter { it.shelfId == shelf.id },
@@ -297,11 +315,12 @@ internal fun AudioBookScreen(
                     item { EmptyState(favouritesTab = tab == 2, readingTab = tab == 1, onAdd = { onAdd(null) }) }
                 } else {
                     items(shown.chunked(3), key = { row -> "row-${row.first().id}" }) { row ->
-                        BookRow(row, progress, covers, onOpen) { sheet = Sheet.BookActions(it) }
+                        BookRow(row, progress, covers, onOpen, Modifier.animateItem()) { sheet = Sheet.BookActions(it) }
                     }
                 }
             }
         }
+    }
     }
 
     // ---- sheets ------------------------------------------------------------------------------
@@ -401,6 +420,7 @@ internal fun AudioBookScreen(
  */
 @Composable
 private fun ShelfCard(
+    modifier: Modifier = Modifier,
     name: String,
     color: Color,
     books: List<Book>,
@@ -422,21 +442,22 @@ private fun ShelfCard(
         slots.filterNotNull()
     }
 
-    Column(Modifier.fillMaxWidth().padding(bottom = 26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.fillMaxWidth().padding(bottom = 26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
                 .height(178.dp)
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onOpen),
+                .pressable(onClick = onOpen),
         ) {
             val coverH = 140.dp
             val coverW = coverH * 0.68f
             val slotsCount = if (arranged.isEmpty()) 3 else arranged.size
-            val reserved = 60.dp // keeps the fan clear of the buttons
-            val area = maxWidth - reserved
+            // Same margin on both sides, so the fan sits exactly in the middle of the card.
+            val area = maxWidth - 40.dp
             val step = if (slotsCount > 1) min(coverW.value * 0.62f, (area - coverW).value / (slotsCount - 1)).dp else 0.dp
             val total = coverW + step * (slotsCount - 1)
-            val startX = (area - total) / 2 + 8.dp
+            val startX = (maxWidth - total) / 2
+            val middleX = (maxWidth - coverW) / 2
             val centre = (slotsCount - 1) / 2f
 
             for (i in 0 until slotsCount) {
@@ -445,24 +466,18 @@ private fun ShelfCard(
                 val w = coverW * scale
                 val h = coverH * scale
                 val book = arranged.getOrNull(i)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .offset(x = startX + step * i + (coverW - w) / 2, y = (-12).dp)
-                        .zIndex(10f - dist * 2f)
-                        .size(w, h)
-                        .shadow(10.dp, RoundedCornerShape(7.dp))
-                        .clip(RoundedCornerShape(7.dp)),
-                ) {
-                    if (book != null) {
-                        BookCover(book = book, covers = covers, modifier = Modifier.fillMaxSize())
-                    } else {
-                        Box(
-                            Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f))
-                        )
-                    }
+                key(i) {
+                    FanCover(
+                        book = book,
+                        covers = covers,
+                        targetX = startX + step * i + (coverW - w) / 2,
+                        middleX = middleX + (coverW - w) / 2,
+                        width = w,
+                        height = h,
+                        tilt = (i - centre) * 3.5f,
+                        z = 10f - dist * 2f,
+                        order = i,
+                    )
                 }
             }
 
@@ -522,6 +537,100 @@ private fun ShelfCard(
             )
         }
     }
+}
+
+/** One cover of a shelf's fan: springs out from the middle into its place, tilting slightly. */
+@Composable
+private fun BoxScope.FanCover(
+    book: Book?,
+    covers: BookCovers,
+    targetX: Dp,
+    middleX: Dp,
+    width: Dp,
+    height: Dp,
+    tilt: Float,
+    z: Float,
+    order: Int,
+) {
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(order * 70L)
+        shown = true
+    }
+    val x by animateDpAsState(
+        if (shown) targetX else middleX,
+        spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow),
+        label = "fanX",
+    )
+    val rotation by animateFloatAsState(
+        if (shown) tilt else 0f,
+        spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow),
+        label = "fanTilt",
+    )
+    val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "fanAlpha")
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .offset(x = x, y = (-12).dp)
+            .zIndex(z)
+            .graphicsLayer {
+                rotationZ = rotation
+                this.alpha = alpha
+            }
+            .size(width, height)
+            .shadow(10.dp, RoundedCornerShape(7.dp))
+            .clip(RoundedCornerShape(7.dp)),
+    ) {
+        if (book != null) {
+            BookCover(book = book, covers = covers, modifier = Modifier.fillMaxSize())
+        } else {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f))
+            )
+        }
+    }
+}
+
+/** Fades and rises into place the first time it is shown, after [delayMillis]. */
+@Composable
+private fun Modifier.entrance(delayMillis: Int = 0): Modifier {
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { progress.animateTo(1f, tween(420, delayMillis, FastOutSlowInEasing)) }
+    return this.graphicsLayer {
+        alpha = progress.value
+        translationY = (1f - progress.value) * 36.dp.toPx()
+    }
+}
+
+/** Tap / long-press with a springy shrink while the finger is down. */
+@Composable
+private fun Modifier.pressable(onClick: () -> Unit, onLongClick: (() -> Unit)? = null): Modifier {
+    var pressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        if (pressed) 0.95f else 1f,
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "press",
+    )
+    val click by rememberUpdatedState(onClick)
+    val longClick by rememberUpdatedState(onLongClick)
+    return this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .pointerInput(Unit) {
+            detectTapGestures(
+                onPress = {
+                    pressed = true
+                    tryAwaitRelease()
+                    pressed = false
+                },
+                onTap = { click() },
+                onLongPress = { longClick?.invoke() },
+            )
+        }
 }
 
 @Composable
@@ -603,7 +712,7 @@ private fun ShelfPage(
             }
         } else {
             items(sorted.chunked(3), key = { row -> "grid-${row.first().id}" }) { row ->
-                BookRow(row, progress, covers, onOpen, onBookMenu)
+                BookRow(row, progress, covers, onOpen, Modifier.animateItem(), onBookMenu)
             }
         }
     }
@@ -628,21 +737,22 @@ private fun BookRow(
     progress: Map<String, Progress>,
     covers: BookCovers,
     onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
     onMenu: (Book) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
+        modifier = modifier.fillMaxWidth().padding(bottom = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        row.forEach { book ->
+        row.forEachIndexed { slot, book ->
             BookTile(
                 book = book,
                 fraction = readFraction(book, progress[book.id]),
                 covers = covers,
                 onOpen = { onOpen(book.id) },
                 onMenu = { onMenu(book) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).entrance(slot * 60),
             )
         }
         repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -665,11 +775,11 @@ private fun BookTile(
     Column(modifier) {
         Box(
             modifier = Modifier
+                .pressable(onClick = onOpen, onLongClick = onMenu)
                 .fillMaxWidth()
                 .aspectRatio(0.68f)
                 .shadow(8.dp, RoundedCornerShape(8.dp))
-                .clip(RoundedCornerShape(8.dp))
-                .combinedClickable(onClick = onOpen, onLongClick = onMenu),
+                .clip(RoundedCornerShape(8.dp)),
         ) {
             BookCover(book = book, covers = covers, modifier = Modifier.fillMaxSize())
             if (book.favourite) {
