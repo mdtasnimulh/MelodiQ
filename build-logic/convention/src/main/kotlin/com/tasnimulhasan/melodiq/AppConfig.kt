@@ -10,5 +10,5 @@ object AppConfig {
     var testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     val compatibilityVersion = JavaVersion.VERSION_21
     const val VERSION_CODE = 2
-    const val VERSION_NAME = "1.1.0"
+    const val VERSION_NAME = "1.1.2"
 }
