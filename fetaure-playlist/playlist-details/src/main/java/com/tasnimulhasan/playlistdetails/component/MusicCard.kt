@@ -65,6 +65,7 @@ fun MusicCard(
     val durationText = remember(duration) { convertLongToReadableDateTime(duration.toLongOrNull() ?: 0L, "mm:ss") }
 
     Card(
+        border = com.tasnimulhasan.designsystem.theme.glassBorder(),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         ),

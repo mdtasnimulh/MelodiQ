@@ -41,6 +41,7 @@ fun PlaylistCard(
     }
 
     Card(
+        border = com.tasnimulhasan.designsystem.theme.glassBorder(),
         modifier = modifier
             .pressFeedback()
             .padding(vertical = 6.dp, horizontal = 16.dp)

@@ -102,12 +102,12 @@ fun MelodiqFloatingNavBar(
 
     val glass = isGlassUi()
     val pillColor = when {
-        glass -> Color.White.copy(alpha = 0.85f)
+        glass -> scheme.surfaceContainerHighest
         isDark -> Color(0xFF2A2A2E)
         else -> Color(0xFF1C1C1E)
     }
-    val activeCircle = Color.White.copy(alpha = if (glass) 0.90f else 0.16f)
-    val inactiveTint = if (glass) Color.Gray.copy(alpha = 0.50f) else Color(0xFF8E8E93)
+    val activeCircle = Color.White.copy(alpha = if (glass) 0.26f else 0.16f)
+    val inactiveTint = if (glass) Color.White.copy(alpha = 0.66f) else Color(0xFF8E8E93)
 
     val hasSelection = selectedIndex in 0 until n
     val selected = selectedIndex.coerceIn(0, n - 1)
@@ -212,7 +212,7 @@ fun MelodiqFloatingNavBar(
                         Icon(
                             imageVector = if (active) item.selectedIcon else item.icon,
                             contentDescription = item.label,
-                            tint = if (active) scheme.primary else inactiveTint,
+                            tint = if (active) Color.White else inactiveTint,
                             modifier = Modifier.size(if (minimized) 22.dp else 26.dp),
                         )
                     }

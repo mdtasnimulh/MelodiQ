@@ -89,6 +89,9 @@ internal fun ColorScheme.toGlass(g: GlassTokens): ColorScheme {
     val accent = g.accent
     val sec = secondary.forGlass()
     val ter = tertiary.forGlass()
+    // Frosted panels: a lilac-tinted fill that is mostly opaque, so text on top of them (and
+    // content scrolling underneath a floating bar) stays readable on any part of the backdrop.
+    fun frost(mix: Float, alpha: Float) = lerp(g.panel, w, mix).copy(alpha = alpha)
     return copy(
         primary = accent,
         onPrimary = Color(0xFF1E1650),
@@ -105,22 +108,22 @@ internal fun ColorScheme.toGlass(g: GlassTokens): ColorScheme {
         onTertiaryContainer = w,
         background = Color.Transparent,
         onBackground = w.copy(alpha = 0.96f),
-        surface = w.copy(alpha = 0.08f),
+        surface = frost(0.07f, 0.74f),
         onSurface = w.copy(alpha = 0.96f),
-        surfaceVariant = w.copy(alpha = 0.12f),
+        surfaceVariant = frost(0.10f, 0.70f),
         onSurfaceVariant = w.copy(alpha = 0.72f),
         surfaceTint = accent,
         inverseSurface = w.copy(alpha = 0.92f),
         inverseOnSurface = Color(0xFF1E1650),
         outline = w.copy(alpha = 0.42f),
         outlineVariant = w.copy(alpha = 0.18f),
-        surfaceBright = w.copy(alpha = 0.20f),
-        surfaceDim = w.copy(alpha = 0.05f),
-        surfaceContainerLowest = w.copy(alpha = 0.04f),
-        surfaceContainerLow = w.copy(alpha = 0.09f),
-        surfaceContainer = w.copy(alpha = 0.12f),
-        surfaceContainerHigh = w.copy(alpha = 0.15f),
-        surfaceContainerHighest = w.copy(alpha = 0.19f),
+        surfaceBright = frost(0.20f, 0.88f),
+        surfaceDim = frost(0.02f, 0.50f),
+        surfaceContainerLowest = frost(0.02f, 0.50f),
+        surfaceContainerLow = frost(0.06f, 0.70f),
+        surfaceContainer = frost(0.09f, 0.80f),
+        surfaceContainerHigh = frost(0.13f, 0.86f),
+        surfaceContainerHighest = frost(0.17f, 0.92f),
     )
 }
 

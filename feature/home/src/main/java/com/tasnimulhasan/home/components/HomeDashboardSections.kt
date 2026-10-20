@@ -56,6 +56,7 @@ fun ListeningStatsHeader(
     albumCount: Int,
 ) {
     Card(
+        border = com.tasnimulhasan.designsystem.theme.glassBorder(),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),

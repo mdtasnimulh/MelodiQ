@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
+import com.tasnimulhasan.designsystem.component.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -71,6 +71,7 @@ fun SharedTransitionScope.MusicCard(
     // Formatting used to allocate a SimpleDateFormat on every recomposition of every row.
     val durationText = remember(duration) { convertLongToReadableDateTime(duration.toLongOrNull() ?: 0L, "mm:ss") }
     Card(
+        border = com.tasnimulhasan.designsystem.theme.glassBorder(),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
         ),

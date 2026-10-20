@@ -126,6 +126,7 @@ private fun AlbumSongRow(
 ) {
     val isSelected = selectedId == songId
     Card(
+        border = com.tasnimulhasan.designsystem.theme.glassBorder(),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
         ),

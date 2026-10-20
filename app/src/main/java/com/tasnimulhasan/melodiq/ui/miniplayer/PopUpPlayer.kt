@@ -110,6 +110,10 @@ fun PopUpPlayer(
                 )
             }
             .clickable { onMiniPlayerClick() },
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = com.tasnimulhasan.designsystem.theme.glassSheetColor(MaterialTheme.colorScheme.surfaceContainerHighest),
+        ),
+        border = com.tasnimulhasan.designsystem.theme.glassBorder(),
     ) {
         ConstraintLayout (
             modifier = Modifier

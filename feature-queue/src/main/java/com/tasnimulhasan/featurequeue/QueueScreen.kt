@@ -165,6 +165,7 @@ private fun QueueRow(
     onMoveDown: () -> Unit,
 ) {
     Card(
+        border = com.tasnimulhasan.designsystem.theme.glassBorder(),
         colors = CardDefaults.cardColors(
             containerColor = if (isCurrent) MaterialTheme.colorScheme.secondaryContainer
             else MaterialTheme.colorScheme.surface
