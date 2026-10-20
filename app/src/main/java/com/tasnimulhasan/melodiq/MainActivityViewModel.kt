@@ -7,6 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.designsystem.theme.fixedSeedColorOrNull
 import com.tasnimulhasan.domain.localusecase.datastore.GetAccentColorUseCase
 import com.tasnimulhasan.domain.localusecase.datastore.GetThemeConfigUseCase
+import com.tasnimulhasan.domain.localusecase.datastore.GetUiStyleUseCase
+import com.tasnimulhasan.designsystem.theme.UiStyleCache
+import com.tasnimulhasan.entity.enums.UiStyle
+import kotlinx.coroutines.flow.onEach
 import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
 import com.tasnimulhasan.melodiq.shortcut.AppShortcuts
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +36,7 @@ import javax.inject.Inject
 class MainActivityViewModel @Inject constructor(
     getThemeConfigUseCase: GetThemeConfigUseCase,
     getAccentColorUseCase: GetAccentColorUseCase,
+    getUiStyleUseCase: GetUiStyleUseCase,
     getPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetPlayerTypeUseCase,
     private val setPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetPlayerTypeUseCase,
     private val playerUseCases: PlayerUseCases,
@@ -42,6 +47,11 @@ class MainActivityViewModel @Inject constructor(
 
     val themeConfig: StateFlow<DarkThemeConfig> = getThemeConfigUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DarkThemeConfig.FOLLOW_SYSTEM)
+
+    /** Default or Glass. Starts from a synchronous copy so a cold start never flashes the wrong look. */
+    val uiStyle: StateFlow<UiStyle> = getUiStyleUseCase()
+        .onEach { UiStyleCache.write(appContext, it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, UiStyleCache.read(appContext))
 
     /** null until the saved choice has been read, so neither UI flashes before the right one. */
     val playerType: StateFlow<com.tasnimulhasan.entity.enums.PlayerType?> = getPlayerTypeUseCase()

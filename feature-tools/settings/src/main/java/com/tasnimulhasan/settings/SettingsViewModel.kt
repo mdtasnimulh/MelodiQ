@@ -59,6 +59,8 @@ class SettingsViewModel @Inject constructor(
     private val setMiniPlayerPositionUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetMiniPlayerPositionUseCase,
     private val getPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetPlayerTypeUseCase,
     private val setPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetPlayerTypeUseCase,
+    private val getUiStyleUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetUiStyleUseCase,
+    private val setUiStyleUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetUiStyleUseCase,
     private val createBackupUseCase: CreateBackupUseCase,
     private val restoreBackupUseCase: RestoreBackupUseCase,
     @ApplicationContext private val context: Context,
@@ -149,6 +151,24 @@ class SettingsViewModel @Inject constructor(
         com.tasnimulhasan.entity.enums.MiniPlayerPosition.BOTTOM_START -> "Bottom left"
         com.tasnimulhasan.entity.enums.MiniPlayerPosition.TOP_END -> "Top right"
         com.tasnimulhasan.entity.enums.MiniPlayerPosition.TOP_START -> "Top left"
+    }
+
+    val uiStyle: StateFlow<com.tasnimulhasan.entity.enums.UiStyle> = getUiStyleUseCase()
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            com.tasnimulhasan.designsystem.theme.UiStyleCache.read(context),
+        )
+
+    fun setUiStyle(style: com.tasnimulhasan.entity.enums.UiStyle) {
+        // The synchronous copy first, so the next launch (and the very next frame) already match.
+        com.tasnimulhasan.designsystem.theme.UiStyleCache.write(context, style)
+        viewModelScope.launch { setUiStyleUseCase(style) }
+    }
+
+    fun uiStyleLabel(style: com.tasnimulhasan.entity.enums.UiStyle): String = when (style) {
+        com.tasnimulhasan.entity.enums.UiStyle.DEFAULT -> "Default (solid)"
+        com.tasnimulhasan.entity.enums.UiStyle.GLASS -> "Glass UI"
     }
 
     val playerType: StateFlow<com.tasnimulhasan.entity.enums.PlayerType> = getPlayerTypeUseCase()

@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.designsystem.component.Icon
+import com.tasnimulhasan.designsystem.theme.glassEdge
+import com.tasnimulhasan.designsystem.theme.isGlassUi
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sin
@@ -106,6 +108,7 @@ internal fun BookDetailsScreen(
     onBack: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val glass = isGlassUi()
     val started = progress.page > 0 || progress.permille > 0
     val currentPage = progress.page.coerceIn(0, (book.pages - 1).coerceAtLeast(0)) + 1
     val fraction by animateFloatAsState(
@@ -217,7 +220,8 @@ internal fun BookDetailsScreen(
                 .height(72.dp)
                 .shadow(12.dp, CircleShape)
                 .clip(CircleShape)
-                .background(Color(0xFF1C1C1E))
+                .background(if (glass) Color.White.copy(alpha = 0.16f) else Color(0xFF1C1C1E))
+                .then(if (glass) Modifier.border(1.dp, glassEdge(), CircleShape) else Modifier)
                 .clickable(onClick = onListen)
                 .padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -233,7 +237,7 @@ internal fun BookDetailsScreen(
                 Text("Listen to this book", color = Color.White, fontWeight = FontWeight.SemiBold)
                 Text(
                     if (started) "Continues from page $currentPage of ${book.pages}" else "Read aloud with a narrator voice",
-                    color = Color(0xFF8E8E93),
+                    color = if (glass) Color.White.copy(alpha = 0.72f) else Color(0xFF8E8E93),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

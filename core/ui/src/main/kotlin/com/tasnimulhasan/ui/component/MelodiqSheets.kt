@@ -23,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import com.tasnimulhasan.designsystem.theme.glassSheetColor
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,7 +63,12 @@ fun MelodiqSheet(
     val dismiss: () -> Unit = {
         scope.launch { state.hide() }.invokeOnCompletion { onDismiss() }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, modifier = modifier) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = state,
+        modifier = modifier,
+        containerColor = glassSheetColor(androidx.compose.material3.BottomSheetDefaults.ContainerColor),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

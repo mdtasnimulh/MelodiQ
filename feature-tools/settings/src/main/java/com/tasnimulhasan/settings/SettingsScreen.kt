@@ -83,6 +83,7 @@ internal fun SettingsRoute(
     val miniPlayerPosition by viewModel.miniPlayerPosition.collectAsStateWithLifecycle()
     val appIcon by viewModel.appIcon.collectAsStateWithLifecycle()
     val playerType by viewModel.playerType.collectAsStateWithLifecycle()
+    val uiStyle by viewModel.uiStyle.collectAsStateWithLifecycle()
 
     // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
     // this app's own playback, not the microphone). Asked for only at the moment the user
@@ -119,6 +120,9 @@ internal fun SettingsRoute(
         playerType = playerType,
         playerTypeLabel = viewModel::playerTypeLabel,
         onPlayerTypeSelected = viewModel::setPlayerType,
+        uiStyle = uiStyle,
+        uiStyleLabel = viewModel::uiStyleLabel,
+        onUiStyleSelected = viewModel::setUiStyle,
         onExportBackup = { exportLauncher.launch("melodiq_backup.json") },
         onImportBackup = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
         sortType = sortType,
@@ -268,10 +272,24 @@ internal fun SettingsScreen(
     playerType: com.tasnimulhasan.entity.enums.PlayerType = com.tasnimulhasan.entity.enums.PlayerType.CLASSIC,
     playerTypeLabel: (com.tasnimulhasan.entity.enums.PlayerType) -> String = { it.name },
     onPlayerTypeSelected: (com.tasnimulhasan.entity.enums.PlayerType) -> Unit = {},
+    uiStyle: com.tasnimulhasan.entity.enums.UiStyle = com.tasnimulhasan.entity.enums.UiStyle.DEFAULT,
+    uiStyleLabel: (com.tasnimulhasan.entity.enums.UiStyle) -> String = { it.name },
+    onUiStyleSelected: (com.tasnimulhasan.entity.enums.UiStyle) -> Unit = {},
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
+        item { SectionHeader("App UI type") }
+        item {
+            UiStylePicker(
+                selected = uiStyle,
+                label = uiStyleLabel,
+                onSelected = onUiStyleSelected,
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
         item { SectionHeader("Player type") }
         item {
             PlayerTypePicker(
@@ -677,6 +695,108 @@ private fun AppIconTile(
     }
 }
 
+
+/** Default (solid) or Glass: two small previews side by side, drawn in code so they never go stale. */
+@Composable
+private fun UiStylePicker(
+    selected: com.tasnimulhasan.entity.enums.UiStyle,
+    label: (com.tasnimulhasan.entity.enums.UiStyle) -> String,
+    onSelected: (com.tasnimulhasan.entity.enums.UiStyle) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        com.tasnimulhasan.entity.enums.UiStyle.entries.forEach { option ->
+            val isSelected = option == selected
+            val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(shape)
+                    .border(
+                        width = if (isSelected) 2.5.dp else 1.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        shape = shape,
+                    )
+                    .selectable(selected = isSelected, onClick = { onSelected(option) })
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                UiStylePreview(
+                    glass = option == com.tasnimulhasan.entity.enums.UiStyle.GLASS,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1.05f),
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    RadioButton(selected = isSelected, onClick = { onSelected(option) })
+                    Text(
+                        text = label(option),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A miniature home screen: solid cards, or frosted cards over a gradient. Fixed colours on purpose. */
+@Composable
+private fun UiStylePreview(glass: Boolean, modifier: Modifier = Modifier) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
+    val bg: androidx.compose.ui.graphics.Brush = if (glass) {
+        androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF5B4BD6), Color(0xFF2B2278), Color(0xFF8A5CE0)))
+    } else {
+        androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF1C1B1F), Color(0xFF1C1B1F)))
+    }
+    val card = if (glass) Color.White.copy(alpha = 0.18f) else Color(0xFF2B2930)
+    val accent = if (glass) Color(0xFFD9CCFF) else Color(0xFFD0BCFF)
+    Column(
+        modifier = modifier.clip(shape).background(bg).padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(accent))
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(10.dp)
+                    .clip(CircleShape)
+                    .background(card)
+                    .then(if (glass) Modifier.border(0.6.dp, Color.White.copy(alpha = 0.5f), CircleShape) else Modifier)
+            )
+        }
+        repeat(3) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(18.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(if (glass) 9.dp else 4.dp))
+                    .background(card)
+                    .then(
+                        if (glass) Modifier.border(0.6.dp, Color.White.copy(alpha = 0.45f), androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
+                        else Modifier
+                    )
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Box(Modifier.size(10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(3.dp)).background(accent.copy(alpha = 0.8f)))
+                Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.55f)))
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        Box(
+            Modifier
+                .align(Alignment.CenterHorizontally)
+                .fillMaxWidth(0.7f)
+                .height(12.dp)
+                .clip(CircleShape)
+                .background(if (glass) Color.White.copy(alpha = 0.22f) else Color(0xFF2A2A2E))
+                .then(if (glass) Modifier.border(0.6.dp, Color.White.copy(alpha = 0.5f), CircleShape) else Modifier)
+        )
+    }
+}
 
 /** Two preview cards side by side so the player can be seen before it is applied. */
 @Composable

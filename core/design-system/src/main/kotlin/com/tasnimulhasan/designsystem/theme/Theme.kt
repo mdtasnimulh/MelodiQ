@@ -2,6 +2,13 @@ package com.tasnimulhasan.designsystem.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import com.tasnimulhasan.entity.enums.UiStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -36,6 +43,8 @@ fun MelodiqTheme(
     // A specific accent seed - either a fixed preset or one extracted live from album art.
     // Null means "use the app's default purple, or Material You if [dynamicColor] is true".
     seedColor: Color? = null,
+    // DEFAULT is the regular solid UI. GLASS re-skins every screen as frosted glass over a gradient.
+    uiStyle: UiStyle = UiStyle.DEFAULT,
     content: @Composable () -> Unit
 ) {
     var colorScheme = when {
@@ -54,9 +63,29 @@ fun MelodiqTheme(
         colorScheme = colorScheme.toAmoledBlack()
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    if (uiStyle == UiStyle.GLASS) {
+        val tokens = remember(colorScheme.primary, darkTheme, amoledBlack) {
+            glassTokens(colorScheme.primary, darkTheme, darkTheme && amoledBlack)
+        }
+        val glassScheme = remember(colorScheme, tokens) { colorScheme.toGlass(tokens) }
+        MaterialTheme(
+            colorScheme = glassScheme,
+            typography = Typography,
+            shapes = GlassShapes,
+        ) {
+            CompositionLocalProvider(
+                LocalGlass provides tokens,
+                LocalContentColor provides glassScheme.onBackground,
+            ) {
+                // Every screen is transparent in Glass mode; this gradient is what they sit on.
+                Box(Modifier.fillMaxSize().glassBackdrop(tokens)) { content() }
+            }
+        }
+    } else {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

@@ -90,7 +90,8 @@ internal fun IpodApp(
     val clickFeedback by viewModel.clickFeedback.collectAsStateWithLifecycle()
     val bodyColor by viewModel.color.collectAsStateWithLifecycle()
     val musicView by viewModel.musicView.collectAsStateWithLifecycle()
-    val theme = remember(bodyColor) { ipodTheme(bodyColor) }
+    val glass = com.tasnimulhasan.designsystem.theme.isGlassUi()
+    val theme = remember(bodyColor, glass) { ipodTheme(bodyColor, glass) }
 
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }

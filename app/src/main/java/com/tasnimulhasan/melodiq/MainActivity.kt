@@ -125,19 +125,31 @@ class MainActivity : ComponentActivity() {
             val amoledBlack = themeConfig == DarkThemeConfig.AMOLED
             val useDynamicColor by mainActivityViewModel.useDynamicColor.collectAsStateWithLifecycle()
             val accentSeedColor by mainActivityViewModel.accentSeedColor.collectAsStateWithLifecycle()
+            val uiStyle by mainActivityViewModel.uiStyle.collectAsStateWithLifecycle()
 
             MelodiqTheme(
                 darkTheme = darkTheme,
                 dynamicColor = useDynamicColor,
                 amoledBlack = amoledBlack,
                 seedColor = accentSeedColor,
+                uiStyle = uiStyle,
             ) {
                 val playerType by mainActivityViewModel.playerType.collectAsStateWithLifecycle()
 
                 // Player A uses the default system-bar handling; the iPod UI (Player B) sets its own
                 // bar icon colours from the chosen body colour (white / black / AMOLED).
-                DisposableEffect(playerType) {
-                    if (playerType != PlayerType.IPOD) enableEdgeToEdge()
+                DisposableEffect(playerType, uiStyle) {
+                    if (playerType != PlayerType.IPOD) {
+                        if (uiStyle == com.tasnimulhasan.entity.enums.UiStyle.GLASS) {
+                            // The glass gradient is always dark/colourful, so the bar icons stay light.
+                            enableEdgeToEdge(
+                                statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+                                navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+                            )
+                        } else {
+                            enableEdgeToEdge()
+                        }
+                    }
                     onDispose { }
                 }
 

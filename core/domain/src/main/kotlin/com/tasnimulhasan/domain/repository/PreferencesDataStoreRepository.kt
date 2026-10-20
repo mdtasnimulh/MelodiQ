@@ -51,6 +51,9 @@ interface PreferencesDataStoreRepository {
     suspend fun savePlayerType(type: com.tasnimulhasan.entity.enums.PlayerType)
     fun getPlayerType(): Flow<com.tasnimulhasan.entity.enums.PlayerType>
 
+    suspend fun saveUiStyle(style: com.tasnimulhasan.entity.enums.UiStyle)
+    fun getUiStyle(): Flow<com.tasnimulhasan.entity.enums.UiStyle>
+
     suspend fun saveMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition)
     fun getMiniPlayerPosition(): Flow<com.tasnimulhasan.entity.enums.MiniPlayerPosition>
 }

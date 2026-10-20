@@ -94,8 +94,6 @@ import kotlin.math.sign
 import com.tasnimulhasan.designsystem.R as Res
 
 internal val SelectionBlue = Brush.verticalGradient(listOf(Color(0xFF4FB2F2), Color(0xFF1C7CD0)))
-private val BarTop = Color(0xFFEDEFF1)
-private val BarBottom = Color(0xFFA7ADB3)
 
 // ─────────────────────────────────────────────────────────────────────────────────────────
 // Display frame: black bezel, title bar with play indicator + battery, white content area
@@ -108,24 +106,25 @@ internal fun IpodDisplay(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val d = LocalIpodTheme.current.display
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF0B0B0C))
+            .background(d.bezel)
             .padding(3.dp),
     ) {
-        Column(Modifier.fillMaxSize().clip(RoundedCornerShape(9.dp)).background(Color.White)) {
+        Column(Modifier.fillMaxSize().clip(RoundedCornerShape(9.dp)).background(d.content)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(28.dp)
-                    .background(Brush.verticalGradient(listOf(BarTop, BarBottom)))
+                    .background(d.barBrush)
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = title,
-                    color = Color.Black,
+                    color = d.barText,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -133,10 +132,10 @@ internal fun IpodDisplay(
                     modifier = Modifier.weight(1f),
                 )
                 if (isPlaying) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Playing", tint = Color(0xFF6E7378), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.PlayArrow, contentDescription = "Playing", tint = d.barIcon, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
                 }
-                BatteryIcon(level = rememberBatteryLevel())
+                BatteryIcon(level = rememberBatteryLevel(), outline = d.barIcon)
             }
             Box(Modifier.weight(1f).fillMaxWidth(), content = content)
         }
@@ -160,17 +159,17 @@ private fun rememberBatteryLevel(): Float {
 }
 
 @Composable
-private fun BatteryIcon(level: Float) {
+private fun BatteryIcon(level: Float, outline: Color) {
     Canvas(Modifier.size(width = 30.dp, height = 14.dp)) {
         val body = Size(size.width - 3.dp.toPx(), size.height)
-        drawRoundRect(Color(0xFF6E7378), size = body, cornerRadius = CornerRadius(2.5.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.2.dp.toPx()))
+        drawRoundRect(outline, size = body, cornerRadius = CornerRadius(2.5.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.2.dp.toPx()))
         drawRoundRect(
             brush = Brush.verticalGradient(listOf(Color(0xFFB4E08A), Color(0xFF5BA02C))),
             topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),
             size = Size((body.width - 4.dp.toPx()) * level.coerceIn(0.05f, 1f), body.height - 4.dp.toPx()),
             cornerRadius = CornerRadius(1.dp.toPx()),
         )
-        drawRoundRect(Color(0xFF6E7378), topLeft = Offset(body.width + 0.5.dp.toPx(), size.height * 0.3f), size = Size(2.dp.toPx(), size.height * 0.4f), cornerRadius = CornerRadius(1.dp.toPx()))
+        drawRoundRect(outline, topLeft = Offset(body.width + 0.5.dp.toPx(), size.height * 0.3f), size = Size(2.dp.toPx(), size.height * 0.4f), cornerRadius = CornerRadius(1.dp.toPx()))
     }
 }
 
@@ -188,7 +187,7 @@ internal fun IpodList(
 ) {
     if (rows.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(emptyText, color = Color(0xFF8A8F94), fontSize = 16.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, modifier = Modifier.padding(24.dp))
+            Text(emptyText, color = LocalIpodTheme.current.display.empty, fontSize = 16.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, modifier = Modifier.padding(24.dp))
         }
         return
     }
@@ -224,14 +223,15 @@ private fun KeepSelectedVisible(state: LazyListState, selected: Int, count: Int)
 
 @Composable
 private fun IpodRowItem(row: IpodRow, selected: Boolean, onClick: () -> Unit) {
-    val textColor = if (selected) Color.White else Color.Black
-    val subColor = if (selected) Color(0xFFE6F2FC) else Color(0xFF7D8287)
+    val d = LocalIpodTheme.current.display
+    val textColor = if (selected) d.textSelected else d.text
+    val subColor = if (selected) d.subSelected else d.sub
     val hasArt = row.art != null
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(if (hasArt) 52.dp else 40.dp)
-            .then(if (selected) Modifier.background(SelectionBlue) else Modifier)
+            .then(if (selected) Modifier.background(d.selection) else Modifier)
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -261,7 +261,7 @@ private fun IpodRowItem(row: IpodRow, selected: Boolean, onClick: () -> Unit) {
             }
         }
         if (row.chevron && selected) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.White, modifier = Modifier.padding(end = 6.dp).size(26.dp))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = d.textSelected, modifier = Modifier.padding(end = 6.dp).size(26.dp))
         }
     }
 }
@@ -292,13 +292,14 @@ private fun coverRequest(context: android.content.Context, art: IpodArt, px: Int
 @Composable
 private fun CoverWithReflection(art: IpodArt?, cover: Dp, coverPx: Int) {
     val placeholder = painterResource(Res.drawable.default_cover)
+    val d = LocalIpodTheme.current.display
     if (art == null) {
-        Box(Modifier.size(cover).background(Color(0xFFD9DCE0)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(cover / 2))
+        Box(Modifier.size(cover).background(d.placeholder), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.MusicNote, contentDescription = null, tint = d.placeholderIcon, modifier = Modifier.size(cover / 2))
         }
         Box(Modifier.size(width = cover, height = cover * 0.4f)) {
-            Box(Modifier.fillMaxSize().background(Color(0xFFD9DCE0)))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color(0xFFF1F2F4)))))
+            Box(Modifier.fillMaxSize().background(d.placeholder))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(d.reflectTop, d.reflectBottom))))
         }
         return
     }
@@ -314,7 +315,7 @@ private fun CoverWithReflection(art: IpodArt?, cover: Dp, coverPx: Int) {
                 modifier = Modifier.requiredSize(cover).align(Alignment.BottomCenter),
             )
         }
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color(0xFFF1F2F4)))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(d.reflectTop, d.reflectBottom))))
     }
 }
 
@@ -339,7 +340,7 @@ internal fun CoverFlowView(
 ) {
     if (items.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(emptyText, color = Color(0xFF8A8F94), fontSize = 16.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, modifier = Modifier.padding(24.dp))
+            Text(emptyText, color = LocalIpodTheme.current.display.empty, fontSize = 16.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, modifier = Modifier.padding(24.dp))
         }
         return
     }
@@ -355,7 +356,7 @@ internal fun CoverFlowView(
     BoxWithConstraints(
         modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color.White, Color(0xFFF1F2F4))))
+            .background(LocalIpodTheme.current.display.flowBg)
             .pointerInput(items.size) {
                 detectTapGestures { tap ->
                     val centreX = size.width / 2f
@@ -434,9 +435,10 @@ internal fun CoverFlowView(
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 5.dp, start = 12.dp, end = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(centre.title, color = Color.Black, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val dc = LocalIpodTheme.current.display
+            Text(centre.title, color = dc.text, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (centre.subtitle != null) {
-                Text(centre.subtitle, color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(centre.subtitle, color = dc.text, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -450,7 +452,8 @@ internal fun IpodMenuPanel(
     onRowTap: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.fillMaxHeight().fillMaxWidth(0.66f).background(Color.White)) {
+    val d = LocalIpodTheme.current.display
+    Box(modifier.fillMaxHeight().fillMaxWidth(0.66f).background(d.menuPanel)) {
         IpodList(entry = entry, rows = rows, emptyText = "", onRowTap = onRowTap)
         Box(
             Modifier
@@ -458,7 +461,7 @@ internal fun IpodMenuPanel(
                 .width(8.dp)
                 .fillMaxHeight()
                 .offset(x = 8.dp)
-                .background(Brush.horizontalGradient(listOf(Color(0x33000000), Color.Transparent)))
+                .background(Brush.horizontalGradient(listOf(d.menuEdge, Color.Transparent)))
         )
     }
 }
@@ -480,9 +483,10 @@ internal fun NowPlayingView(
     onAddToPlaylist: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val d = LocalIpodTheme.current.display
     if (song == null) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Nothing playing", color = Color(0xFF8A8F94), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text("Nothing playing", color = d.empty, fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
         return
     }
@@ -500,7 +504,7 @@ internal fun NowPlayingView(
                         CoverImage(song.toArt(), Modifier.size(side))
                         Box(Modifier.size(width = side, height = side * 0.28f)) {
                             CoverImage(song.toArt(), Modifier.size(side).graphicsLayer { scaleY = -1f })
-                            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color.White))))
+                            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(d.reflectTop, d.nowReflectEnd))))
                         }
                     }
                 }
@@ -508,23 +512,23 @@ internal fun NowPlayingView(
             Column(
                 modifier = Modifier.weight(0.54f).fillMaxHeight().padding(start = 12.dp, top = 6.dp),
             ) {
-                Text(song.songTitle, color = Color.Black, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(song.songTitle, color = d.text, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(4.dp))
-                Text(song.artist, color = Color(0xFF8E9297), fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(song.album, color = Color(0xFF8E9297), fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(song.artist, color = d.artist, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(song.album, color = d.artist, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = if (isFavourite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = "Favourite",
-                        tint = if (isFavourite) Color(0xFFE5365B) else Color(0xFF6E7378),
+                        tint = if (isFavourite) Color(0xFFE5365B) else d.icon,
                         modifier = Modifier.size(34.dp).clip(CircleShape).clickable(onClick = onToggleFavourite).padding(5.dp),
                     )
                     Spacer(Modifier.width(10.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
                         contentDescription = "Add to playlist",
-                        tint = Color(0xFF6E7378),
+                        tint = d.icon,
                         modifier = Modifier.size(34.dp).clip(CircleShape).clickable(onClick = onAddToPlaylist).padding(4.dp),
                     )
                 }
@@ -534,20 +538,20 @@ internal fun NowPlayingView(
         Spacer(Modifier.height(4.dp))
         if (showVolume) {
             Row(Modifier.fillMaxWidth().height(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.VolumeMute, contentDescription = null, tint = Color(0xFF6E7378), modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.VolumeMute, contentDescription = null, tint = d.icon, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Box(Modifier.weight(1f)) { IpodProgressBar(volume, showThumb = false) }
                 Spacer(Modifier.width(6.dp))
-                Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = Color(0xFF6E7378), modifier = Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = d.icon, modifier = Modifier.size(18.dp))
             }
         } else {
             val fraction = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
             Row(Modifier.fillMaxWidth().height(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(formatTime(positionMs), color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(formatTime(positionMs), color = d.text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.weight(1f)) { IpodProgressBar(fraction, showThumb = scrubbing) }
                 Spacer(Modifier.width(8.dp))
-                Text("-" + formatTime((durationMs - positionMs).coerceAtLeast(0)), color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("-" + formatTime((durationMs - positionMs).coerceAtLeast(0)), color = d.text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -555,19 +559,20 @@ internal fun NowPlayingView(
 
 @Composable
 private fun IpodProgressBar(fraction: Float, showThumb: Boolean) {
+    val d = LocalIpodTheme.current.display
     Canvas(Modifier.fillMaxWidth().height(14.dp)) {
         val h = 10.dp.toPx()
         val top = (size.height - h) / 2f
-        drawRoundRect(Color(0xFFEDEEF0), Offset(0f, top), Size(size.width, h), CornerRadius(2.dp.toPx()))
+        drawRoundRect(d.progressTrack, Offset(0f, top), Size(size.width, h), CornerRadius(2.dp.toPx()))
         val w = size.width * fraction.coerceIn(0f, 1f)
         if (w > 0f) {
             drawRoundRect(
-                Brush.verticalGradient(listOf(Color(0xFF8CCBFA), Color(0xFF3A9CE8)), startY = top, endY = top + h),
+                Brush.verticalGradient(listOf(d.progressFillTop, d.progressFillBottom), startY = top, endY = top + h),
                 Offset(0f, top), Size(w, h), CornerRadius(2.dp.toPx()),
             )
         }
         if (showThumb) {
-            drawRoundRect(Color(0xFF1C7CD0), Offset((w - 3.dp.toPx()).coerceAtLeast(0f), 0f), Size(6.dp.toPx(), size.height), CornerRadius(3.dp.toPx()))
+            drawRoundRect(d.thumb, Offset((w - 3.dp.toPx()).coerceAtLeast(0f), 0f), Size(6.dp.toPx(), size.height), CornerRadius(3.dp.toPx()))
         }
     }
 }

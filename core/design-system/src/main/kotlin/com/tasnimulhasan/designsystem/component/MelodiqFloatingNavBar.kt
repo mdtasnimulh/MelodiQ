@@ -47,6 +47,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
+import com.tasnimulhasan.designsystem.theme.glassEdge
+import com.tasnimulhasan.designsystem.theme.isGlassUi
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -98,9 +100,14 @@ fun MelodiqFloatingNavBar(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
-    val pillColor = if (isDark) Color(0xFF2A2A2E) else Color(0xFF1C1C1E)
-    val activeCircle = Color.White.copy(alpha = 0.16f)
-    val inactiveTint = Color(0xFF8E8E93)
+    val glass = isGlassUi()
+    val pillColor = when {
+        glass -> Color.White.copy(alpha = 0.16f)
+        isDark -> Color(0xFF2A2A2E)
+        else -> Color(0xFF1C1C1E)
+    }
+    val activeCircle = Color.White.copy(alpha = if (glass) 0.30f else 0.16f)
+    val inactiveTint = if (glass) Color.White.copy(alpha = 0.66f) else Color(0xFF8E8E93)
 
     val hasSelection = selectedIndex in 0 until n
     val selected = selectedIndex.coerceIn(0, n - 1)
@@ -142,7 +149,10 @@ fun MelodiqFloatingNavBar(
                 .shadow(14.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.35f))
                 .clip(CircleShape)
                 .background(pillColor)
-                .border(0.8.dp, Color.White.copy(alpha = if (isDark) 0.12f else 0.08f), CircleShape)
+                .then(
+                    if (glass) Modifier.border(1.dp, glassEdge(), CircleShape)
+                    else Modifier.border(0.8.dp, Color.White.copy(alpha = if (isDark) 0.12f else 0.08f), CircleShape)
+                )
                 .onSizeChanged { widthPx = it.width }
                 .pointerInput(n, widthPx) {
                     if (widthPx == 0) return@pointerInput

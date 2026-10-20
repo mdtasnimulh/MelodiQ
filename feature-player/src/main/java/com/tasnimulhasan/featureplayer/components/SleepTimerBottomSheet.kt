@@ -34,6 +34,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import com.tasnimulhasan.designsystem.component.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import com.tasnimulhasan.designsystem.theme.glassSheetColor
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -105,7 +106,7 @@ fun SleepTimerBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = glassSheetColor(MaterialTheme.colorScheme.surface),
     ) {
         Column(
             modifier = Modifier

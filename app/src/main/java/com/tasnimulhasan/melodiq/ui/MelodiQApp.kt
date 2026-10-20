@@ -86,6 +86,7 @@ import com.tasnimulhasan.featureplayer.navigation.PlayerRoute
 import com.tasnimulhasan.featurequeue.navigation.QueueRoute
 import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.melodiq.component.CustomDrawer
+import com.tasnimulhasan.designsystem.theme.glassBackdrop
 import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
 import com.tasnimulhasan.melodiq.navigation.MelodiQNavHost
 import com.tasnimulhasan.melodiq.ui.miniplayer.MiniPlayer
@@ -219,6 +220,7 @@ internal fun MmApp(
         }
     }
 
+    val glassTokens = com.tasnimulhasan.designsystem.theme.LocalGlass.current
     Box(
         modifier = Modifier
             .background(MaterialTheme.colorScheme.surface)
@@ -227,7 +229,9 @@ internal fun MmApp(
             .navigationBarsPadding()
             .fillMaxSize()
     ) {
-        CustomDrawer(
+        // Only compose the drawer while it is open or still animating, so it can never show
+        // through a transparent (Glass) page.
+        if (customDrawerState.isOpened() || animatedScale < 0.999f) CustomDrawer(
             onDrawerCloseClick = { customDrawerState = CustomDrawerState.Closed },
             onAboutClick = { appState.navigateToAbout() },
             onFeedBackClick = { appState.navigateToFeedBack() },
@@ -243,6 +247,12 @@ internal fun MmApp(
                     color = Color.Black,
                     alpha = 0.1f,
                     shadowRadius = 50.dp
+                )
+                // Glass screens are transparent: the page carries its own opaque backdrop so the
+                // drawer behind it never shows through.
+                .then(
+                    if (glassTokens != null) Modifier.glassBackdrop(glassTokens)
+                    else Modifier
                 )
                 .clickable(enabled = customDrawerState == CustomDrawerState.Opened) {
                     customDrawerState = CustomDrawerState.Closed

@@ -24,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import com.tasnimulhasan.designsystem.component.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import com.tasnimulhasan.designsystem.theme.glassSheetColor
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,7 +58,10 @@ fun SongActionsSheet(
 ) {
     if (song == null) return
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = glassSheetColor(androidx.compose.material3.BottomSheetDefaults.ContainerColor),
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 text = song.songTitle,
@@ -97,7 +101,10 @@ fun AddToPlaylistSheet(
         if (trimmed.isNotEmpty()) onCreatePlaylist(song, trimmed)
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = glassSheetColor(androidx.compose.material3.BottomSheetDefaults.ContainerColor),
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 text = "Add to playlist",

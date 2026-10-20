@@ -293,6 +293,22 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
             .distinctUntilChanged()
     }
 
+    override suspend fun saveUiStyle(style: com.tasnimulhasan.entity.enums.UiStyle) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.uiStyle] = style.name }
+        }
+    }
+
+    override fun getUiStyle(): Flow<com.tasnimulhasan.entity.enums.UiStyle> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                val name = preferences[PreferencesKeys.uiStyle]
+                com.tasnimulhasan.entity.enums.UiStyle.entries.find { it.name == name }
+                    ?: com.tasnimulhasan.entity.enums.UiStyle.DEFAULT
+            }
+            .distinctUntilChanged()
+    }
+
     override suspend fun saveMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition) {
         tryIt {
             dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.miniPlayerPosition] = position.name }
@@ -312,6 +328,7 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
     private object PreferencesKeys {
         val miniPlayerPosition = stringPreferencesKey("mini_player_position")
         val playerType = stringPreferencesKey("player_type")
+        val uiStyle = stringPreferencesKey("ui_style")
         val eqType = stringPreferencesKey(name = "eq_type")
         val enableEqualizer = booleanPreferencesKey(name = "enable_equalizer")
         val sortType = stringPreferencesKey("sort_type")
