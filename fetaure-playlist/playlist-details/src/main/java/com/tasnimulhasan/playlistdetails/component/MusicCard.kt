@@ -79,7 +79,7 @@ fun MusicCard(
                 onClick = { onMusicClicked.invoke() },
                 onLongClick = { onMusicLongClicked.invoke() }
             ),
-        elevation = CardDefaults.cardElevation(0.dp),
+        elevation = CardDefaults.cardElevation(com.tasnimulhasan.designsystem.theme.glassElevation(0.dp)),
     ) {
         Row(
             Modifier.fillMaxWidth(),

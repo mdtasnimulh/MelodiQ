@@ -49,39 +49,37 @@ internal fun Color.forGlass(): Color = if (luminance() < 0.45f) lerp(this, Color
 
 internal fun glassTokens(primary: Color, dark: Boolean, amoled: Boolean): GlassTokens {
     val accent = primary.forGlass()
-    val deep = lerp(primary, Color.Black, 0.35f)
+    val black = Color.Black
+    // Everything is derived from the selected theme colour, so the backdrop, the nav bar,
+    // the cards and the sheets all follow it when the colour is switched.
     return when {
         dark && amoled -> GlassTokens(
             dark = true, amoled = true, accent = accent,
-            gradient = listOf(Color(0xFF040407), Color(0xFF0A0916), Color(0xFF000000)),
-            glowA = accent.copy(alpha = 0.16f),
-            glowB = Color(0xFF3B82F6).copy(alpha = 0.10f),
-            panel = Color(0xFF16151F),
+            gradient = listOf(lerp(black, primary, 0.10f), lerp(black, primary, 0.16f), lerp(black, primary, 0.06f)),
+            glowA = accent.copy(alpha = 0.18f),
+            glowB = lerp(primary, Color.White, 0.4f).copy(alpha = 0.10f),
+            panel = lerp(black, primary, 0.22f),
         )
         dark -> GlassTokens(
             dark = true, amoled = false, accent = accent,
-            gradient = listOf(
-                lerp(Color(0xFF241B63), deep, 0.22f),
-                lerp(Color(0xFF30248A), deep, 0.28f),
-                lerp(Color(0xFF181241), deep, 0.18f),
-            ),
+            gradient = listOf(lerp(black, primary, 0.42f), lerp(black, primary, 0.56f), lerp(black, primary, 0.34f)),
             glowA = accent.copy(alpha = 0.34f),
-            glowB = Color(0xFF3B82F6).copy(alpha = 0.22f),
-            panel = Color(0xFF2B2570),
+            glowB = lerp(primary, Color.White, 0.45f).copy(alpha = 0.20f),
+            panel = lerp(black, primary, 0.36f),
         )
         else -> GlassTokens(
             dark = false, amoled = false, accent = accent,
-            gradient = listOf(
-                lerp(Color(0xFF6C74EA), primary, 0.18f),
-                lerp(Color(0xFF8B79EC), primary, 0.20f),
-                lerp(Color(0xFFB48CE8), primary, 0.15f),
-            ),
-            glowA = Color.White.copy(alpha = 0.28f),
-            glowB = Color(0xFFFF9AD5).copy(alpha = 0.26f),
-            panel = Color(0xFF5A55C8),
+            gradient = listOf(lerp(black, primary, 0.72f), lerp(black, primary, 0.88f), lerp(black, primary, 0.66f)),
+            glowA = Color.White.copy(alpha = 0.26f),
+            glowB = lerp(primary, Color.White, 0.55f).copy(alpha = 0.28f),
+            panel = lerp(black, primary, 0.62f),
         )
     }
 }
+
+/** Card / surface elevation: flat in Glass mode, because a shadow shows through translucent panels as a dark box. */
+@Composable
+fun glassElevation(default: Dp): Dp = if (LocalGlass.current != null) 0.dp else default
 
 /** The colour scheme of the Glass UI: translucent white surfaces, light text, a bright accent. */
 internal fun ColorScheme.toGlass(g: GlassTokens): ColorScheme {

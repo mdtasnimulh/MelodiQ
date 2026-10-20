@@ -50,7 +50,7 @@ fun PlaylistCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ),
-        elevation = CardDefaults.cardElevation(0.dp),
+        elevation = CardDefaults.cardElevation(com.tasnimulhasan.designsystem.theme.glassElevation(0.dp)),
         onClick = { onPlaylistClicked(playlist.playlist.id, playlist.playlist.playlistName) }
     ) {
         Row(

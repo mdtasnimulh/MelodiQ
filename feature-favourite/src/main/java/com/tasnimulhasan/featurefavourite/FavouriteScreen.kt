@@ -132,7 +132,7 @@ private fun FavouriteSongRow(
             .height(80.dp)
             .padding(vertical = 6.dp, horizontal = 16.dp)
             .combinedClickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(2.dp),
+        elevation = CardDefaults.cardElevation(com.tasnimulhasan.designsystem.theme.glassElevation(2.dp)),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(

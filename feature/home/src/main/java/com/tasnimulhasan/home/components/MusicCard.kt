@@ -87,7 +87,7 @@ fun SharedTransitionScope.MusicCard(
                     onMusicLongClicked.invoke()
                 }
             ),
-        elevation = CardDefaults.cardElevation(2.dp),
+        elevation = CardDefaults.cardElevation(com.tasnimulhasan.designsystem.theme.glassElevation(2.dp)),
     ) {
         Row(
             Modifier.fillMaxWidth(),

@@ -295,7 +295,7 @@ private fun SongCard(
             .height(88.dp)
             .padding(vertical = 6.dp, horizontal = 16.dp)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        elevation = CardDefaults.cardElevation(2.dp),
+        elevation = CardDefaults.cardElevation(com.tasnimulhasan.designsystem.theme.glassElevation(2.dp)),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(

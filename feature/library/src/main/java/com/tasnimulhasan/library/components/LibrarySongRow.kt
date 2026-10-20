@@ -66,7 +66,7 @@ fun LibrarySongRow(
             .height(76.dp)
             .padding(vertical = 4.dp, horizontal = 16.dp)
             .combinedClickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(1.dp),
+        elevation = CardDefaults.cardElevation(com.tasnimulhasan.designsystem.theme.glassElevation(1.dp)),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
