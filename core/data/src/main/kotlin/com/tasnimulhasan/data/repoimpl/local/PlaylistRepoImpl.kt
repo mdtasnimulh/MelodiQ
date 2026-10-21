@@ -19,6 +19,7 @@ class PlaylistRepoImpl @Inject constructor(
     }
 
     override suspend fun deletePlaylist(item: PlaylistEntity) {
+        playlistsDao.deletePlaylistSongs(item.id)
         return playlistsDao.deletePlaylist(item)
     }
 

@@ -121,8 +121,10 @@ internal fun IpodApp(
     // null = dialog closed; otherwise whether the playing song should go into the new playlist.
     var newPlaylistFor by remember { mutableStateOf<Boolean?>(null) }
     val onNewPlaylist = remember { { addCurrent: Boolean -> newPlaylistFor = addCurrent } }
+    var playlistToDelete by remember { mutableStateOf<PlaylistEntity?>(null) }
+    val onDeletePlaylist = remember { { p: PlaylistEntity -> playlistToDelete = p } }
 
-    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp, onNewPlaylist, musicView)
+    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp, onNewPlaylist, onDeletePlaylist, musicView)
     val latestData by rememberUpdatedState(data)
     val latestSwitch by rememberUpdatedState(onSwitchToClassic)
 
@@ -139,6 +141,22 @@ internal fun IpodApp(
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    }
+
+    playlistToDelete?.let { target ->
+        com.tasnimulhasan.ui.component.MelodiqConfirmSheet(
+            title = "Delete playlist?",
+            message = "\"${target.playlistName}\" will be deleted. The songs on your phone are not touched.",
+            confirmLabel = "Delete",
+            destructive = true,
+            icon = Icons.AutoMirrored.Filled.QueueMusic,
+            onConfirm = {
+                viewModel.deletePlaylist(target)
+                // Back to the playlist list; the deleted one is gone from it.
+                viewModel.closeMenu()
+            },
+            onDismiss = { playlistToDelete = null },
+        )
     }
 
     newPlaylistFor?.let { addCurrent ->
@@ -422,6 +440,7 @@ internal class IpodData(
     val onMinimize: () -> Unit,
     val onExit: () -> Unit,
     val onNewPlaylist: (addCurrent: Boolean) -> Unit,
+    val onDeletePlaylist: (PlaylistEntity) -> Unit,
     val musicView: IpodMusicView = IpodMusicView.COVER_FLOW,
 )
 
@@ -569,6 +588,14 @@ internal fun buildRows(
             d.playlists.forEach { p ->
                 add(IpodRow(id = "playlist_${p.id}", title = p.playlistName, onSelect = { vm.openPlaylist(p.id, p.playlistName) }))
             }
+            if (d.playlists.isNotEmpty()) {
+                add(IpodRow("delete_playlist", "Delete Playlist…") { vm.pushMenu(IpodPage.DELETE_PLAYLIST, "Delete Playlist") })
+            }
+        }
+
+        // Pick the playlist to delete; a confirmation sheet follows before anything is removed.
+        IpodPage.DELETE_PLAYLIST -> d.playlists.map { p ->
+            IpodRow(id = "delete_${p.id}", title = p.playlistName, chevron = false, onSelect = { d.onDeletePlaylist(p) })
         }
 
         IpodPage.SETTINGS -> listOf(

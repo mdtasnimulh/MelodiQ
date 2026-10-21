@@ -17,7 +17,7 @@ import com.tasnimulhasan.entity.home.MusicEntity
  */
 internal enum class IpodPage {
     HOME, ALBUMS, ARTISTS, GENRES, FAVOURITES, SONG_LIST, NOW_PLAYING,
-    MAIN, MUSIC, PLAYLISTS, SETTINGS, COLOUR, ADD_TO_PLAYLIST,
+    MAIN, MUSIC, PLAYLISTS, SETTINGS, COLOUR, ADD_TO_PLAYLIST, DELETE_PLAYLIST,
 }
 
 /** How the music pages (Songs, Albums, Artists, Genres, Favourites and their songs) are drawn. */
@@ -28,7 +28,8 @@ internal enum class IpodMusicView(val label: String) {
 
 internal val IpodPage.isMenuPage: Boolean
     get() = this == IpodPage.MAIN || this == IpodPage.MUSIC || this == IpodPage.PLAYLISTS ||
-        this == IpodPage.SETTINGS || this == IpodPage.COLOUR || this == IpodPage.ADD_TO_PLAYLIST
+        this == IpodPage.SETTINGS || this == IpodPage.COLOUR || this == IpodPage.ADD_TO_PLAYLIST ||
+        this == IpodPage.DELETE_PLAYLIST
 
 internal val IpodPage.isCoverFlow: Boolean
     get() = this == IpodPage.HOME || this == IpodPage.ALBUMS || this == IpodPage.ARTISTS ||

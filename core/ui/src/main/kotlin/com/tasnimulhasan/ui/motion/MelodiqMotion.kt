@@ -2,6 +2,7 @@ package com.tasnimulhasan.ui.motion
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -15,6 +16,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +26,8 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 /**
  * One motion language for the whole app, so every screen enters, leaves and reacts to touch
@@ -79,4 +83,32 @@ fun Modifier.pressFeedback(pressedScale: Float = 0.97f): Modifier = composed {
                 pressed = false
             }
         }
+}
+
+
+private val EntranceEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+/**
+ * List / section entrance: the element fades in while rising a little, each one a beat after
+ * the one before it ([index] x [stepMs]), so a screen "builds" itself instead of popping in.
+ * Only the first [maxIndex] items animate; anything further down simply appears, which keeps
+ * scrolling light and never replays the effect for rows that scroll back into view.
+ */
+fun Modifier.entrance(index: Int = 0, stepMs: Int = 45, maxIndex: Int = 10): Modifier = composed {
+    val animate = index <= maxIndex
+    val progress = remember { Animatable(if (animate) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (progress.value < 1f) {
+            delay(index.coerceAtLeast(0) * stepMs.toLong())
+            progress.animateTo(1f, tween(420, easing = EntranceEasing))
+        }
+    }
+    graphicsLayer {
+        val p = progress.value
+        alpha = p
+        translationY = (1f - p) * 28.dp.toPx()
+        val s = 0.96f + 0.04f * p
+        scaleX = s
+        scaleY = s
+    }
 }

@@ -129,6 +129,28 @@ fun HomeSectionHeader(title: String, icon: androidx.compose.ui.graphics.vector.I
     }
 }
 
+/** What a Home section shows while it has nothing yet (nothing played, no favourites). */
+@Composable
+fun HomeSectionPlaceholder(message: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(28.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 // ---------------------------------------------------------------------------------------
 // Recently played / Favorites - horizontal compact tiles
 // ---------------------------------------------------------------------------------------

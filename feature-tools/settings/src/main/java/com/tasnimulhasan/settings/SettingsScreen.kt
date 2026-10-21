@@ -1,5 +1,7 @@
 package com.tasnimulhasan.settings
 
+import com.tasnimulhasan.ui.motion.entrance
+
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -278,7 +280,7 @@ internal fun SettingsScreen(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
 ) {
-    LazyColumn(modifier = modifier.fillMaxWidth()) {
+    LazyColumn(modifier = modifier.entrance(0).fillMaxWidth()) {
         item { SectionHeader("App UI type") }
         item {
             UiStylePicker(

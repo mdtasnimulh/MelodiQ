@@ -1,5 +1,7 @@
 package com.tasnimulhasan.playlists
 
+import com.tasnimulhasan.ui.motion.entrance
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,9 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistWithStats
@@ -98,6 +102,9 @@ internal fun PlaylistsRoute(
                 )
             )
         },
+        onDeletePlaylist = { playlist ->
+            viewModel.action(UiAction.DeletePlaylist(DeletePlaylistUseCase.Params(playlist)))
+        },
         snackBarHostState = snackBarHostState,
         onPlaylistClicked = { id, name -> onPlaylistClicked.invoke(id, name) }
     )
@@ -111,9 +118,11 @@ internal fun PlaylistsScreen(
     isEmpty: Boolean,
     onCreatePlaylist: (String, String) -> Unit,
     onPlaylistClicked: (Int, String) -> Unit,
-    snackBarHostState: SnackbarHostState
+    snackBarHostState: SnackbarHostState,
+    onDeletePlaylist: (PlaylistEntity) -> Unit = {},
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    var playlistToDelete by remember { mutableStateOf<PlaylistEntity?>(null) }
 
     // The create button used to be a FloatingActionButton, which the mini/pop-up player
     // could sit on top of, making it unreachable while music was playing. It now lives in
@@ -129,6 +138,7 @@ internal fun PlaylistsScreen(
         ) {
             Row(
                 modifier = Modifier
+                    .entrance(0)
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -163,11 +173,12 @@ internal fun PlaylistsScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 24.dp + com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding.current),
                         ) {
-                            items(playlists, key = { it.playlist.id }) { playlist ->
+                            itemsIndexed(playlists, key = { _, it -> it.playlist.id }) { index, playlist ->
                                 PlaylistCard(
-                                    modifier = Modifier.animateItem(),
+                                    modifier = Modifier.animateItem().entrance(index),
                                     playlist = playlist,
                                     onPlaylistClicked = onPlaylistClicked,
+                                    onDeleteClicked = { playlistToDelete = playlist.playlist },
                                 )
                             }
                         }
@@ -175,6 +186,18 @@ internal fun PlaylistsScreen(
                 }
             }
         }
+    }
+
+    playlistToDelete?.let { target ->
+        com.tasnimulhasan.ui.component.MelodiqConfirmSheet(
+            title = "Delete playlist?",
+            message = "\"${target.playlistName}\" will be deleted. The songs on your phone are not touched.",
+            confirmLabel = "Delete",
+            destructive = true,
+            icon = Icons.Filled.Delete,
+            onConfirm = { onDeletePlaylist(target) },
+            onDismiss = { playlistToDelete = null },
+        )
     }
 
     if (showDialog) {

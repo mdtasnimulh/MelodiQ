@@ -55,6 +55,7 @@ internal class IpodViewModel @Inject constructor(
     private val insertMusicToPlaylistUseCase: InsertMusicToPlaylistUseCase,
     private val isSongInPlaylistUseCase: IsSongInPlaylistUseCase,
     private val insertPlaylistUseCase: InsertPlaylistUseCase,
+    private val deletePlaylistUseCase: com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -335,6 +336,14 @@ internal class IpodViewModel @Inject constructor(
                 )
             )
             _messages.send("Added to ${playlist.playlistName}")
+        }
+    }
+
+    /** Deletes a playlist (its songs on the phone are untouched) and tells the person. */
+    fun deletePlaylist(playlist: PlaylistEntity) {
+        viewModelScope.launch {
+            deletePlaylistUseCase(com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase.Params(playlist))
+            _messages.send("Playlist \"${playlist.playlistName}\" deleted")
         }
     }
 

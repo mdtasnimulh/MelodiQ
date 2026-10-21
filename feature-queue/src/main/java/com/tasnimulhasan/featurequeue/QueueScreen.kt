@@ -1,5 +1,7 @@
 package com.tasnimulhasan.featurequeue
 
+import com.tasnimulhasan.ui.motion.entrance
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
@@ -131,6 +133,7 @@ internal fun QueueScreen(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             itemsIndexed(items = queue, key = { _, item -> item.songId }) { index, item ->
                 QueueRow(
+                    modifier = Modifier.animateItem().entrance(index),
                     title = item.songTitle,
                     artist = item.artist,
                     songId = item.songId,
@@ -151,6 +154,7 @@ internal fun QueueScreen(
 
 @Composable
 private fun QueueRow(
+    modifier: Modifier = Modifier,
     title: String,
     artist: String,
     songId: Long,
@@ -170,7 +174,7 @@ private fun QueueRow(
             containerColor = if (isCurrent) MaterialTheme.colorScheme.secondaryContainer
             else MaterialTheme.colorScheme.surface
         ),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(72.dp)
             .padding(vertical = 4.dp, horizontal = 16.dp)

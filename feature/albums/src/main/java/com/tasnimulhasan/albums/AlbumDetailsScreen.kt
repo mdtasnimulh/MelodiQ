@@ -1,5 +1,7 @@
 package com.tasnimulhasan.albums
 
+import com.tasnimulhasan.ui.motion.entrance
+
 import android.net.Uri
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -91,8 +93,9 @@ internal fun AlbumDetailsList(
     }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        itemsIndexed(items = songs, key = { _, item -> item.songId }) { _, item ->
+        itemsIndexed(items = songs, key = { _, item -> item.songId }) { index, item ->
             AlbumSongRow(
+                modifier = Modifier.animateItem().entrance(index),
                 path = item.contentUri,
                 title = item.songTitle,
                 artist = item.artist,

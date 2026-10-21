@@ -1,5 +1,7 @@
 package com.tasnimulhasan.songs
 
+import com.tasnimulhasan.ui.motion.entrance
+
 import com.tasnimulhasan.ui.motion.pressFeedback
 
 import android.net.Uri
@@ -197,9 +199,9 @@ internal fun SongsScreen(
         itemsIndexed(
             items = audioList,
             key = { _, item -> item.songId }
-        ) { _, item ->
+        ) { index, item ->
             SongCard(
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem().entrance(index),
                 path = item.contentUri,
                 title = item.songTitle,
                 artist = item.artist,

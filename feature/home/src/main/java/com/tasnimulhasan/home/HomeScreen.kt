@@ -1,5 +1,7 @@
 package com.tasnimulhasan.home
 
+import com.tasnimulhasan.ui.motion.entrance
+
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Context.ACTIVITY_SERVICE
@@ -61,6 +63,7 @@ import com.tasnimulhasan.home.components.HomeEmptyState
 import com.tasnimulhasan.home.components.HomeSectionHeader
 import com.tasnimulhasan.home.components.ListeningStatsHeader
 import com.tasnimulhasan.home.components.MostPlayedRow
+import com.tasnimulhasan.home.components.HomeSectionPlaceholder
 import com.tasnimulhasan.ui.component.AddToPlaylistSheet
 import com.tasnimulhasan.ui.component.SongActionsSheet
 import kotlinx.coroutines.flow.collectLatest
@@ -138,7 +141,8 @@ internal fun SharedTransitionScope.HomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding.current),
             ) {
-                item {
+                item(key = "stats") {
+                    Column(Modifier.entrance(0)) {
                     ListeningStatsHeader(
                         stats = listeningStats,
                         artistCount = artistCount,
@@ -171,11 +175,20 @@ internal fun SharedTransitionScope.HomeScreen(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
+                    }
                 }
 
+                item(key = "recent_header") {
+                  Column(Modifier.entrance(2)) {
+                    HomeSectionHeader("Recently Played", Icons.Filled.History)
+                    if (recentlyPlayed.isEmpty()) {
+                        HomeSectionPlaceholder("Songs you play will show up here.", Icons.Filled.History)
+                        Spacer(Modifier.height(20.dp))
+                    }
+                  }
+                }
                 if (recentlyPlayed.isNotEmpty()) {
                     item {
-                        HomeSectionHeader("Recently Played", Icons.Filled.History)
                         CompactSongRow(
                             items = recentlyPlayed.map { it.first },
                             selectedId = currentSelectedAudio.songId,
@@ -191,10 +204,16 @@ internal fun SharedTransitionScope.HomeScreen(
                     }
                 }
 
-                if (mostPlayed.isNotEmpty()) {
-                    item {
-                        HomeSectionHeader("Most Played", Icons.Filled.TrendingUp)
+                item(key = "most_header") {
+                  Column(Modifier.entrance(3)) {
+                    HomeSectionHeader("Most Played", Icons.Filled.TrendingUp)
+                    if (mostPlayed.isEmpty()) {
+                        HomeSectionPlaceholder("Your most played songs will appear here.", Icons.Filled.TrendingUp)
+                        Spacer(Modifier.height(20.dp))
                     }
+                  }
+                }
+                if (mostPlayed.isNotEmpty()) {
                     items(mostPlayed, key = { "mp_${it.first.songId}" }) { (song, count) ->
                         val rank = mostPlayed.indexOfFirst { it.first.songId == song.songId } + 1
                         MostPlayedRow(
@@ -209,9 +228,17 @@ internal fun SharedTransitionScope.HomeScreen(
                     item { Spacer(Modifier.height(20.dp)) }
                 }
 
+                item(key = "fav_header") {
+                  Column(Modifier.entrance(4)) {
+                    HomeSectionHeader("Favorites", Icons.Filled.Favorite)
+                    if (favoriteSongs.isEmpty()) {
+                        HomeSectionPlaceholder("Tap the heart on a song to add it to your favorites.", Icons.Filled.Favorite)
+                        Spacer(Modifier.height(20.dp))
+                    }
+                  }
+                }
                 if (favoriteSongs.isNotEmpty()) {
                     item {
-                        HomeSectionHeader("Favorites", Icons.Filled.Favorite)
                         CompactSongRow(
                             items = favoriteSongs,
                             selectedId = currentSelectedAudio.songId,

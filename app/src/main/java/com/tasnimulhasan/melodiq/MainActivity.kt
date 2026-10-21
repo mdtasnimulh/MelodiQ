@@ -56,7 +56,6 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.shouldShowRationale
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.tasnimulhasan.common.constant.AppConstants
 import com.tasnimulhasan.designsystem.theme.MelodiqTheme
@@ -99,9 +98,22 @@ class MainActivity : ComponentActivity() {
             }
             // True while Android's own permission dialog is showing (the explanation sheet stays hidden).
             var requesting by remember { mutableStateOf(false) }
-            val permissionsState = rememberMultiplePermissionsState(permissions = requested) { requesting = false }
+            // The rationale / settings views are for AFTER a refusal only. `denied` flips when Android's
+            // dialog actually comes back with "no"; until then (first launch, and while the dialog is on
+            // screen) the person only ever sees the explanation.
+            var denied by rememberSaveable { mutableStateOf(false) }
+            var canAskAgain by rememberSaveable { mutableStateOf(true) }
+            val permissionsState = rememberMultiplePermissionsState(permissions = requested) { result ->
+                requesting = false
+                if (result[audioPermission] == false) {
+                    denied = true
+                    // Read it from the system right now: the Compose permission state can lag a frame behind.
+                    canAskAgain = androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
+                        this@MainActivity, audioPermission,
+                    )
+                }
+            }
             val audioGranted = permissionsState.permissions.firstOrNull { it.permission == audioPermission }?.status?.isGranted == true
-            var askedOnce by rememberSaveable { mutableStateOf(false) }
 
             // First launch shows the intro before anything is asked. People who already granted access
             // (installed before the intro existed) never see it.
@@ -177,19 +189,17 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 } else {
-                    val audioStatus = permissionsState.permissions.first { it.permission == audioPermission }.status
                     // Never ask unprompted: explain first (EXPLAIN), explain again after a refusal
                     // (RATIONALE), and point to Settings once Android won't show its dialog any more.
                     val stage = when {
-                        !askedOnce -> PermissionStage.EXPLAIN
-                        audioStatus.shouldShowRationale -> PermissionStage.RATIONALE
+                        !denied -> PermissionStage.EXPLAIN
+                        canAskAgain -> PermissionStage.RATIONALE
                         else -> PermissionStage.SETTINGS
                     }
                     PermissionScreen(
                         stage = stage,
                         requesting = requesting,
                         onRequest = {
-                            askedOnce = true
                             requesting = true
                             permissionsState.launchMultiplePermissionRequest()
                         },

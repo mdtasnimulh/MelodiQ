@@ -21,6 +21,10 @@ interface PlaylistsDao {
     @Delete
     suspend fun deletePlaylist(item: PlaylistEntity)
 
+    /** The songs saved in a playlist; removed together with it so they can never reappear in a later playlist. */
+    @Query("DELETE FROM playlist_details_table WHERE playlistId = :playlistId")
+    suspend fun deletePlaylistSongs(playlistId: Int)
+
     /** Backup/restore: one-shot reads and an insert that returns the new row id. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylistReturningId(item: PlaylistEntity): Long

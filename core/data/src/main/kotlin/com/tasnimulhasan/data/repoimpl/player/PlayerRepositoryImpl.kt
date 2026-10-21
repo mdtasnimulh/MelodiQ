@@ -97,6 +97,10 @@ class PlayerRepositoryImpl @Inject constructor(
             serviceHandler.currentIndex.collect { index ->
                 _currentIndex.value = index
                 persistCurrentPlaybackPosition()
+                // The queue is also loaded on a fresh install (index 0) before anything was played.
+                // Only count plays of a song the person actually started or resumed, otherwise
+                // the first song of the list lands in Recently / Most played by itself.
+                if (!_sessionActive.value) return@collect
                 _activeQueue.value.getOrNull(index)?.let { song ->
                     // Best-effort - a play is logged whenever the current item changes.
                     // Doesn't attempt to distinguish "listened to the whole thing" from "skipped

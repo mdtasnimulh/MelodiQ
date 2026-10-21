@@ -1,5 +1,7 @@
 package com.tasnimulhasan.featurefavourite
 
+import com.tasnimulhasan.ui.motion.entrance
+
 import android.net.Uri
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -92,8 +94,9 @@ internal fun FavouriteScreen(
         itemsIndexed(
             items = favouriteSongs,
             key = { _, item -> item.songId }
-        ) { _, item ->
+        ) { index, item ->
             FavouriteSongRow(
+                modifier = Modifier.animateItem().entrance(index),
                 path = item.contentUri,
                 title = item.songTitle,
                 artist = item.artist,

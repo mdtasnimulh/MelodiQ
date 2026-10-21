@@ -1,5 +1,7 @@
 package com.tasnimulhasan.playlistdetails
 
+import com.tasnimulhasan.ui.motion.entrance
+
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -143,7 +145,7 @@ internal fun PlaylistDetailsScreen(
                             key = { _, item -> item.songId }
                         ) { index, item ->
                             MusicCard(
-                                modifier = Modifier.animateItem(),
+                                modifier = Modifier.animateItem().entrance(index),
                                 contentUri = item.contentUri.toUri(),
                                 albumId = item.albumId,
                                 title = item.songTitle,
