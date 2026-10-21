@@ -21,6 +21,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import com.tasnimulhasan.ui.reorder.dragItem
+import com.tasnimulhasan.ui.reorder.dragReorder
+import com.tasnimulhasan.ui.reorder.rememberDragReorderState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -63,6 +69,17 @@ internal fun QueueScreen(
 ) {
     val queue by viewModel.queue.collectAsStateWithLifecycle()
     val current by viewModel.currentSelectedAudio.collectAsStateWithLifecycle()
+
+    // Press and hold a row, then drag it to a new place. The list is rearranged here while the
+    // finger moves and handed to the player once, when it lifts.
+    var shown by remember { mutableStateOf(queue) }
+    val listState = rememberLazyListState()
+    val reorder = rememberDragReorderState(
+        listState = listState,
+        onSwap = { from, to -> shown = shown.toMutableList().apply { add(to, removeAt(from)) } },
+        onDrop = { from, to -> viewModel.move(from, to) },
+    )
+    LaunchedEffect(queue) { if (!reorder.isDragging) shown = queue }
 
     // Same drag-down-to-dismiss physics as the Player and Lyrics screens.
     val density = LocalDensity.current
@@ -130,10 +147,16 @@ internal fun QueueScreen(
             TextButton(onClick = { viewModel.clear() }) { Text("Clear") }
         }
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            itemsIndexed(items = queue, key = { _, item -> item.songId }) { index, item ->
+        LazyColumn(
+            state = listState,
+            userScrollEnabled = !reorder.isDragging,
+            modifier = Modifier.fillMaxSize().dragReorder(reorder),
+        ) {
+            itemsIndexed(items = shown, key = { _, item -> item.songId }) { index, item ->
                 QueueRow(
-                    modifier = Modifier.animateItem().entrance(index),
+                    modifier = (if (reorder.draggingKey == item.songId) Modifier else Modifier.animateItem())
+                        .dragItem(reorder, item.songId)
+                        .entrance(index),
                     title = item.songTitle,
                     artist = item.artist,
                     songId = item.songId,
@@ -141,7 +164,7 @@ internal fun QueueScreen(
                     contentUri = item.contentUri,
                     isCurrent = item.songId == current.songId,
                     canMoveUp = index > 0,
-                    canMoveDown = index < queue.lastIndex,
+                    canMoveDown = index < shown.lastIndex,
                     onClick = { viewModel.playAt(index) },
                     onRemove = { viewModel.removeAt(index) },
                     onMoveUp = { viewModel.move(index, index - 1) },

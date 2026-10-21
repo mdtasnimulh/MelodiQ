@@ -90,10 +90,10 @@ fun NavGraphBuilder.libraryScreens(
     }
 
     composable<ArtistDetailsNavRoute>(
-        enterTransition = { MelodiqMotion.fadeEnter() },
-        exitTransition = { MelodiqMotion.fadeExit() },
-        popEnterTransition = { MelodiqMotion.fadeEnter() },
-        popExitTransition = { MelodiqMotion.fadeExit() }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         ArtistDetailsRoute(navigateToPlayer = navigateToPlayer)
     }
@@ -108,10 +108,10 @@ fun NavGraphBuilder.libraryScreens(
     }
 
     composable<GenreDetailsNavRoute>(
-        enterTransition = { MelodiqMotion.fadeEnter() },
-        exitTransition = { MelodiqMotion.fadeExit() },
-        popEnterTransition = { MelodiqMotion.fadeEnter() },
-        popExitTransition = { MelodiqMotion.fadeExit() }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         GenreDetailsRoute(navigateToPlayer = navigateToPlayer)
     }
@@ -126,10 +126,10 @@ fun NavGraphBuilder.libraryScreens(
     }
 
     composable<SearchNavRoute>(
-        enterTransition = { MelodiqMotion.fadeEnter() },
-        exitTransition = { MelodiqMotion.fadeExit() },
-        popEnterTransition = { MelodiqMotion.fadeEnter() },
-        popExitTransition = { MelodiqMotion.fadeExit() }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         SearchRoute(navigateToPlayer = navigateToPlayer)
     }

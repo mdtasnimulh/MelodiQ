@@ -64,6 +64,7 @@ class PlayerRepositoryImpl @Inject constructor(
     // playing a playlist track would look up the wrong song using an index that's only
     // valid within that smaller queue.
     private val _activeQueue = MutableStateFlow<List<MusicEntity>>(emptyList())
+    override val activeQueue: StateFlow<List<MusicEntity>> = _activeQueue.asStateFlow()
 
     private val _currentIndex = MutableStateFlow(-1)
 
@@ -302,6 +303,12 @@ class PlayerRepositoryImpl @Inject constructor(
     override suspend fun moveQueueItem(from: Int, to: Int) {
         serviceHandler.moveQueueItem(from, to)
         _activeQueue.value = serviceHandler.audioList.value
+    }
+
+    override suspend fun playQueueIndex(index: Int) {
+        if (index !in 0 until _activeQueue.value.size) return
+        _sessionActive.value = true
+        serviceHandler.onPlayerEvents(MelodiqPlayerEvent.SelectAudioChange, selectedAudionIndex = index)
     }
 
     override suspend fun clearQueue() {

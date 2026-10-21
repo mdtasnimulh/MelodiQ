@@ -4,6 +4,8 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -35,27 +37,33 @@ import kotlinx.coroutines.delay
  */
 object MelodiqMotion {
     private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-    private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 1f, 1f)
 
-    /** Moving deeper (list -> details): new screen slides in a short way and fades up. */
+    /**
+     * Page turn, like frosted glass: going forward, the screen you leave drifts half a screen to
+     * the left while it fades out, and the new one fades in while drifting in from the right.
+     * Going back plays the same thing mirrored. The two fades overlap, so one page dissolves
+     * into the other instead of one covering the other.
+     */
     fun pushEnter(): EnterTransition =
-        slideInHorizontally(tween(380, easing = Emphasized)) { it / 5 } + fadeIn(tween(300))
+        slideInHorizontally(tween(440, easing = Emphasized)) { it / 2 } +
+            fadeIn(tween(360, delayMillis = 70, easing = LinearOutSlowInEasing))
 
-    /** The screen being covered drifts away a little and fades. */
     fun pushExit(): ExitTransition =
-        slideOutHorizontally(tween(300, easing = EmphasizedAccelerate)) { -it / 6 } + fadeOut(tween(180))
+        slideOutHorizontally(tween(440, easing = Emphasized)) { -it / 2 } +
+            fadeOut(tween(260, easing = FastOutLinearInEasing))
 
     fun popEnter(): EnterTransition =
-        slideInHorizontally(tween(380, easing = Emphasized)) { -it / 6 } + fadeIn(tween(300))
+        slideInHorizontally(tween(440, easing = Emphasized)) { -it / 2 } +
+            fadeIn(tween(360, delayMillis = 70, easing = LinearOutSlowInEasing))
 
     fun popExit(): ExitTransition =
-        slideOutHorizontally(tween(300, easing = EmphasizedAccelerate)) { it / 5 } + fadeOut(tween(180))
+        slideOutHorizontally(tween(440, easing = Emphasized)) { it / 2 } +
+            fadeOut(tween(260, easing = FastOutLinearInEasing))
 
-    /** Same-level switches (search, tabs): fade with a slight scale-up. */
-    fun fadeEnter(): EnterTransition =
-        fadeIn(tween(260)) + scaleIn(tween(260, easing = Emphasized), initialScale = 0.96f)
+    /** Kept for screens that still ask for a "same level" switch: they use the same page turn. */
+    fun fadeEnter(): EnterTransition = pushEnter()
 
-    fun fadeExit(): ExitTransition = fadeOut(tween(160))
+    fun fadeExit(): ExitTransition = pushExit()
 }
 
 /**

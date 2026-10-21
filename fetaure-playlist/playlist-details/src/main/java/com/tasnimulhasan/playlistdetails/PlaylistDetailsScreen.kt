@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import com.tasnimulhasan.ui.reorder.dragItem
+import com.tasnimulhasan.ui.reorder.dragReorder
+import com.tasnimulhasan.ui.reorder.rememberDragReorderState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.FilledIconButton
@@ -29,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +66,16 @@ internal fun PlaylistDetailsScreen(
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
+    // Press and hold a song, then drag it up or down to change its place. The list is rearranged
+    // here while the finger moves and saved once when it lifts.
+    var shown by remember { mutableStateOf<List<PlaylistDetailsEntity>>(emptyList()) }
+    val reorder = rememberDragReorderState(
+        listState = listState,
+        onSwap = { from, to -> shown = shown.toMutableList().apply { add(to, removeAt(from)) } },
+        onDrop = { _, _ -> viewModel.action(UiAction.ReorderPlaylist(shown)) },
+    )
+    LaunchedEffect(musicList.value) { if (!reorder.isDragging) shown = musicList.value }
+
     LaunchedEffect(Unit) {
         viewModel.action(UiAction.FetchMusicList(GetAllMusicFromPlaylistUseCase.Params(playlistId)))
     }
@@ -90,8 +104,8 @@ internal fun PlaylistDetailsScreen(
     // Built once per list emission and handed straight to playCuratedQueue: this is the
     // ENTIRE player queue for this screen, containing only the songs in this playlist - not
     // the full library. Next/Previous can therefore only ever move within these songs.
-    val musicListForPlay = remember(musicList.value) {
-        musicList.value.map { item ->
+    val musicListForPlay = remember(shown) {
+        shown.map { item ->
             MusicEntity(
                 contentUri = item.contentUri.toUri(),
                 songId = item.songId,
@@ -137,15 +151,18 @@ internal fun PlaylistDetailsScreen(
 
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        state = listState
+                        modifier = Modifier.fillMaxSize().dragReorder(reorder),
+                        state = listState,
+                        userScrollEnabled = !reorder.isDragging,
                     ) {
                         itemsIndexed(
-                            items = musicList.value,
+                            items = shown,
                             key = { _, item -> item.songId }
                         ) { index, item ->
                             MusicCard(
-                                modifier = Modifier.animateItem().entrance(index),
+                                modifier = (if (reorder.draggingKey == item.songId) Modifier else Modifier.animateItem())
+                                    .dragItem(reorder, item.songId)
+                                    .entrance(index),
                                 contentUri = item.contentUri.toUri(),
                                 albumId = item.albumId,
                                 title = item.songTitle,
@@ -160,11 +177,11 @@ internal fun PlaylistDetailsScreen(
                                     viewModel.playFromPlaylist(musicListForPlay, index)
                                     navigateToPlayer(item.songId.toString())
                                 },
-                                onMusicLongClicked = {
-                                    viewModel.action(UiAction.RemoveFromPlaylist(item))
-                                },
                                 onFavouriteIconClicked = {
                                     viewModel.action(UiAction.ToggleFavorite(item.songId))
+                                },
+                                onRemoveClicked = {
+                                    viewModel.action(UiAction.RemoveFromPlaylist(item))
                                 },
                             )
                         }

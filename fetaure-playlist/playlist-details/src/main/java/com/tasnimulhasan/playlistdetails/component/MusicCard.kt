@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
@@ -55,8 +56,9 @@ fun MusicCard(
     isPlaying: Boolean,
     isFavourite: Boolean,
     onMusicClicked: () -> Unit,
-    onMusicLongClicked: () -> Unit,
+    onMusicLongClicked: (() -> Unit)? = null,
     onFavouriteIconClicked: () -> Unit,
+    onRemoveClicked: (() -> Unit)? = null,
 ) {
     val isSelected = selectedId == songId
     // Uses MaterialTheme.colorScheme (primaryContainer/onPrimaryContainer) instead of fixed
@@ -77,7 +79,8 @@ fun MusicCard(
             .padding(vertical = 6.dp, horizontal = 16.dp)
             .combinedClickable(
                 onClick = { onMusicClicked.invoke() },
-                onLongClick = { onMusicLongClicked.invoke() }
+                // null = no long-press action here, so the list can use it to start a drag.
+                onLongClick = onMusicLongClicked,
             ),
         elevation = CardDefaults.cardElevation(com.tasnimulhasan.designsystem.theme.glassElevation(0.dp)),
     ) {
@@ -139,6 +142,19 @@ fun MusicCard(
                     contentDescription = "Favourite",
                     tint = if (isFavourite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            if (onRemoveClicked != null) {
+                IconButton(
+                    onClick = onRemoveClicked,
+                    modifier = Modifier.padding(end = 4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove from playlist",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

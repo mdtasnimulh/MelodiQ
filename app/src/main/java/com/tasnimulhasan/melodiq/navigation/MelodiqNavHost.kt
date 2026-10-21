@@ -1,9 +1,7 @@
 package com.tasnimulhasan.melodiq.navigation
 
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import com.tasnimulhasan.ui.motion.MelodiqMotion
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import com.tasnimulhasan.albums.navigation.albumDetailsScreen
@@ -31,7 +29,6 @@ import com.tasnimulhasan.settings.navigation.settingsScreen
 import com.tasnimulhasan.songdetails.navigation.navigateToSongDetails
 import com.tasnimulhasan.songdetails.navigation.songDetailsScreen
 import com.tasnimulhasan.songs.navigation.songsScreen
-import com.tasnimulhasan.designsystem.theme.isGlassUi
 
 @Composable
 fun MelodiQNavHost(
@@ -44,19 +41,16 @@ fun MelodiQNavHost(
     navigateBack: () -> Unit,
 ) {
     val navController = appState.navController
-    // Glass screens are transparent, so the default cross-slide would show two screens through
-    // each other. In Glass mode use a short fade-through instead; the solid UI keeps the defaults.
-    val glass = isGlassUi()
-    val glassOut = fadeOut(tween(90))
-    val glassIn = fadeIn(tween(210, delayMillis = 90))
+    // Every screen without its own transition turns the page the same way (see MelodiqMotion):
+    // the old one fades out to the left, the new one fades in from the right; back is mirrored.
     NavHost(
         navController = navController,
         startDestination = HomeRoute,
         modifier = modifier,
-        enterTransition = if (glass) ({ glassIn }) else ({ androidx.compose.animation.fadeIn(tween(700)) }),
-        exitTransition = if (glass) ({ glassOut }) else ({ androidx.compose.animation.fadeOut(tween(700)) }),
-        popEnterTransition = if (glass) ({ glassIn }) else ({ androidx.compose.animation.fadeIn(tween(700)) }),
-        popExitTransition = if (glass) ({ glassOut }) else ({ androidx.compose.animation.fadeOut(tween(700)) }),
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() },
     ) {
         homeScreen(
             navigateToPlayer = navigateToPlayer,

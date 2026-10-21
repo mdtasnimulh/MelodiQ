@@ -24,6 +24,10 @@ class MoveQueueItemUseCase @Inject constructor(private val repo: PlayerRepositor
     suspend operator fun invoke(from: Int, to: Int) = repo.moveQueueItem(from, to)
 }
 
+class PlayQueueIndexUseCase @Inject constructor(private val repo: PlayerRepository) {
+    suspend operator fun invoke(index: Int) = repo.playQueueIndex(index)
+}
+
 class ClearQueueUseCase @Inject constructor(private val repo: PlayerRepository) {
     suspend operator fun invoke() = repo.clearQueue()
 }

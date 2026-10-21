@@ -45,10 +45,10 @@ fun NavGraphBuilder.albumDetailsScreen(
     navigateToPlayer: (musicId: String) -> Unit,
 ) {
     composable<AlbumDetailsRoute>(
-        enterTransition = { MelodiqMotion.fadeEnter() },
-        exitTransition = { MelodiqMotion.fadeExit() },
-        popEnterTransition = { MelodiqMotion.fadeEnter() },
-        popExitTransition = { MelodiqMotion.fadeExit() }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         AlbumDetailsScreen(navigateToPlayer = navigateToPlayer)
     }

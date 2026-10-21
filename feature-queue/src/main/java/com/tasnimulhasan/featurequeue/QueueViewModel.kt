@@ -16,6 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class QueueViewModel @Inject constructor(
     private val playerUseCases: PlayerUseCases,
+    private val playQueueIndex: com.tasnimulhasan.domain.localusecase.player.PlayQueueIndexUseCase,
 ) : BaseViewModel() {
 
     private val dummyAudio = MusicEntity(
@@ -29,7 +30,9 @@ class QueueViewModel @Inject constructor(
         album = ""
     )
 
-    val queue: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList()
+    // The queue actually loaded in the player. It used to read the browsable library list, which
+    // never changed when an entry was removed or moved, so Remove and Move looked like they did nothing.
+    val queue: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList.queue()
 
     val currentSelectedAudio: StateFlow<MusicEntity> = playerUseCases.observeCurrentSelectedAudio()
         .map { it ?: dummyAudio }
@@ -37,7 +40,7 @@ class QueueViewModel @Inject constructor(
 
     val isPlaying: StateFlow<Boolean> = playerUseCases.observeIsPlaying()
 
-    fun playAt(index: Int) = viewModelScope.launch { playerUseCases.selectAudioChange(index) }
+    fun playAt(index: Int) = viewModelScope.launch { playQueueIndex(index) }
 
     fun removeAt(index: Int) = viewModelScope.launch { playerUseCases.removeFromQueue(index) }
 

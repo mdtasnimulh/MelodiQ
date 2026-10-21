@@ -22,10 +22,10 @@ fun NavController.navigateToEqualizer(navOptions: NavOptionsBuilder.() -> Unit =
 
 fun NavGraphBuilder.equalizerScreen() {
     composable<EqualizerRoute>(
-        enterTransition = { MelodiqMotion.fadeEnter() },
-        exitTransition = { MelodiqMotion.fadeExit() },
-        popEnterTransition = { MelodiqMotion.fadeEnter() },
-        popExitTransition = { MelodiqMotion.fadeExit() }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         EqualizerScreen()
     }

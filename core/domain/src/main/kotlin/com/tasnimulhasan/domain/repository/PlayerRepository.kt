@@ -13,6 +13,9 @@ interface PlayerRepository {
     // into its own copy - that duplication was the root cause of the mini/full player
     // showing different songs after a sort change or library update.
     val audioList: StateFlow<List<MusicEntity>>
+
+    /** What is actually loaded into the player (the library, or a playlist) - the queue screen shows this, edits included. */
+    val activeQueue: StateFlow<List<MusicEntity>>
     val currentSelectedAudio: StateFlow<MusicEntity?>
     val isPlaying: StateFlow<Boolean>
 
@@ -31,6 +34,9 @@ interface PlayerRepository {
     suspend fun addToQueue(songs: List<MusicEntity>)
     suspend fun removeFromQueue(index: Int)
     suspend fun moveQueueItem(from: Int, to: Int)
+
+    /** Plays the entry at [index] of the queue exactly as loaded in the player (not a library index). */
+    suspend fun playQueueIndex(index: Int)
     suspend fun clearQueue()
 
     // --- Playback tuning ---

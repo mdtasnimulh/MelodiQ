@@ -14,4 +14,7 @@ class ObserveAudioListUseCase @Inject constructor(
     private val repository: PlayerRepository
 ) {
     operator fun invoke(): StateFlow<List<MusicEntity>> = repository.audioList
+
+    /** The queue as loaded in the player (follows removals, moves and playlists). */
+    fun queue(): StateFlow<List<MusicEntity>> = repository.activeQueue
 }
