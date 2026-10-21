@@ -450,8 +450,8 @@ internal fun VisualizerPreview(style: VisualizerStyle) {
     PreviewPanel(
         caption = when (style) {
             VisualizerStyle.OFF -> "Off: nothing is drawn and no extra permission is used."
-            VisualizerStyle.BARS -> "Bars move with the music on the player."
-            VisualizerStyle.WAVEFORM -> "A flowing waveform moves with the music."
+            VisualizerStyle.BARS -> "Bars move with the music on the player. With Circle cover art they wrap around the cover."
+            VisualizerStyle.WAVEFORM -> "A flowing waveform moves with the music. With Circle cover art it flows around the cover."
             VisualizerStyle.CIRCULAR -> "A ring of bars pulses around a round cover (needs Circle cover art)."
         },
     ) {

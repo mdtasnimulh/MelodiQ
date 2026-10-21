@@ -214,7 +214,8 @@ internal fun SharedTransitionScope.PlayerScreen(
     val visualizerStyle by viewModel.visualizerStyle.collectAsStateWithLifecycle()
     val isFull = coverArtStyle == CoverArtStyle.FULL
     val isCircle = coverArtStyle == CoverArtStyle.CIRCLE
-    val ringVisualizer = isCircle && visualizerStyle == VisualizerStyle.CIRCULAR
+    // On round cover art every style (bars, waveform, circular) wraps around the cover.
+    val ringVisualizer = isCircle && visualizerStyle != VisualizerStyle.OFF
     // In Full mode the controls sit on a dark translucent panel, where the (dark) palette
     // color would vanish - so the accent flips to white with dark content on top of it.
     val accent = if (isFull) Color.White else Color(darkPaletteColor)
@@ -534,7 +535,7 @@ internal fun SharedTransitionScope.PlayerScreen(
                 )
             }
 
-            PlayerVisualizerStrip(viewModel)
+            PlayerVisualizerStrip(viewModel, circleCover = isCircle)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -885,11 +886,12 @@ private fun formatSleepRemaining(millis: Long): String {
 /** Collects the ~20fps bar data in its own scope, so only this strip recomposes per frame -
  * not the whole player screen around it. Renders nothing when the style is OFF. */
 @Composable
-private fun PlayerVisualizerStrip(viewModel: PlayerViewModel) {
+private fun PlayerVisualizerStrip(viewModel: PlayerViewModel, circleCover: Boolean) {
     val style by viewModel.visualizerStyle.collectAsStateWithLifecycle()
     // OFF draws nothing; CIRCULAR is drawn as a ring around the (round) cover art instead of
     // as a strip, so the strip stays out of its way.
-    if (style == com.tasnimulhasan.entity.enums.VisualizerStyle.OFF ||
+    if (circleCover ||
+        style == com.tasnimulhasan.entity.enums.VisualizerStyle.OFF ||
         style == com.tasnimulhasan.entity.enums.VisualizerStyle.CIRCULAR
     ) return
     val bars by viewModel.visualizerBars.collectAsStateWithLifecycle()
@@ -908,9 +910,11 @@ private fun PlayerVisualizerStrip(viewModel: PlayerViewModel) {
 @Composable
 private fun PlayerVisualizerRing(viewModel: PlayerViewModel, modifier: Modifier) {
     val bars by viewModel.visualizerBars.collectAsStateWithLifecycle()
+    val style by viewModel.visualizerStyle.collectAsStateWithLifecycle()
     com.tasnimulhasan.ui.visualizer.AudioVisualizer(
         bars = bars,
-        style = com.tasnimulhasan.entity.enums.VisualizerStyle.CIRCULAR,
+        style = style,
         modifier = modifier,
+        ring = true,
     )
 }
