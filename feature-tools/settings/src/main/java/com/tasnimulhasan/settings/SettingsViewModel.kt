@@ -24,6 +24,7 @@ import com.tasnimulhasan.entity.enums.DarkThemeConfig
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.enums.VisualizerStyle
 import android.content.Context
+import androidx.compose.ui.graphics.toArgb
 import com.tasnimulhasan.domain.localusecase.backup.CreateBackupUseCase
 import com.tasnimulhasan.domain.localusecase.backup.RestoreBackupUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -222,12 +223,12 @@ class SettingsViewModel @Inject constructor(
     /** Picks a swatch: stores the style + seed and switches the accent over to the custom palette. */
     fun setCustomPalette(style: com.tasnimulhasan.entity.enums.PaletteStyle, seed: androidx.compose.ui.graphics.Color) {
         viewModelScope.launch {
-            setCustomPaletteUseCase(com.tasnimulhasan.entity.enums.PaletteChoice(style, androidx.compose.ui.graphics.toArgb(seed)))
+            setCustomPaletteUseCase(com.tasnimulhasan.entity.enums.PaletteChoice(style, seed.toArgb()))
             setAccentColorUseCase(AccentColorOption.CUSTOM)
         }
     }
 
-    /** "Use system Material You": on = wallpaper colours, off = the saved custom palette. */
+    /** "Use system Material You": on = wallpaper colors, off = the saved custom palette. */
     fun setSystemColors(on: Boolean) {
         viewModelScope.launch { setAccentColorUseCase(if (on) AccentColorOption.DYNAMIC else AccentColorOption.CUSTOM) }
     }

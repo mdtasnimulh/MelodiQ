@@ -5,6 +5,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.google.android.material.color.utilities.DynamicScheme
 import com.google.android.material.color.utilities.Hct
 import com.google.android.material.color.utilities.SchemeContent
@@ -75,7 +76,7 @@ fun paletteColorScheme(seed: Color, style: PaletteStyle, dark: Boolean): ColorSc
     )
 }
 
-private fun Color.toArgbInt(): Int = androidx.compose.ui.graphics.toArgb(this)
+private fun Color.toArgbInt(): Int = this.toArgb()
 
 /** The 12 seed colors offered in every style tab (hue wheel, starting at warm). */
 val PaletteSeeds: List<Color> = listOf(
