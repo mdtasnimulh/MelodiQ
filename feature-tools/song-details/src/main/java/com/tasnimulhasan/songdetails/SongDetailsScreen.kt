@@ -61,6 +61,7 @@ import com.tasnimulhasan.ui.image.AlbumArtVersion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import com.tasnimulhasan.ui.motion.entrance
 
 /** Decodes the picked image, scales it down (long edge <= 1000px, keeps tags small) and
  * re-encodes as JPEG - the tag writer labels embedded art image/jpeg. Null if undecodable. */
@@ -197,7 +198,7 @@ internal fun SongDetailsScreen(
         pendingArt = null; previewBitmap = null
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.entrance(0).fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()

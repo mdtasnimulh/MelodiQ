@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.tasnimulhasan.ui.motion.entrance
 
 private const val DEV_EMAIL = "mdtasnimulh@gmail.com"
 private val topics = listOf("Bug report", "Feature request", "Compliment", "Question", "Other")
@@ -78,6 +79,7 @@ internal fun FeedbackScreen(modifier: Modifier = Modifier) {
 
     Column(
         modifier = modifier
+            .entrance(0)
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),

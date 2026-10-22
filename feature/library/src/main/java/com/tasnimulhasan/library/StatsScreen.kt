@@ -74,6 +74,7 @@ import java.time.format.TextStyle as DateTextStyle
 import java.util.Locale
 import javax.inject.Inject
 import com.tasnimulhasan.designsystem.R as Res
+import com.tasnimulhasan.ui.motion.entrance
 
 enum class StatsPeriod(val chipLabel: String) {
     WEEK("Week"), MONTH("Month"), YEAR("Year"), ALL("All time")
@@ -238,7 +239,7 @@ internal fun StatsRoute(
             return@Column
         }
 
-        HeroCard(period, state, year) {
+        Box(Modifier.entrance(0)) { HeroCard(period, state, year) {
             val topSong = state.topSongs.firstOrNull()?.first
             val topArtist = state.topArtists.firstOrNull()?.artist
             val text = buildString {
@@ -253,7 +254,7 @@ internal fun StatsRoute(
                     "Share your stats",
                 )
             )
-        }
+        } }
 
         if (state.totalPlays == 0) {
             Card(
@@ -270,10 +271,10 @@ internal fun StatsRoute(
                 )
             }
         } else {
-            ChartCard(period, state.bars)
+            Box(Modifier.entrance(1)) { ChartCard(period, state.bars) }
 
             if (state.topSongs.isNotEmpty()) {
-                SectionCard("Top songs") {
+                Box(Modifier.entrance(2)) { SectionCard("Top songs") {
                     state.topSongs.forEachIndexed { i, (song, plays) ->
                         RankRow(
                             rank = i + 1,
@@ -289,11 +290,11 @@ internal fun StatsRoute(
                             },
                         )
                     }
-                }
+                } }
             }
 
             if (state.topArtists.isNotEmpty()) {
-                SectionCard("Top artists") {
+                Box(Modifier.entrance(3)) { SectionCard("Top artists") {
                     state.topArtists.forEachIndexed { i, artist ->
                         RankRow(
                             rank = i + 1,
@@ -305,7 +306,7 @@ internal fun StatsRoute(
                             onClick = null,
                         )
                     }
-                }
+                } }
             }
         }
 

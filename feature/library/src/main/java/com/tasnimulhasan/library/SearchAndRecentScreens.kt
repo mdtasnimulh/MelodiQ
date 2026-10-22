@@ -24,6 +24,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.library.components.LibrarySectionHeader
 import com.tasnimulhasan.library.components.LibrarySongRow
+import com.tasnimulhasan.ui.motion.entrance
 
 @Composable
 internal fun SearchRoute(
@@ -66,9 +67,9 @@ internal fun SearchRoute(
                 )
             }
             else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(items = results, key = { _, item -> item.songId }) { _, item ->
+                itemsIndexed(items = results, key = { _, item -> item.songId }) { index, item ->
                     LibrarySongRow(
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem().entrance(index),
                         contentUri = item.contentUri,
                         title = item.songTitle,
                         subtitle = "${item.artist} • ${item.album}",
@@ -115,9 +116,9 @@ internal fun RecentlyPlayedRoute(
     LazyColumn(modifier = modifier.fillMaxSize()) {
         if (recentlyPlayed.isNotEmpty()) {
             item { LibrarySectionHeader("Continue Listening") }
-            itemsIndexed(items = recentlyPlayed, key = { _, item -> "recent_${item.songId}" }) { _, item ->
+            itemsIndexed(items = recentlyPlayed, key = { _, item -> "recent_${item.songId}" }) { index, item ->
                 LibrarySongRow(
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem().entrance(index),
                     contentUri = item.contentUri,
                     title = item.songTitle,
                     subtitle = item.artist,
@@ -137,10 +138,10 @@ internal fun RecentlyPlayedRoute(
 
         if (mostPlayed.isNotEmpty()) {
             item { LibrarySectionHeader("Most Played") }
-            itemsIndexed(items = mostPlayed, key = { _, pair -> "most_${pair.first.songId}" }) { _, pair ->
+            itemsIndexed(items = mostPlayed, key = { _, pair -> "most_${pair.first.songId}" }) { index, pair ->
                 val (item, count) = pair
                 LibrarySongRow(
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem().entrance(index),
                     contentUri = item.contentUri,
                     title = item.songTitle,
                     subtitle = item.artist,

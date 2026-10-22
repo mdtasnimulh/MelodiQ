@@ -59,6 +59,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import com.tasnimulhasan.ui.motion.entrance
 
 private val DAY_MS = TimeUnit.DAYS.toMillis(1)
 private val LONG_TRACK_MS = TimeUnit.MINUTES.toMillis(6)
@@ -143,13 +144,17 @@ internal fun SmartPlaylistsHubRoute(
                 modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
             )
         }
-        SmartPlaylistKind.entries.forEach { kind ->
+        SmartPlaylistKind.entries.forEachIndexed { i, kind ->
             item(key = kind.name) {
-                SmartCard(kind.icon(), kind.title, kind.subtitle) { navigateToSmartPlaylist(kind) }
+                Box(Modifier.entrance(i + 1)) {
+                    SmartCard(kind.icon(), kind.title, kind.subtitle) { navigateToSmartPlaylist(kind) }
+                }
             }
         }
         item(key = "never_played") {
-            SmartCard(Icons.Filled.NewReleases, "Not played yet", "Songs you have never listened to", navigateToNeverPlayed)
+            Box(Modifier.entrance(SmartPlaylistKind.entries.size + 1)) {
+                SmartCard(Icons.Filled.NewReleases, "Not played yet", "Songs you have never listened to", navigateToNeverPlayed)
+            }
         }
     }
 }
@@ -238,7 +243,7 @@ internal fun SmartPlaylistRoute(
                 }
                 itemsIndexed(items = list, key = { _, item -> item.song.songId }) { index, item ->
                     LibrarySongRow(
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem().entrance(index),
                         contentUri = item.song.contentUri,
                         title = item.song.songTitle,
                         subtitle = item.song.artist,

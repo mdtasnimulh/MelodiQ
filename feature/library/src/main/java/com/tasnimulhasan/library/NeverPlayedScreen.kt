@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.library.components.LibrarySongRow
+import com.tasnimulhasan.ui.motion.entrance
 
 @Composable
 internal fun NeverPlayedRoute(
@@ -70,9 +71,9 @@ internal fun NeverPlayedRoute(
                     }) { Icon(Icons.Filled.PlayCircle, contentDescription = "Play all") }
                 }
             }
-            itemsIndexed(items = list, key = { _, item -> item.songId }) { _, item ->
+            itemsIndexed(items = list, key = { _, item -> item.songId }) { index, item ->
                 LibrarySongRow(
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem().entrance(index),
                     contentUri = item.contentUri,
                     title = item.songTitle,
                     subtitle = item.artist,

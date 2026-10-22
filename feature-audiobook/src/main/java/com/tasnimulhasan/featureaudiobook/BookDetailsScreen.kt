@@ -59,6 +59,7 @@ import com.tasnimulhasan.designsystem.theme.isGlassUi
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sin
+import com.tasnimulhasan.ui.motion.entrance
 
 @Composable
 internal fun BookDetailsRouteScreen(
@@ -118,6 +119,7 @@ internal fun BookDetailsScreen(
     )
     Column(
         modifier = Modifier
+            .entrance(0)
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 12.dp),

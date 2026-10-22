@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.library.components.LibrarySongRow
+import com.tasnimulhasan.ui.motion.entrance
 
 @Composable
 internal fun ArtistsRoute(
@@ -37,11 +38,11 @@ internal fun ArtistsRoute(
     }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        items(items = artists, key = { it.artist }) { artist ->
+        itemsIndexed(items = artists, key = { _, it -> it.artist }) { index, artist ->
             ListItem(
                 headlineContent = { Text(artist.artist) },
                 supportingContent = { Text("${artist.songCount} songs") },
-                modifier = Modifier.clickable(onClick = { onArtistClicked(artist.artist) })
+                modifier = Modifier.animateItem().entrance(index).clickable(onClick = { onArtistClicked(artist.artist) })
             )
         }
     }
@@ -66,9 +67,9 @@ internal fun ArtistDetailsRoute(
     }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        itemsIndexed(items = songs, key = { _, item -> item.songId }) { _, item ->
+        itemsIndexed(items = songs, key = { _, item -> item.songId }) { index, item ->
             LibrarySongRow(
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem().entrance(index),
                 contentUri = item.contentUri,
                 title = item.songTitle,
                 subtitle = item.album,
@@ -107,11 +108,11 @@ internal fun GenresRoute(
     }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        items(items = genres, key = { it.genre }) { genre ->
+        itemsIndexed(items = genres, key = { _, it -> it.genre }) { index, genre ->
             ListItem(
                 headlineContent = { Text(genre.genre) },
                 supportingContent = { Text("${genre.songCount} songs") },
-                modifier = Modifier.clickable(onClick = { onGenreClicked(genre.genre) })
+                modifier = Modifier.animateItem().entrance(index).clickable(onClick = { onGenreClicked(genre.genre) })
             )
         }
     }
@@ -136,9 +137,9 @@ internal fun GenreDetailsRoute(
     }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        itemsIndexed(items = songs, key = { _, item -> item.songId }) { _, item ->
+        itemsIndexed(items = songs, key = { _, item -> item.songId }) { index, item ->
             LibrarySongRow(
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem().entrance(index),
                 contentUri = item.contentUri,
                 title = item.songTitle,
                 subtitle = item.artist,

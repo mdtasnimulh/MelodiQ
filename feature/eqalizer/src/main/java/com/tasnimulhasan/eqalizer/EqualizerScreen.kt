@@ -66,6 +66,7 @@ import com.tasnimulhasan.designsystem.theme.BlueMedium
 import com.tasnimulhasan.designsystem.theme.CreamRed
 import com.tasnimulhasan.eqalizer.components.FiveEqualizerItem
 import com.tasnimulhasan.designsystem.R as Res
+import com.tasnimulhasan.ui.motion.entrance
 
 @Composable
 internal fun EqualizerScreen(
@@ -84,7 +85,7 @@ internal fun EqualizerScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.padding(horizontal = 16.dp)
+        modifier = Modifier.entrance(0).padding(horizontal = 16.dp)
     ) {
         item {
             Spacer(modifier = Modifier.height(16.dp))

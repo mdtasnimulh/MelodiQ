@@ -56,6 +56,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
+import com.tasnimulhasan.ui.motion.entrance
 
 @Composable
 fun LyricsRoute(
@@ -141,7 +142,7 @@ internal fun LyricsScreen(
 ) {
     val translatedLines = (translation as? TranslationState.Showing)?.lines
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.entrance(0).fillMaxSize()) {
         Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)) {
             Text(text = songTitle, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             Text(text = artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)

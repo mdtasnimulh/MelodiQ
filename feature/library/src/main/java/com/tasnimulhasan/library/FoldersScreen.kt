@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.library.components.LibrarySongRow
+import com.tasnimulhasan.ui.motion.entrance
 
 @Composable
 internal fun FoldersRoute(
@@ -76,18 +77,18 @@ internal fun FoldersRoute(
                 }
             }
 
-            items(items = level.childFolders, key = { it.folderPath }) { folder ->
+            itemsIndexed(items = level.childFolders, key = { _, it -> it.folderPath }) { index, folder ->
                 ListItem(
                     headlineContent = { Text(folder.folderPath.substringAfterLast('/')) },
                     supportingContent = { Text("${folder.songCount} songs") },
                     leadingContent = { Icon(Icons.Filled.Folder, contentDescription = null) },
-                    modifier = Modifier.clickable { viewModel.open(folder.folderPath) }
+                    modifier = Modifier.animateItem().entrance(index).clickable { viewModel.open(folder.folderPath) }
                 )
             }
 
-            itemsIndexed(items = level.songs, key = { _, item -> item.songId }) { _, item ->
+            itemsIndexed(items = level.songs, key = { _, item -> item.songId }) { index, item ->
                 LibrarySongRow(
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem().entrance(index),
                     contentUri = item.contentUri,
                     title = item.songTitle,
                     subtitle = item.artist,

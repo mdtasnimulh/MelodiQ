@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
+import com.tasnimulhasan.ui.motion.entrance
 
 data class DuplicatesUiState(
     val loaded: Boolean = false,
@@ -203,8 +204,10 @@ internal fun DuplicatesRoute(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                items(state.groups, key = { g -> g.songs.first().song.songId }) { group ->
-                    DuplicateGroupCard(group, state.marked) { id -> viewModel.toggle(group, id) }
+                itemsIndexed(state.groups, key = { _, g -> g.songs.first().song.songId }) { index, group ->
+                    Box(Modifier.animateItem().entrance(index)) {
+                        DuplicateGroupCard(group, state.marked) { id -> viewModel.toggle(group, id) }
+                    }
                 }
             }
         }

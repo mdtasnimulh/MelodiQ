@@ -28,10 +28,10 @@ fun NavController.navigateToLyrics() = navigate(route = LyricsNavRoute)
 
 fun NavGraphBuilder.lyricsScreen(navigateBack: () -> Unit) {
     composable<LyricsNavRoute>(
-        enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)) },
-        exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) },
-        popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)) },
-        popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) {
         LyricsRoute(onNavigateUp = navigateBack)
     }
