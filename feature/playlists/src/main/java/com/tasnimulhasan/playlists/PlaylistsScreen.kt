@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.playlists.UpdatePlaylistUseCase
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistWithStats
 import com.tasnimulhasan.playlists.component.CreatePlaylistDialog
@@ -105,6 +106,13 @@ internal fun PlaylistsRoute(
         onDeletePlaylist = { playlist ->
             viewModel.action(UiAction.DeletePlaylist(DeletePlaylistUseCase.Params(playlist)))
         },
+        onEditPlaylist = { playlist, name, desc ->
+            viewModel.action(
+                UiAction.UpdatePlaylist(
+                    UpdatePlaylistUseCase.Params(playlist.copy(playlistName = name, playlistDescription = desc))
+                )
+            )
+        },
         snackBarHostState = snackBarHostState,
         onPlaylistClicked = { id, name -> onPlaylistClicked.invoke(id, name) }
     )
@@ -120,7 +128,9 @@ internal fun PlaylistsScreen(
     onPlaylistClicked: (Int, String) -> Unit,
     snackBarHostState: SnackbarHostState,
     onDeletePlaylist: (PlaylistEntity) -> Unit = {},
+    onEditPlaylist: (PlaylistEntity, String, String) -> Unit = { _, _, _ -> },
 ) {
+    var playlistToEdit by remember { mutableStateOf<PlaylistEntity?>(null) }
     var showDialog by remember { mutableStateOf(false) }
     var playlistToDelete by remember { mutableStateOf<PlaylistEntity?>(null) }
 
@@ -179,6 +189,7 @@ internal fun PlaylistsScreen(
                                     playlist = playlist,
                                     onPlaylistClicked = onPlaylistClicked,
                                     onDeleteClicked = { playlistToDelete = playlist.playlist },
+                                    onEditClicked = { playlistToEdit = playlist.playlist },
                                 )
                             }
                         }
@@ -197,6 +208,18 @@ internal fun PlaylistsScreen(
             icon = Icons.Filled.Delete,
             onConfirm = { onDeletePlaylist(target) },
             onDismiss = { playlistToDelete = null },
+        )
+    }
+
+    playlistToEdit?.let { target ->
+        CreatePlaylistDialog(
+            initialName = target.playlistName,
+            initialDescription = target.playlistDescription,
+            onDismiss = { playlistToEdit = null },
+            onCreate = { name, desc ->
+                onEditPlaylist(target, name, desc)
+                playlistToEdit = null
+            },
         )
     }
 

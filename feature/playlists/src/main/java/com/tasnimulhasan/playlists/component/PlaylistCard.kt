@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -99,7 +100,9 @@ fun PlaylistCard(
     onPlaylistClicked: (Int, String) -> Unit,
     modifier: Modifier = Modifier,
     onDeleteClicked: (() -> Unit)? = null,
+    onEditClicked: (() -> Unit)? = null,
 ) {
+    val glass = com.tasnimulhasan.designsystem.theme.isGlassUi()
     val subtitle = remember(playlist.songCount, playlist.totalDurationMs) {
         formatPlaylistSubtitle(playlist.songCount, playlist.totalDurationMs)
     }
@@ -173,8 +176,13 @@ fun PlaylistCard(
                     .fillMaxWidth()
                     .height(80.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Brush.verticalGradient(listOf(color.copy(alpha = 0.50f), color.copy(alpha = 0.78f))))
-                    .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(28.dp)),
+                    // Default UI: a solid shelf. Glass UI: the frosted, translucent one.
+                    .then(
+                        if (glass) Modifier
+                            .background(Brush.verticalGradient(listOf(color.copy(alpha = 0.50f), color.copy(alpha = 0.78f))))
+                            .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(28.dp))
+                        else Modifier.background(color)
+                    ),
             ) {
                 Box(
                     modifier = Modifier
@@ -193,23 +201,15 @@ fun PlaylistCard(
                         color = color,
                     )
                 }
-                if (onDeleteClicked != null) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 12.dp)
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.30f))
-                            .clickable(onClick = onDeleteClicked),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete playlist",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp),
-                        )
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (onEditClicked != null) {
+                        ShelfAction(Icons.Default.Edit, "Edit playlist", onEditClicked)
+                    }
+                    if (onDeleteClicked != null) {
+                        ShelfAction(Icons.Default.Delete, "Delete playlist", onDeleteClicked)
                     }
                 }
             }
@@ -234,6 +234,20 @@ fun PlaylistCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+@Composable
+private fun ShelfAction(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.30f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(imageVector = icon, contentDescription = description, tint = Color.White, modifier = Modifier.size(18.dp))
     }
 }
 

@@ -24,13 +24,17 @@ import com.tasnimulhasan.ui.component.SheetPrimaryButton
 @Composable
 fun CreatePlaylistDialog(
     onDismiss: () -> Unit,
-    onCreate: (String, String) -> Unit
+    onCreate: (String, String) -> Unit,
+    // Set to edit an existing playlist: the fields start filled and the sheet says "Edit".
+    initialName: String? = null,
+    initialDescription: String = "",
 ) {
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+    val editing = initialName != null
+    var name by remember { mutableStateOf(initialName.orEmpty()) }
+    var description by remember { mutableStateOf(initialDescription) }
 
     MelodiqSheet(onDismiss = onDismiss) { dismiss ->
-        SheetHeader(title = "New Playlist", icon = Icons.Filled.QueueMusic)
+        SheetHeader(title = if (editing) "Edit Playlist" else "New Playlist", icon = Icons.Filled.QueueMusic)
         Spacer(Modifier.height(18.dp))
         OutlinedTextField(
             value = name,
@@ -50,7 +54,7 @@ fun CreatePlaylistDialog(
         )
         Spacer(Modifier.height(20.dp))
         SheetPrimaryButton(
-            text = "Create Playlist",
+            text = if (editing) "Save Changes" else "Create Playlist",
             enabled = name.isNotBlank(),
             onClick = {
                 onCreate(name.trim(), description.trim())
