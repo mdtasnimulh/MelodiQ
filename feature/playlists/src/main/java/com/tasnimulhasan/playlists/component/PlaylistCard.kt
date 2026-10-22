@@ -1,6 +1,5 @@
 package com.tasnimulhasan.playlists.component
 
-import android.net.Uri
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -64,8 +63,11 @@ import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
+import java.util.Locale
 
-/** Same glass-shelf colours as the Audio Books shelves. */
+/** Same glass-shelf colors as the Audio Books shelves. */
 private val ShelfColors = listOf(
     Color(0xFFB57EDC), Color(0xFFF08A73), Color(0xFF4DB6AC), Color(0xFFF4A94E),
     Color(0xFF4DA3FF), Color(0xFFFF8FB1), Color(0xFF6FD6A3), Color(0xFF8D99AE),
@@ -91,7 +93,7 @@ private fun parseCovers(raw: String?): List<CoverRef> =
 
 /**
  * A playlist drawn like an Audio Books shelf: its newest songs' covers fan out from the middle, a
- * coloured glass shelf sits over their lower part (with the playlist's initial and a delete button),
+ * colored glass shelf sits over their lower part (with the playlist's initial and a delete button),
  * and the name and song count sit underneath.
  */
 @Composable
@@ -109,7 +111,7 @@ fun PlaylistCard(
     val name = playlist.playlist.playlistName
     val color = ShelfColors[playlist.playlist.id.mod(ShelfColors.size)]
     val covers = remember(playlist.coverRefs) { parseCovers(playlist.coverRefs) }
-    // Newest in the centre, the others alternating to its right and left.
+    // Newest in the center, the others alternating to its right and left.
     val arranged = remember(covers) {
         val n = covers.size
         val slots = arrayOfNulls<CoverRef>(n)
@@ -168,7 +170,7 @@ fun PlaylistCard(
                 }
             }
 
-            // The shelf: coloured glass over the lower part of the covers.
+            // The shelf: colored glass over the lower part of the covers.
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -181,7 +183,7 @@ fun PlaylistCard(
                         if (glass) Modifier
                             .background(Brush.verticalGradient(listOf(color.copy(alpha = 0.50f), color.copy(alpha = 0.78f))))
                             .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(28.dp))
-                        else Modifier.background(color)
+                        else Modifier.background(color.copy(alpha = 0.90f))
                     ),
             ) {
                 Box(
@@ -221,7 +223,7 @@ fun PlaylistCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = 8.dp, start = 16.dp, end = 16.dp),
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(7.dp).clip(CircleShape).background(color))
@@ -266,7 +268,7 @@ private fun BoxScope.ShelfCover(
 ) {
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(order * 70L)
+        delay((order * 70L).milliseconds)
         shown = true
     }
     val x by animateDpAsState(
@@ -295,7 +297,7 @@ private fun BoxScope.ShelfCover(
     ) {
         if (ref != null) {
             AsyncImage(
-                model = AlbumArt(songId = ref.songId, contentUri = Uri.parse(ref.uri), albumId = ref.albumId),
+                model = AlbumArt(songId = ref.songId, contentUri = ref.uri.toUri(), albumId = ref.albumId),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
@@ -327,9 +329,9 @@ private fun formatPlaylistSubtitle(songCount: Int, totalDurationMs: Long): Strin
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     val durationPart = if (hours > 0) {
-        String.format("%d:%02d:%02d", hours, minutes, seconds)
+        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
     } else {
-        String.format("%d:%02d", minutes, seconds)
+        String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
     }
     return "$songsPart \u2022 $durationPart"
 }

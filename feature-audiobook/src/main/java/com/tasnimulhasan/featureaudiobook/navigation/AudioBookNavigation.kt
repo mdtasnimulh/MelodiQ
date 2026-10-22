@@ -30,7 +30,10 @@ fun NavGraphBuilder.audioBookScreens(
     navigateBack: () -> Unit,
 ) {
     composable<AudioBookRoute> {
-        AudioBookRouteScreen(navigateToDetails = navigateToDetails)
+        AudioBookRouteScreen(
+            navigateToDetails = navigateToDetails,
+            navigateBack = navigateBack
+        )
     }
     composable<AudioBookDetailsRoute>(
         enterTransition = { MelodiqMotion.pushEnter() },

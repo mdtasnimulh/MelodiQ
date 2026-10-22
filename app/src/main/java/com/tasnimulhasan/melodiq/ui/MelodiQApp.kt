@@ -312,7 +312,7 @@ internal fun MmApp(
                 val labels = appState.topLevelDestination.map { stringResource(it.iconTextId) }
                 AnimatedVisibility(
                     modifier = Modifier.align(Alignment.BottomCenter),
-                    visible = isTopLevelDestination,
+                    visible = isTopLevelDestination && !currentDestination.isRouteInHierarchy(AudioBookRoute::class),
                     enter = fadeIn(tween(250)) + androidx.compose.animation.slideInVertically(tween(300)) { it / 2 },
                     exit = fadeOut(tween(200)) + androidx.compose.animation.slideOutVertically(tween(200)) { it / 2 },
                 ) {

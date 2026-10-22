@@ -68,6 +68,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -110,8 +111,9 @@ import com.tasnimulhasan.ui.component.SheetHeader
 import com.tasnimulhasan.ui.component.SheetPrimaryButton
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
 
-/** Glass-shelf colours a shelf can be given. */
+/** Glass-shelf colors a shelf can be given. */
 private val ShelfPalette = listOf(
     Color(0xFFB57EDC), Color(0xFFF08A73), Color(0xFF4DB6AC), Color(0xFFF4A94E),
     Color(0xFF4DA3FF), Color(0xFFFF8FB1), Color(0xFF6FD6A3), Color(0xFF8D99AE),
@@ -131,6 +133,7 @@ private val CoverFallbacks = listOf(
 @Composable
 internal fun AudioBookRouteScreen(
     navigateToDetails: (bookId: String) -> Unit,
+    navigateBack: () -> Unit,
     viewModel: AudioBookViewModel = hiltViewModel(),
 ) {
     val books by viewModel.books.collectAsStateWithLifecycle()
@@ -161,6 +164,7 @@ internal fun AudioBookRouteScreen(
         onUpdateShelf = viewModel::updateShelf,
         onDeleteShelf = viewModel::deleteShelf,
         onMove = viewModel::moveToShelf,
+        onNavigateBack = navigateBack,
     )
 }
 
@@ -191,6 +195,7 @@ internal fun AudioBookScreen(
     onUpdateShelf: (id: String, name: String, colorIndex: Int) -> Unit,
     onDeleteShelf: (String) -> Unit,
     onMove: (bookId: String, shelfId: String?) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var openShelf by rememberSaveable { mutableStateOf<String?>(null) }
@@ -243,6 +248,13 @@ internal fun AudioBookScreen(
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onNavigateBack) {
+                        com.tasnimulhasan.designsystem.component.Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     Column(Modifier.weight(1f)) {
                         Text(
                             text = "My Library",
@@ -393,7 +405,7 @@ internal fun AudioBookScreen(
             title = if (s.shelf == null) "New shelf" else "Edit shelf",
             confirmLabel = if (s.shelf == null) "Create shelf" else "Save",
             initialName = s.shelf?.name.orEmpty(),
-            initialColor = s.shelf?.colorIndex ?: (shelves.size + 1) % ShelfPalette.size,
+            initialColor = s.shelf?.colorIndex ?: ((shelves.size + 1) % ShelfPalette.size),
             onConfirm = { name, color ->
                 if (s.shelf == null) onCreateShelf(name, color) else onUpdateShelf(s.shelf.id, name, color)
             },
@@ -554,7 +566,7 @@ private fun BoxScope.FanCover(
 ) {
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(order * 70L)
+        delay((order * 70L).milliseconds)
         shown = true
     }
     val x by animateDpAsState(
@@ -1026,4 +1038,16 @@ private fun EmptyState(favouritesTab: Boolean, readingTab: Boolean, onAdd: () ->
             Button(onClick = onAdd) { Text("Add Book") }
         }
     }
+}
+
+@Composable
+private fun RoundAction(onClick: () -> Unit, tint: Color, content: @Composable (Color) -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { content(tint) }
 }
