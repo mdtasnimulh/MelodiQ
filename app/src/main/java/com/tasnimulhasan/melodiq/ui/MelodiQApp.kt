@@ -106,9 +106,11 @@ fun MelodiQApp(
     modifier: Modifier = Modifier,
     openPlayerRequested: Boolean = false,
     onOpenPlayerHandled: () -> Unit = {},
+    showNavLabels: Boolean = true,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
     MmApp(
+        showNavLabels = showNavLabels,
         appState = appState,
         modifier = modifier,
         openPlayerRequested = openPlayerRequested,
@@ -120,6 +122,7 @@ fun MelodiQApp(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MmApp(
+    showNavLabels: Boolean = true,
     appState: MelodiQAppState,
     modifier: Modifier = Modifier,
     openPlayerRequested: Boolean = false,
@@ -310,8 +313,8 @@ internal fun MmApp(
                 AnimatedVisibility(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     visible = isTopLevelDestination,
-                    enter = fadeIn(tween(250)) + scaleIn(tween(300), initialScale = 0.9f),
-                    exit = fadeOut(tween(200)) + scaleOut(tween(200), targetScale = 0.9f),
+                    enter = fadeIn(tween(250)) + androidx.compose.animation.slideInVertically(tween(300)) { it / 2 },
+                    exit = fadeOut(tween(200)) + androidx.compose.animation.slideOutVertically(tween(200)) { it / 2 },
                 ) {
                     MelodiqFloatingNavBar(
                         modifier = Modifier.padding(bottom = 12.dp),
@@ -319,6 +322,7 @@ internal fun MmApp(
                         selectedIndex = if (onAudioBook) -1
                         else appState.topLevelDestination.indexOfFirst { currentDestination.isRouteInHierarchy(it.route) }.coerceAtLeast(0),
                         minimized = barMinimized,
+                        showLabels = showNavLabels,
                         action = FloatingNavAction(
                             label = stringResource(Res.string.title_audio_book),
                             icon = androidx.compose.material.icons.Icons.Filled.Headphones,

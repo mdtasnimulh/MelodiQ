@@ -15,6 +15,8 @@ dependencies {
     implementation(libs.bundles.androidx.navigation.dependencies)
 
     implementation(libs.coil.kt.compose)
+    // Material colour utilities (HCT + the Tonal Spot / Vibrant / Rainbow / ... scheme generators)
+    implementation(libs.material)
 
     testImplementation(libs.androidx.compose.ui.test)
     testImplementation(libs.androidx.ui.test.manifest)

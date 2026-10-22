@@ -1,6 +1,5 @@
 package com.tasnimulhasan.eqalizer
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
@@ -48,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -74,15 +71,9 @@ internal fun EqualizerScreen(
 ) {
     val enableEqualizer by viewModel.enableEqualizer.collectAsState()
     val enableTenBand by viewModel.enableTenBand.collectAsState()
-    val isTenBandSupported by viewModel.isTenBandSupported.collectAsState()
     val equalizerError by viewModel.equalizerError.collectAsState()
-    val context = LocalContext.current
 
-    LaunchedEffect(equalizerError) {
-        equalizerError?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-        }
-    }
+    LaunchedEffect(Unit) { viewModel.onStart() }
 
     LazyColumn(
         modifier = Modifier.entrance(0).padding(horizontal = 16.dp)
@@ -129,41 +120,37 @@ internal fun EqualizerScreen(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
+                // 5 / 10 band layout - available on every device; the curve is mapped onto the
+                // device's own bands, so there is no hardware support check.
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(Res.string.label_enable_advance_option),
+                        text = "Bands",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
-                        style = TextStyle(
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.weight(1f),
                     )
-
-                    Switch(
-                        checked = enableTenBand,
-                        onCheckedChange = { viewModel.toggleTenBand() },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = BlueMedium,
-                            checkedIconColor = BlueMedium,
-                            uncheckedTrackColor = Blue20.copy(alpha = 0.25f),
-                            uncheckedBorderColor = Blue90
-                        )
+                    FilterChip(
+                        selected = !enableTenBand,
+                        onClick = { viewModel.setTenBand(false) },
+                        label = { Text("5 band") },
+                    )
+                    FilterChip(
+                        selected = enableTenBand,
+                        onClick = { viewModel.setTenBand(true) },
+                        label = { Text("10 band") },
                     )
                 }
             }
         }
 
         item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        item {
             AnimatedVisibility(
-                visible = enableTenBand && !isTenBandSupported,
+                visible = equalizerError != null,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -174,7 +161,7 @@ internal fun EqualizerScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = equalizerError ?: "10-band equalizer not supported",
+                        text = equalizerError.orEmpty(),
                         color = CreamRed,
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center
@@ -196,7 +183,7 @@ internal fun EqualizerScreen(
 
         item {
             AnimatedVisibility(
-                visible = enableEqualizer && !(enableTenBand && isTenBandSupported),
+                visible = enableEqualizer && !enableTenBand,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -206,7 +193,7 @@ internal fun EqualizerScreen(
 
         item {
             AnimatedVisibility(
-                visible = enableTenBand && isTenBandSupported,
+                visible = enableEqualizer && enableTenBand,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -216,7 +203,7 @@ internal fun EqualizerScreen(
 
         item {
             AnimatedVisibility(
-                visible = enableEqualizer || enableTenBand,
+                visible = enableEqualizer,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -317,43 +304,30 @@ fun EqualizerView10Band(viewModel: EqualizerViewModel) {
     val frequencyLabels by viewModel.frequencyLabels.collectAsState()
     val audioEffects by viewModel.audioEffects.collectAsState()
 
-    val xAxisLabels = frequencyLabels.ifEmpty {
-        listOf("31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz")
-    }
-
-    LazyRow(
+    // One full-width row per band (frequency, slider, dB) - easier to drag precisely than ten
+    // narrow columns, and it fits any screen width.
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .wrapContentHeight()
             .padding(bottom = 12.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        items(xAxisLabels.size) { index ->
-            Column(
-                modifier = Modifier
-                    .width(80.dp)
-                    .padding(horizontal = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+        frequencyLabels.forEachIndexed { index, label ->
+            val gain = (audioEffects?.gainValues?.getOrNull(index) ?: 0.0).toFloat() * 1000f
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = xAxisLabels[index],
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = label,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(52.dp)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${(audioEffects?.gainValues?.getOrNull(index)?.times(1000) ?: 0.0) / 100}dB",
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
                 Slider(
-                    modifier = Modifier.height(120.dp),
-                    value = audioEffects?.gainValues?.getOrNull(index)?.times(1000f)?.toFloat() ?: 0f,
+                    modifier = Modifier.weight(1f),
+                    value = gain.coerceIn(-1500f, 1500f),
                     onValueChange = { viewModel.onBandLevelChanged(index, it.toInt()) },
-                    valueRange = -3000f..3000f,
+                    valueRange = -1500f..1500f,
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
                         activeTrackColor = MaterialTheme.colorScheme.primary,
@@ -368,6 +342,13 @@ fun EqualizerView10Band(viewModel: EqualizerViewModel) {
                                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                         )
                     }
+                )
+                Text(
+                    text = "%+.1f dB".format(gain / 100f),
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.End,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(58.dp)
                 )
             }
         }

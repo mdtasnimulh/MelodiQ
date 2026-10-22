@@ -78,25 +78,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tasnimulhasan.ui.component.MelodiqSheet
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.NewReleases
+import androidx.activity.compose.BackHandler
 
 private const val DEV_NAME = "Md. Tasnimul Hasan"
 private const val DEV_EMAIL = "mdtasnimulh@gmail.com"
 
-private data class FeatureItem(val icon: ImageVector, val title: String, val description: String)
+private data class FeatureItem(
+    val icon: ImageVector,
+    val title: String,
+    val description: String,
+    /** Things added in this version (not in the previous one). */
+    val new: List<String> = emptyList(),
+    /** Problems fixed in this version. */
+    val fixed: List<String> = emptyList(),
+)
 
 private val features = listOf(
-    FeatureItem(Icons.Filled.Folder, "Fast local library", "Scans your device once, stores it in a database and stays in sync as files change. Browse songs, albums and folders."),
-    FeatureItem(Icons.Filled.Home, "Smart Home", "Recently played, most played, recently added and a \"Not played yet\" list so forgotten songs get a second chance."),
-    FeatureItem(Icons.Filled.MusicNote, "Expressive player", "Full-screen player with half, circle or full cover styles, a draggable mini player and a close button."),
-    FeatureItem(Icons.Filled.GraphicEq, "Audio visualizer", "Bars, waveform or circular visualizer that moves with the music."),
+    FeatureItem(Icons.Filled.Folder, "Fast local library", "Scans your device once, stores it in a database and stays in sync as files change. Browse songs, albums and folders.", new = listOf("Albums use large rounded cover cards"), fixed = listOf("Permission explanation only appears after a permission is denied, not behind the first system dialog")),
+    FeatureItem(Icons.Filled.Home, "Smart Home", "Recently played, most played, recently added and a \"Not played yet\" list so forgotten songs get a second chance.", new = listOf("Recently played, Most played and Favourites headers always show, with a friendly placeholder until you have something there"), fixed = listOf("The first song in your list no longer appears in Recently / Most played before you have played anything")),
+    FeatureItem(Icons.Filled.MusicNote, "Expressive player", "Full-screen player with half, circle or full cover styles, a draggable mini player and a close button.", new = listOf("Visualizer now wraps around a circular cover as a ring"), fixed = listOf()),
+    FeatureItem(Icons.Filled.GraphicEq, "Audio visualizer", "Bars, waveform or circular visualizer that moves with the music.", new = listOf("Player visualizer now matches the Settings previews: smooth bars, flowing waveform and spoke ring", "Bars and waveform can circle the round cover art"), fixed = listOf("Animation is eased every frame so it no longer steps")),
     FeatureItem(Icons.Filled.Subtitles, "Lyrics", "Synced lyrics that follow the song as it plays."),
-    FeatureItem(Icons.Filled.Equalizer, "Equalizer & presets", "Tune the sound with a built-in equalizer, preset chips and one-tap reset to flat."),
+    FeatureItem(Icons.Filled.Equalizer, "Equalizer & presets", "Tune the sound with a built-in equalizer, preset chips and one-tap reset to flat.", new = listOf("10-band equalizer on every device, no support check", "5 / 10 band toggle", "Built-in presets for both layouts"), fixed = listOf()),
     FeatureItem(Icons.Filled.Tune, "Crossfade & volume normalization", "Smooth transitions between tracks and even loudness using ReplayGain tags."),
-    FeatureItem(Icons.AutoMirrored.Filled.QueueMusic, "Queue & playlists", "Manage the play queue, create playlists (even straight from a song's menu) and mark favourites."),
+    FeatureItem(Icons.AutoMirrored.Filled.QueueMusic, "Queue & playlists", "Manage the play queue, create playlists (even straight from a song's menu) and mark favourites.", new = listOf("Delete a playlist from the Playlists screen (MelodiQ and iPod)", "Press and hold a song in a playlist, then drag it up or down to reorder", "Drag to reorder the queue too", "Modern stacked-cover playlist cards"), fixed = listOf("Long-pressing a song in a playlist no longer deletes it", "The cross on queue items now removes the right song", "Queue moves and removals now act on the queue that is actually playing")),
     FeatureItem(Icons.Filled.Edit, "Tag & file editor", "Edit title, artist, album and more, change embedded cover art, rename, move or delete files."),
     FeatureItem(Icons.Filled.Notifications, "Rich notification", "Cover art, previous / play / next, plus repeat and favourite buttons right in the notification."),
-    FeatureItem(Icons.Filled.AutoAwesome, "Glass UI", "In Settings, App UI type, switch from the default solid look to Glass: frosted translucent panels over a gradient that follows your theme colour, on every screen including the iPod player. Switch back any time."),
-    FeatureItem(Icons.Filled.Palette, "Themes", "Light, dark and AMOLED black, wallpaper-based dynamic colour, album-art colour, app-icon colour or a fixed accent."),
+    FeatureItem(Icons.Filled.AutoAwesome, "Glass UI", "In Settings, App UI type, switch from the default solid look to Glass: frosted translucent panels over a gradient that follows your theme colour, on every screen including the iPod player. Switch back any time.", new = listOf("New App UI type setting: Glass", "Glass panels follow your theme colour"), fixed = listOf("App drawer no longer shows through glass screens", "Bottom bar, mini player and music cards are readable on translucent backgrounds", "White box behind music card text is gone")),
+    FeatureItem(Icons.Filled.Palette, "Themes", "Light, dark and AMOLED black, wallpaper-based dynamic colour, album-art colour, app-icon colour or a fixed accent.", new = listOf("Custom palette styles: Hue, Vibrant, Content, Rainbow, Fruit Salad and Mono, each with twelve colours to pick from"), fixed = listOf()),
     FeatureItem(Icons.Filled.AutoAwesome, "Smart playlists", "Lists that build themselves: most played this month, on repeat, recently added, long tracks, rediscover and not played yet."),
     FeatureItem(Icons.Filled.BarChart, "Listening stats", "See your listening time, a daily or monthly chart, top songs and artists, plus a shareable \"Your year in music\" summary."),
     FeatureItem(Icons.Filled.TouchApp, "Long-press song menu", "Press and hold any song on Home or Songs to play it next, add it to the queue, add it to a playlist (or create a new one) and see its info."),
@@ -104,14 +124,15 @@ private val features = listOf(
     FeatureItem(Icons.Filled.Speed, "Speed & pitch", "Change playback speed and pitch from the player with presets, and optionally remember the setting for each song."),
     FeatureItem(Icons.Filled.Shortcut, "App shortcuts", "Press and hold the launcher icon for Shuffle all, Favourites and Continue listening."),
     FeatureItem(Icons.Filled.ContentCopy, "Duplicate finder", "Scan your library for repeated songs (same title, artist and length) and delete the extra copies in one go."),
-    FeatureItem(Icons.Filled.MusicNote, "Player B: iPod style", "In Settings, switch Player type to B for a whole-app iPod look. It opens on a Cover Flow of your songs; press MENU on the click wheel for the menu (MENU again closes it). Turn the wheel or drag the display to browse, press the centre or tap to play, and use the labels for previous, next and play / pause."),
-    FeatureItem(Icons.Filled.Headphones, "Audio Books", "Add PDF or EPUB books from your phone (they stay where they are, nothing is copied) and keep them in an animated shelf with All and Favourites tabs. Add new books right from the shelf. Book covers come from the book itself."),
+    FeatureItem(Icons.Filled.MusicNote, "Player B: iPod style", "In Settings, switch Player type to B for a whole-app iPod look. It opens on a Cover Flow of your songs; press MENU on the click wheel for the menu (MENU again closes it). Turn the wheel or drag the display to browse, press the centre or tap to play, and use the labels for previous, next and play / pause.", new = listOf("Delete playlists from the iPod menu"), fixed = listOf()),
+    FeatureItem(Icons.Filled.Headphones, "Audio Books", "Add PDF or EPUB books from your phone (they stay where they are, nothing is copied) and keep them in an animated shelf with All and Favourites tabs. Add new books right from the shelf. Book covers come from the book itself.", new = listOf("Modern shelf look shared with playlists"), fixed = listOf()),
     FeatureItem(Icons.Filled.MenuBook, "Built-in book reader", "Read books inside the app with page-by-page scrolling, zoom for PDFs and adjustable text size for EPUBs. Press and hold to select a single word or extend the selection across words."),
     FeatureItem(Icons.Filled.RecordVoiceOver, "Read aloud", "Press play to have a book narrated, with four narrator voices (two female, two male), speed from 0.75x to 2x and playback controls in the notification. The sentence being read is highlighted and the current word is marked in orange, in both PDFs and EPUBs."),
     FeatureItem(Icons.Filled.Bookmark, "Resume where you stopped", "The page and the spot on it are remembered for every book, for reading and listening alike."),
     FeatureItem(Icons.Filled.Bedtime, "Sleep timer", "Fall asleep to music; playback fades out and stops on its own."),
-    FeatureItem(Icons.Filled.Apps, "Floating navigation", "A floating bottom bar for Home, Songs, Library and Playlists, with a button that opens your Audio Books."),
+    FeatureItem(Icons.Filled.Apps, "Floating navigation", "A floating bottom bar for Home, Songs, Library and Playlists, with a button that opens your Audio Books.", new = listOf("Selected tab becomes a pill with its name", "New Settings option to show or hide the tab labels"), fixed = listOf("Tabs no longer scale up and down when selected")),
     FeatureItem(Icons.Filled.Apps, "App icon switcher", "Pick your launcher icon from eight designs in Settings; the drawer logo and theme can follow it."),
+    FeatureItem(Icons.Filled.AutoAwesome, "Fluid motion", "Screens turn like pages of frosted glass and lists glide in one by one on every screen except the iPod player.", new = listOf("Page-turn transition between screens","Entrance animation on all non-iPod screens"), fixed = listOf("Mixed fade-from-centre transitions replaced by a consistent crossfade")),
     FeatureItem(Icons.Filled.Backup, "Backup & restore", "Export playlists, favourites, play history and settings to a file and restore them anytime."),
 )
 
@@ -127,6 +148,8 @@ internal fun AboutScreen(modifier: Modifier = Modifier) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0"
     }
 
+    var showFeatures by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -136,35 +159,13 @@ internal fun AboutScreen(modifier: Modifier = Modifier) {
     ) {
         Reveal(0) { HeroCard(versionName) }
 
-        Reveal(1) {
-            Column {
-                Text(
-                    "What MelodiQ can do",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                )
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                ) {
-                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                        features.forEachIndexed { index, item ->
-                            FeatureRow(item)
-                            if (index != features.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 72.dp, end = 16.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        Reveal(1) { WhatsNewCard(versionName) { showFeatures = true } }
 
-        Reveal(2) { DeveloperCard(context) }
+        Reveal(2) { FeaturesEntry(count = features.size) { showFeatures = true } }
 
-        Reveal(3) {
+        Reveal(3) { DeveloperCard(context) }
+
+        Reveal(4) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -185,6 +186,7 @@ internal fun AboutScreen(modifier: Modifier = Modifier) {
             }
         }
     }
+    if (showFeatures) FeaturesSheet(versionName) { showFeatures = false }
 }
 
 /** Fade + slide in, staggered by [index], so the page builds up instead of popping in. */
@@ -251,9 +253,12 @@ private fun HeroCard(versionName: String) {
 }
 
 @Composable
-private fun FeatureRow(item: FeatureItem) {
+private fun FeatureRow(item: FeatureItem, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -262,9 +267,178 @@ private fun FeatureRow(item: FeatureItem) {
         ) {
             Icon(item.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(22.dp))
         }
-        Column(modifier = Modifier.padding(start = 16.dp)) {
-            Text(item.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
-            Text(item.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(item.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f, fill = false))
+                if (item.new.isNotEmpty()) Badge("NEW", MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
+                if (item.fixed.isNotEmpty()) Badge("FIXED", MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary)
+            }
+            Text(
+                item.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+        }
+        Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun Badge(text: String, container: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color) {
+    Surface(shape = RoundedCornerShape(50), color = container) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+            color = content,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/** Short "what's new" summary; tapping opens the full list. */
+@Composable
+private fun WhatsNewCard(versionName: String, onOpen: () -> Unit) {
+    val newCount = features.sumOf { it.new.size }
+    val fixedCount = features.sumOf { it.fixed.size }
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable(onClick = onOpen),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.NewReleases, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text(
+                    "What's new in $versionName",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.padding(start = 12.dp),
+                )
+            }
+            Text(
+                "$newCount new things and $fixedCount fixes: glass UI, page-turn motion, 10-band equalizer, theme palette styles, bottom bar labels, playlist reorder and delete, and more.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+}
+
+/** The single row that replaces the long inline list. */
+@Composable
+private fun FeaturesEntry(count: Int, onOpen: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable(onClick = onOpen),
+    ) {
+        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
+                Text("What MelodiQ can do", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                Text("$count features, with what's new and fixed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** One sheet that shows the feature list, and swaps to a feature's detail + changelog when one is tapped. */
+@Composable
+private fun FeaturesSheet(versionName: String, onDismiss: () -> Unit) {
+    var selected by remember { mutableStateOf<FeatureItem?>(null) }
+    BackHandler(enabled = selected != null) { selected = null }
+    MelodiqSheet(onDismiss = onDismiss) {
+        val item = selected
+        if (item == null) {
+            Text(
+                "What MelodiQ can do",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            )
+            Text(
+                "Version $versionName. Tap a feature to see what's new and fixed.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
+            )
+            LazyColumn(modifier = Modifier.heightIn(max = 520.dp)) {
+                itemsIndexed(features) { index, f ->
+                    FeatureRow(f) { selected = f }
+                    if (index != features.lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 64.dp, end = 8.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        )
+                    }
+                }
+            }
+        } else {
+            FeatureDetail(item, versionName) { selected = null }
+        }
+    }
+}
+
+@Composable
+private fun FeatureDetail(item: FeatureItem, versionName: String, onBack: () -> Unit) {
+    Column(modifier = Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState())) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") }
+            Box(
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(item.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                item.title,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(start = 12.dp),
+            )
+        }
+        Text(
+            item.description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 12.dp, bottom = 16.dp),
+        )
+        if (item.new.isEmpty() && item.fixed.isEmpty()) {
+            Text(
+                "No changes in version $versionName.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        ChangeSection("New in this version", "NEW", item.new, Icons.Filled.NewReleases, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
+        ChangeSection("Fixed", "FIXED", item.fixed, Icons.Filled.BugReport, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary)
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun ChangeSection(
+    title: String,
+    badge: String,
+    lines: List<String>,
+    icon: ImageVector,
+    container: androidx.compose.ui.graphics.Color,
+    content: androidx.compose.ui.graphics.Color,
+) {
+    if (lines.isEmpty()) return
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+        Badge(badge, container, content)
+        Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(start = 8.dp))
+    }
+    lines.forEach { line ->
+        Row(modifier = Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
+            Icon(icon, contentDescription = null, tint = container, modifier = Modifier.size(18.dp).padding(top = 2.dp))
+            Text(line, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 10.dp))
         }
     }
 }

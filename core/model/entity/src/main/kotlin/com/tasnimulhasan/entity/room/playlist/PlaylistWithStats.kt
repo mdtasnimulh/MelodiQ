@@ -13,4 +13,6 @@ data class PlaylistWithStats(
     val playlist: PlaylistEntity,
     val songCount: Int,
     val totalDurationMs: Long,
+    /** Up to 5 newest songs, one per line as `songId:albumId:contentUri`; used to draw the cover fan. */
+    val coverRefs: String? = null,
 )

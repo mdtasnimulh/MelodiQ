@@ -37,6 +37,8 @@ class MainActivityViewModel @Inject constructor(
     getThemeConfigUseCase: GetThemeConfigUseCase,
     getAccentColorUseCase: GetAccentColorUseCase,
     getUiStyleUseCase: GetUiStyleUseCase,
+    getCustomPaletteUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetCustomPaletteUseCase,
+    getNavLabelsUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetNavLabelsUseCase,
     getPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetPlayerTypeUseCase,
     private val setPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetPlayerTypeUseCase,
     private val playerUseCases: PlayerUseCases,
@@ -81,16 +83,31 @@ class MainActivityViewModel @Inject constructor(
         AppShortcuts.execute(action, playerUseCases, observeFavouriteIdsUseCase)
     }
 
+    private val customPalette: StateFlow<com.tasnimulhasan.entity.enums.PaletteChoice> = getCustomPaletteUseCase()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, com.tasnimulhasan.entity.enums.PaletteChoice())
+
+    /** Non-null only while the accent is CUSTOM; tells the theme which scheme style to expand the seed with. */
+    val paletteStyle: StateFlow<com.tasnimulhasan.entity.enums.PaletteStyle?> = combine(accentColorOption, customPalette) { o, p ->
+        if (o == AccentColorOption.CUSTOM) p.style else null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Show the tab name next to the selected icon in the bottom bar. */
+    val showNavLabels: StateFlow<Boolean> = getNavLabelsUseCase()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     val accentSeedColor: StateFlow<Color?> = combine(
         accentColorOption,
         playerUseCases.observeCurrentSelectedAudio(),
         AppIconManager.selected,
-    ) { option, song, icon -> Triple(option, song, icon) }
+        customPalette,
+    ) { option, song, icon, custom -> AccentInputs(option, song, icon, custom) }
         .distinctUntilChanged { old, new ->
-            old.first == new.first && old.second?.songId == new.second?.songId && old.third == new.third
+            old.option == new.option && old.song?.songId == new.song?.songId &&
+                old.icon == new.icon && old.custom == new.custom
         }
-        .map { (option, song, icon) ->
+        .map { (option, song, icon, custom) ->
             when (option) {
+                AccentColorOption.CUSTOM -> Color(custom.seed)
                 AccentColorOption.APP_ICON ->
                     AppIconManager.accentColor(appContext, icon ?: com.tasnimulhasan.settings.AppIconOption.DEFAULT)
                 AccentColorOption.ALBUM_ART -> song?.let {
@@ -115,3 +132,10 @@ class MainActivityViewModel @Inject constructor(
         viewModelScope.launch { runCatching { scanLibraryUseCase(force = true) } }
     }
 }
+
+private data class AccentInputs<S, I>(
+    val option: AccentColorOption,
+    val song: S,
+    val icon: I,
+    val custom: com.tasnimulhasan.entity.enums.PaletteChoice,
+)

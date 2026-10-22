@@ -86,6 +86,8 @@ internal fun SettingsRoute(
     val appIcon by viewModel.appIcon.collectAsStateWithLifecycle()
     val playerType by viewModel.playerType.collectAsStateWithLifecycle()
     val uiStyle by viewModel.uiStyle.collectAsStateWithLifecycle()
+    val customPalette by viewModel.customPalette.collectAsStateWithLifecycle()
+    val showNavLabels by viewModel.showNavLabels.collectAsStateWithLifecycle()
 
     // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
     // this app's own playback, not the microphone). Asked for only at the moment the user
@@ -125,6 +127,14 @@ internal fun SettingsRoute(
         uiStyle = uiStyle,
         uiStyleLabel = viewModel::uiStyleLabel,
         onUiStyleSelected = viewModel::setUiStyle,
+        customPalette = customPalette,
+        onCustomPalettePicked = viewModel::setCustomPalette,
+        onSystemColorsToggled = viewModel::setSystemColors,
+        onLockedPaletteClick = {
+            Toast.makeText(context, "Turn off \"Use system Material You\" to pick a palette", Toast.LENGTH_SHORT).show()
+        },
+        showNavLabels = showNavLabels,
+        onNavLabelsToggled = viewModel::setNavLabels,
         onExportBackup = { exportLauncher.launch("melodiq_backup.json") },
         onImportBackup = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
         sortType = sortType,
@@ -277,6 +287,12 @@ internal fun SettingsScreen(
     uiStyle: com.tasnimulhasan.entity.enums.UiStyle = com.tasnimulhasan.entity.enums.UiStyle.DEFAULT,
     uiStyleLabel: (com.tasnimulhasan.entity.enums.UiStyle) -> String = { it.name },
     onUiStyleSelected: (com.tasnimulhasan.entity.enums.UiStyle) -> Unit = {},
+    customPalette: com.tasnimulhasan.entity.enums.PaletteChoice = com.tasnimulhasan.entity.enums.PaletteChoice(),
+    onCustomPalettePicked: (com.tasnimulhasan.entity.enums.PaletteStyle, Color) -> Unit = { _, _ -> },
+    onSystemColorsToggled: (Boolean) -> Unit = {},
+    onLockedPaletteClick: () -> Unit = {},
+    showNavLabels: Boolean = true,
+    onNavLabelsToggled: (Boolean) -> Unit = {},
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
 ) {
@@ -333,6 +349,39 @@ internal fun SettingsScreen(
                 selected = accentColor,
                 label = accentColorLabel,
                 onSelected = onAccentColorSelected,
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+        item { SectionHeader("Custom palette") }
+        item {
+            SettingsSwitchRow(
+                title = "Use system Material You",
+                subtitle = "Match the colours from your phone's wallpaper. Turn off to pick a curated palette below.",
+                checked = accentColor == AccentColorOption.DYNAMIC,
+                onCheckedChange = onSystemColorsToggled,
+            )
+        }
+        item {
+            CustomPaletteSection(
+                locked = accentColor == AccentColorOption.DYNAMIC,
+                selected = if (accentColor == AccentColorOption.CUSTOM) customPalette else null,
+                savedStyle = customPalette.style,
+                onPick = onCustomPalettePicked,
+                onLockedClick = onLockedPaletteClick,
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+        item { SectionHeader("Bottom bar") }
+        item {
+            SettingsSwitchRow(
+                title = "Show tab names",
+                subtitle = "Show the name of the selected tab next to its icon. Turn off for icons only.",
+                checked = showNavLabels,
+                onCheckedChange = onNavLabelsToggled,
             )
         }
 
@@ -527,7 +576,7 @@ private fun AccentColorPicker(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        items(AccentColorOption.entries.toList()) { option ->
+        items(AccentColorOption.entries.filter { it != AccentColorOption.CUSTOM }) { option ->
             AccentColorSwatch(
                 option = option,
                 label = label(option),
@@ -595,6 +644,7 @@ private fun accentPreviewColor(option: AccentColorOption): Color? = when (option
     AccentColorOption.DYNAMIC -> Color(0xFF757575)
     AccentColorOption.ALBUM_ART -> Color(0xFF757575)
     AccentColorOption.APP_ICON -> Color(0xFF757575)
+    AccentColorOption.CUSTOM -> Color(0xFF757575)
 }
 
 

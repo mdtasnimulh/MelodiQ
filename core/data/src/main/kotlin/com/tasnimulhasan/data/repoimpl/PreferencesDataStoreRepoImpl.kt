@@ -325,7 +325,43 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
             .distinctUntilChanged()
     }
 
+    override suspend fun saveCustomPalette(choice: com.tasnimulhasan.entity.enums.PaletteChoice) {
+        tryIt {
+            dataStorePreferences.edit { preferences ->
+                preferences[PreferencesKeys.customPalette] = "${choice.style.name}|${choice.seed}"
+            }
+        }
+    }
+
+    override fun getCustomPalette(): Flow<com.tasnimulhasan.entity.enums.PaletteChoice> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                val raw = preferences[PreferencesKeys.customPalette]
+                val parts = raw?.split('|')
+                val style = com.tasnimulhasan.entity.enums.PaletteStyle.entries.find { it.name == parts?.getOrNull(0) }
+                    ?: com.tasnimulhasan.entity.enums.PaletteStyle.HUE
+                val seed = parts?.getOrNull(1)?.toIntOrNull()
+                if (seed == null) com.tasnimulhasan.entity.enums.PaletteChoice(style)
+                else com.tasnimulhasan.entity.enums.PaletteChoice(style, seed)
+            }
+            .distinctUntilChanged()
+    }
+
+    override suspend fun saveNavLabels(show: Boolean) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.navLabels] = show }
+        }
+    }
+
+    override fun getNavLabels(): Flow<Boolean> {
+        return dataStorePreferences.data
+            .map { preferences -> preferences[PreferencesKeys.navLabels] ?: true }
+            .distinctUntilChanged()
+    }
+
     private object PreferencesKeys {
+        val customPalette = stringPreferencesKey("custom_palette")
+        val navLabels = booleanPreferencesKey("nav_labels")
         val miniPlayerPosition = stringPreferencesKey("mini_player_position")
         val playerType = stringPreferencesKey("player_type")
         val uiStyle = stringPreferencesKey("ui_style")

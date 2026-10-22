@@ -61,6 +61,10 @@ class SettingsViewModel @Inject constructor(
     private val setPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetPlayerTypeUseCase,
     private val getUiStyleUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetUiStyleUseCase,
     private val setUiStyleUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetUiStyleUseCase,
+    private val getCustomPaletteUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetCustomPaletteUseCase,
+    private val setCustomPaletteUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetCustomPaletteUseCase,
+    private val getNavLabelsUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetNavLabelsUseCase,
+    private val setNavLabelsUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetNavLabelsUseCase,
     private val createBackupUseCase: CreateBackupUseCase,
     private val restoreBackupUseCase: RestoreBackupUseCase,
     @ApplicationContext private val context: Context,
@@ -212,6 +216,29 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { setThemeConfigUseCase(config) }
     }
 
+    val customPalette: StateFlow<com.tasnimulhasan.entity.enums.PaletteChoice> = getCustomPaletteUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.PaletteChoice())
+
+    /** Picks a swatch: stores the style + seed and switches the accent over to the custom palette. */
+    fun setCustomPalette(style: com.tasnimulhasan.entity.enums.PaletteStyle, seed: androidx.compose.ui.graphics.Color) {
+        viewModelScope.launch {
+            setCustomPaletteUseCase(com.tasnimulhasan.entity.enums.PaletteChoice(style, androidx.compose.ui.graphics.toArgb(seed)))
+            setAccentColorUseCase(AccentColorOption.CUSTOM)
+        }
+    }
+
+    /** "Use system Material You": on = wallpaper colours, off = the saved custom palette. */
+    fun setSystemColors(on: Boolean) {
+        viewModelScope.launch { setAccentColorUseCase(if (on) AccentColorOption.DYNAMIC else AccentColorOption.CUSTOM) }
+    }
+
+    val showNavLabels: StateFlow<Boolean> = getNavLabelsUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun setNavLabels(show: Boolean) {
+        viewModelScope.launch { setNavLabelsUseCase(show) }
+    }
+
     fun setAccentColor(option: AccentColorOption) {
         viewModelScope.launch { setAccentColorUseCase(option) }
     }
@@ -250,6 +277,7 @@ class SettingsViewModel @Inject constructor(
         AccentColorOption.DYNAMIC -> "Dynamic (wallpaper)"
         AccentColorOption.ALBUM_ART -> "Album art"
         AccentColorOption.APP_ICON -> "App icon"
+        AccentColorOption.CUSTOM -> "Custom palette"
         AccentColorOption.PURPLE -> "Purple"
         AccentColorOption.BLUE -> "Blue"
         AccentColorOption.GREEN -> "Green"

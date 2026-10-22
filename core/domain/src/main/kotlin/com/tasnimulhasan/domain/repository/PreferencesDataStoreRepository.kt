@@ -56,4 +56,10 @@ interface PreferencesDataStoreRepository {
 
     suspend fun saveMiniPlayerPosition(position: com.tasnimulhasan.entity.enums.MiniPlayerPosition)
     fun getMiniPlayerPosition(): Flow<com.tasnimulhasan.entity.enums.MiniPlayerPosition>
+
+    suspend fun saveCustomPalette(choice: com.tasnimulhasan.entity.enums.PaletteChoice)
+    fun getCustomPalette(): Flow<com.tasnimulhasan.entity.enums.PaletteChoice>
+
+    suspend fun saveNavLabels(show: Boolean)
+    fun getNavLabels(): Flow<Boolean>
 }

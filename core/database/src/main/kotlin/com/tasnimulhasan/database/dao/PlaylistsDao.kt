@@ -46,7 +46,10 @@ interface PlaylistsDao {
     @Query(
         """SELECT p.*,
              (SELECT COUNT(*) FROM playlist_details_table d WHERE d.playlistId = p.id) AS songCount,
-             (SELECT COALESCE(SUM(CAST(d.duration AS INTEGER)), 0) FROM playlist_details_table d WHERE d.playlistId = p.id) AS totalDurationMs
+             (SELECT COALESCE(SUM(CAST(d.duration AS INTEGER)), 0) FROM playlist_details_table d WHERE d.playlistId = p.id) AS totalDurationMs,
+             (SELECT GROUP_CONCAT(ref, char(10)) FROM (
+                 SELECT (d.songId || ':' || COALESCE(d.albumId, 0) || ':' || d.contentUri) AS ref
+                 FROM playlist_details_table d WHERE d.playlistId = p.id ORDER BY d.id DESC LIMIT 5)) AS coverRefs
            FROM melodiq_playlist_table p
            ORDER BY p.id DESC"""
     )

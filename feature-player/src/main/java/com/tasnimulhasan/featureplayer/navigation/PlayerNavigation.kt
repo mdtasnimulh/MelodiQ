@@ -45,10 +45,10 @@ fun NavGraphBuilder.playerScreen(
     navigateToQueue: () -> Unit,
 ) {
     composable<PlayerRoute>(
-        enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)) },
-        exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) },
-        popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)) },
-        popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) }
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
     ) { backStackEntry ->
         val musicId = backStackEntry.arguments?.getString("musicId") ?: ""
         SharedTransitionLayout {

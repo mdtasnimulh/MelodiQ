@@ -45,9 +45,12 @@ fun MelodiqTheme(
     seedColor: Color? = null,
     // DEFAULT is the regular solid UI. GLASS re-skins every screen as frosted glass over a gradient.
     uiStyle: UiStyle = UiStyle.DEFAULT,
+    // When set (custom palette), [seedColor] is expanded with this style instead of the simple preset scheme.
+    paletteStyle: com.tasnimulhasan.entity.enums.PaletteStyle? = null,
     content: @Composable () -> Unit
 ) {
     var colorScheme = when {
+        seedColor != null && paletteStyle != null -> paletteColorScheme(seedColor, paletteStyle, darkTheme)
         seedColor != null -> seedColorScheme(seedColor, darkTheme)
 
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {

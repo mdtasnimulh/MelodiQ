@@ -1,5 +1,13 @@
 package com.tasnimulhasan.designsystem.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -77,9 +85,8 @@ data class FloatingNavAction(
 private val CapsuleSpring = spring<Float>(dampingRatio = 0.58f, stiffness = 400f)
 
 /**
- * A solid, floating bottom bar: a dark pill with icon tabs and a lighter round highlight that
- * springs between them, and a separate round action button beside it.
- *  - tap a tab, or press and drag across the pill; the highlight follows and settles with a spring;
+ * A solid, floating bottom bar: a dark pill of icon tabs where the selected tab becomes a white pill
+ * that also shows its name ([showLabels]), and a separate round action button beside it.
  *  - [selectedIndex] = -1 means no tab is current (the action screen is open);
  *  - [minimized] (set while the content scrolls down) shrinks the bar, and it grows back on scroll up.
  */
@@ -90,6 +97,7 @@ fun MelodiqFloatingNavBar(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     minimized: Boolean = false,
+    showLabels: Boolean = true,
     action: FloatingNavAction? = null,
 ) {
     val n = items.size
@@ -98,7 +106,6 @@ fun MelodiqFloatingNavBar(
     val isDark = scheme.background.luminance() < 0.5f
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
 
     val glass = isGlassUi()
     val pillColor = when {
@@ -106,34 +113,20 @@ fun MelodiqFloatingNavBar(
         isDark -> Color(0xFF2A2A2E)
         else -> Color(0xFF1C1C1E)
     }
-    val activeCircle = Color.White.copy(alpha = if (glass) 0.26f else 0.16f)
     val inactiveTint = if (glass) Color.White.copy(alpha = 0.66f) else Color(0xFF8E8E93)
 
     val hasSelection = selectedIndex in 0 until n
-    val selected = selectedIndex.coerceIn(0, n - 1)
-    val capsulePos = remember { Animatable(selected.toFloat()) }
-    var pressing by remember { mutableStateOf(false) }
-    var widthPx by remember { mutableStateOf(0) }
-
-    LaunchedEffect(selected) {
-        if (!pressing) capsulePos.animateTo(selected.toFloat(), CapsuleSpring)
-    }
 
     val barHeight by animateDpAsState(
         if (minimized) 52.dp else 64.dp,
         spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow),
         label = "barHeight",
     )
-    val capsuleScale by animateFloatAsState(
-        if (pressing) 1.1f else 1f,
-        spring(dampingRatio = 0.55f, stiffness = 500f),
-        label = "capsuleScale",
-    )
-    val capsuleAlpha by animateFloatAsState(if (hasSelection) 1f else 0f, label = "capsuleAlpha")
 
-    val itemWidthPx = if (widthPx > 0) widthPx.toFloat() / n else 0f
-    val itemWidthDp = with(density) { itemWidthPx.toDp() }
-    val activeIndex by remember { derivedStateOf { capsulePos.value.roundToInt().coerceIn(0, n - 1) } }
+    // The selected tab is a white pill holding its icon and (optionally) its name; every other tab is a
+    // bare icon. The pill is each tab's own background, and tab widths animate, so it glides between tabs.
+    val pillBg = if (glass) Color.White.copy(alpha = 0.92f) else Color.White
+    val pillContent = Color(0xFF111111)
 
     Row(
         modifier = modifier
@@ -142,7 +135,7 @@ fun MelodiqFloatingNavBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // ── The pill ───────────────────────────────────────────────────────────────────
-        Box(
+        Row(
             modifier = Modifier
                 .weight(1f)
                 .height(barHeight)
@@ -153,68 +146,57 @@ fun MelodiqFloatingNavBar(
                     if (glass) Modifier.border(1.dp, glassEdge(), CircleShape)
                     else Modifier.border(0.8.dp, Color.White.copy(alpha = if (isDark) 0.12f else 0.08f), CircleShape)
                 )
-                .onSizeChanged { widthPx = it.width }
-                .pointerInput(n, widthPx) {
-                    if (widthPx == 0) return@pointerInput
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        val itemW = size.width.toFloat() / n
-                        fun indexAt(x: Float) = (x / itemW - 0.5f).coerceIn(0f, (n - 1).toFloat())
-
-                        pressing = true
-                        var lastTick = indexAt(down.position.x).roundToInt()
-                        scope.launch { capsulePos.animateTo(indexAt(down.position.x), CapsuleSpring) }
-                        var cancelled = false
-                        var lastX = down.position.x
-
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull() ?: break
-                            lastX = change.position.x
-                            if (change.positionChanged()) {
-                                val pos = indexAt(change.position.x)
-                                scope.launch { capsulePos.snapTo(pos) }
-                                val nearest = pos.roundToInt()
-                                if (nearest != lastTick) {
-                                    lastTick = nearest
-                                    haptic.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-                                }
-                            }
-                            if (change.changedToUp()) break
-                            if (change.isConsumed) { cancelled = true; break }
-                        }
-
-                        pressing = false
-                        val target = if (cancelled) selected else indexAt(lastX).roundToInt()
-                        scope.launch { capsulePos.animateTo(target.toFloat(), CapsuleSpring) }
-                        if (target != selected || !hasSelection) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                        // Always report it: tapping the current tab means "take me to its root".
-                        onSelect(target)
-                    }
-                },
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (itemWidthPx > 0f) {
-                Box(
-                    modifier = Modifier
-                        .offset { IntOffset((capsulePos.value * itemWidthPx).roundToInt(), 0) }
-                        .width(itemWidthDp)
-                        .fillMaxHeight()
-                        .padding(4.dp)
-                        .scale(capsuleScale)
-                        .clip(CircleShape)
-                        .background(activeCircle.copy(alpha = activeCircle.alpha * capsuleAlpha))
+            items.forEachIndexed { index, item ->
+                val active = hasSelection && index == selectedIndex
+                val weight by animateFloatAsState(
+                    targetValue = if (active && showLabels) 2.3f else 1f,
+                    animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f),
+                    label = "tabWeight",
                 )
-            }
-            Row(Modifier.fillMaxWidth().fillMaxHeight()) {
-                items.forEachIndexed { index, item ->
-                    val active = hasSelection && index == activeIndex
-                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                val pillAlpha by animateFloatAsState(if (active) 1f else 0f, tween(200), label = "pillAlpha")
+                Box(
+                    Modifier
+                        .weight(weight)
+                        .fillMaxHeight()
+                        .padding(vertical = 5.dp, horizontal = 2.dp)
+                        .clip(CircleShape)
+                        .background(pillBg.copy(alpha = pillBg.alpha * pillAlpha))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            if (!active) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            // Always report it: tapping the current tab means "take me to its root".
+                            onSelect(index)
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = if (active) item.selectedIcon else item.icon,
                             contentDescription = item.label,
-                            tint = if (active) Color.White else inactiveTint,
-                            modifier = Modifier.size(if (minimized) 22.dp else 26.dp),
+                            tint = if (active) pillContent else inactiveTint,
+                            modifier = Modifier.size(if (minimized) 22.dp else 24.dp),
                         )
+                        if (showLabels) {
+                            AnimatedVisibility(
+                                visible = active,
+                                enter = fadeIn(tween(220)) + expandHorizontally(tween(260)),
+                                exit = fadeOut(tween(120)) + shrinkHorizontally(tween(200)),
+                            ) {
+                                Text(
+                                    text = item.label,
+                                    color = pillContent,
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.padding(start = 6.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }

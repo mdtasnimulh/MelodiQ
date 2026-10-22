@@ -17,6 +17,9 @@ enum class AccentColorOption {
     /** Derived from the colours of the launcher icon the user picked (Settings > App icon). */
     APP_ICON,
 
+    /** A seed + style picked in Settings > Custom palette. */
+    CUSTOM,
+
     PURPLE,
     BLUE,
     GREEN,

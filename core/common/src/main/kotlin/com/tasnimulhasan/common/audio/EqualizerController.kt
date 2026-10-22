@@ -66,9 +66,19 @@ class EqualizerController @Inject constructor() {
         }
     }
 
-    /** [gains] are the stored values (1.0 == 1000 millibels), one per band. */
+    /**
+     * [gains] are the stored values (1.0 == 1000 millibels) in the app's 5- or 10-band layout. They
+     * are mapped onto however many bands the hardware Equalizer actually has, by log-frequency
+     * interpolation, so a 10-band curve works on every device.
+     */
     fun applyGains(gains: List<Double>) {
-        gains.take(numberOfBands).forEachIndexed { band, value -> setBandLevel(band, (value * 1000).toInt()) }
+        if (gains.isEmpty()) return
+        val ui = EqBands.freqsFor(gains.size)
+        for (band in 0 until numberOfBands) {
+            val hz = centerFreqHz(band) ?: continue
+            val value = EqBands.interpolate(gains, ui, hz)
+            setBandLevel(band, (value * 1000).toInt())
+        }
     }
 
     @Synchronized

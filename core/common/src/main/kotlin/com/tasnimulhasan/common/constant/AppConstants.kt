@@ -27,6 +27,11 @@ object AppConstants {
     const val PRESET_POP = 6
     const val PRESET_ROCK = 7
     const val PRESET_PODCAST = 8
+    const val PRESET_BASS_BOOST = 9
+    const val PRESET_TREBLE_BOOST = 10
+    const val PRESET_CLASSICAL = 11
+    const val PRESET_VOCAL = 12
+    const val PRESET_LOUDNESS = 13
 
     // 5-band presets
     val FLAT = listOf(0.0, 0.0, 0.0, 0.0, 0.0)
@@ -57,10 +62,16 @@ object AppConstants {
     val POP_10 = listOf(-0.2, -0.1, 0.0, 0.2, 0.3, 0.3, 0.2, 0.1, 0.0, -0.1)
     val ROCK_10 = listOf(0.4, 0.3, 0.2, 0.0, -0.1, -0.1, 0.0, 0.2, 0.3, 0.4)
     val PODCAST_10 = listOf(0.0, 0.0, 0.1, 0.2, 0.3, 0.3, 0.2, 0.1, 0.0, 0.0)
+    val BASS_BOOST_10 = listOf(0.6, 0.5, 0.4, 0.25, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0)
+    val TREBLE_BOOST_10 = listOf(0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.25, 0.4, 0.5, 0.6)
+    val CLASSICAL_10 = listOf(0.3, 0.2, 0.1, 0.0, 0.0, 0.0, -0.1, 0.1, 0.25, 0.3)
+    val VOCAL_10 = listOf(-0.3, -0.2, -0.1, 0.1, 0.3, 0.4, 0.4, 0.2, 0.0, -0.1)
+    val LOUDNESS_10 = listOf(0.5, 0.35, 0.1, 0.0, -0.1, 0.0, 0.05, 0.25, 0.4, 0.35)
 
     val effectType = listOf(
         "Custom", "Flat", "Acoustic", "Dance",
-        "Hip Hop", "Jazz", "Pop", "Rock", "Podcast"
+        "Hip Hop", "Jazz", "Pop", "Rock", "Podcast",
+        "Bass Boost", "Treble Boost", "Classical", "Vocal", "Loudness"
     )
 
     /*val effectType = listOf(

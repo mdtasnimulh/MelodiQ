@@ -138,6 +138,8 @@ class MainActivity : ComponentActivity() {
             val useDynamicColor by mainActivityViewModel.useDynamicColor.collectAsStateWithLifecycle()
             val accentSeedColor by mainActivityViewModel.accentSeedColor.collectAsStateWithLifecycle()
             val uiStyle by mainActivityViewModel.uiStyle.collectAsStateWithLifecycle()
+            val paletteStyle by mainActivityViewModel.paletteStyle.collectAsStateWithLifecycle()
+            val showNavLabels by mainActivityViewModel.showNavLabels.collectAsStateWithLifecycle()
 
             MelodiqTheme(
                 darkTheme = darkTheme,
@@ -145,6 +147,7 @@ class MainActivity : ComponentActivity() {
                 amoledBlack = amoledBlack,
                 seedColor = accentSeedColor,
                 uiStyle = uiStyle,
+                paletteStyle = paletteStyle,
             ) {
                 val playerType by mainActivityViewModel.playerType.collectAsStateWithLifecycle()
 
@@ -181,6 +184,7 @@ class MainActivity : ComponentActivity() {
                             appState = appState,
                             openPlayerRequested = shouldOpenPlayer,
                             onOpenPlayerHandled = { openPlayerRequested.value = false },
+                            showNavLabels = showNavLabels,
                         )
                         PlayerType.IPOD -> IpodApp(
                             openNowPlayingRequested = shouldOpenPlayer,
