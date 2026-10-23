@@ -56,6 +56,7 @@ internal class IpodViewModel @Inject constructor(
     private val isSongInPlaylistUseCase: IsSongInPlaylistUseCase,
     private val insertPlaylistUseCase: InsertPlaylistUseCase,
     private val deletePlaylistUseCase: com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase,
+    private val updatePlaylistUseCase: com.tasnimulhasan.domain.localusecase.playlists.UpdatePlaylistUseCase,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -344,6 +345,18 @@ internal class IpodViewModel @Inject constructor(
         viewModelScope.launch {
             deletePlaylistUseCase(com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase.Params(playlist))
             _messages.send("Playlist \"${playlist.playlistName}\" deleted")
+        }
+    }
+
+    /** Renames a playlist. */
+    fun renamePlaylist(playlist: PlaylistEntity, newName: String) {
+        val clean = newName.trim()
+        if (clean.isEmpty() || clean == playlist.playlistName) return
+        viewModelScope.launch {
+            updatePlaylistUseCase(
+                com.tasnimulhasan.domain.localusecase.playlists.UpdatePlaylistUseCase.Params(playlist.copy(playlistName = clean))
+            )
+            _messages.send("Playlist renamed to \"$clean\"")
         }
     }
 

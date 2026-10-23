@@ -123,8 +123,10 @@ internal fun IpodApp(
     val onNewPlaylist = remember { { addCurrent: Boolean -> newPlaylistFor = addCurrent } }
     var playlistToDelete by remember { mutableStateOf<PlaylistEntity?>(null) }
     val onDeletePlaylist = remember { { p: PlaylistEntity -> playlistToDelete = p } }
+    var playlistToEdit by remember { mutableStateOf<PlaylistEntity?>(null) }
+    val onEditPlaylist = remember { { p: PlaylistEntity -> playlistToEdit = p } }
 
-    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp, onNewPlaylist, onDeletePlaylist, musicView)
+    val data = IpodData(songs, artists, albums, genres, playlists, favouriteIds, current, clickFeedback, bodyColor, minimize, exitApp, onNewPlaylist, onDeletePlaylist, onEditPlaylist, musicView)
     val latestData by rememberUpdatedState(data)
     val latestSwitch by rememberUpdatedState(onSwitchToClassic)
 
@@ -156,6 +158,21 @@ internal fun IpodApp(
                 viewModel.closeMenu()
             },
             onDismiss = { playlistToDelete = null },
+        )
+    }
+
+    playlistToEdit?.let { target ->
+        com.tasnimulhasan.ui.component.MelodiqInputSheet(
+            title = "Rename Playlist",
+            label = "Playlist name",
+            confirmLabel = "Save",
+            initialValue = target.playlistName,
+            icon = Icons.AutoMirrored.Filled.QueueMusic,
+            onConfirm = { name ->
+                viewModel.renamePlaylist(target, name)
+                viewModel.closeMenu()
+            },
+            onDismiss = { playlistToEdit = null },
         )
     }
 
@@ -441,6 +458,7 @@ internal class IpodData(
     val onExit: () -> Unit,
     val onNewPlaylist: (addCurrent: Boolean) -> Unit,
     val onDeletePlaylist: (PlaylistEntity) -> Unit,
+    val onEditPlaylist: (PlaylistEntity) -> Unit,
     val musicView: IpodMusicView = IpodMusicView.COVER_FLOW,
 )
 
@@ -589,6 +607,7 @@ internal fun buildRows(
                 add(IpodRow(id = "playlist_${p.id}", title = p.playlistName, onSelect = { vm.openPlaylist(p.id, p.playlistName) }))
             }
             if (d.playlists.isNotEmpty()) {
+                add(IpodRow("edit_playlist", "Rename Playlist…") { vm.pushMenu(IpodPage.EDIT_PLAYLIST, "Rename Playlist") })
                 add(IpodRow("delete_playlist", "Delete Playlist…") { vm.pushMenu(IpodPage.DELETE_PLAYLIST, "Delete Playlist") })
             }
         }
@@ -596,6 +615,11 @@ internal fun buildRows(
         // Pick the playlist to delete; a confirmation sheet follows before anything is removed.
         IpodPage.DELETE_PLAYLIST -> d.playlists.map { p ->
             IpodRow(id = "delete_${p.id}", title = p.playlistName, chevron = false, onSelect = { d.onDeletePlaylist(p) })
+        }
+
+        // Pick the playlist to rename; a name sheet follows.
+        IpodPage.EDIT_PLAYLIST -> d.playlists.map { p ->
+            IpodRow(id = "edit_${p.id}", title = p.playlistName, chevron = false, onSelect = { d.onEditPlaylist(p) })
         }
 
         IpodPage.SETTINGS -> listOf(

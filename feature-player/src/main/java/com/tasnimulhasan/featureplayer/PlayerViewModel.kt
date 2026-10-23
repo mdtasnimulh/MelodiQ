@@ -12,8 +12,6 @@ import com.tasnimulhasan.domain.base.BaseViewModel
 import com.tasnimulhasan.domain.localusecase.datastore.GetSortTypeUseCase
 import com.tasnimulhasan.domain.localusecase.player.PlayerUseCases
 import com.tasnimulhasan.domain.player.PlaybackState
-import com.tasnimulhasan.domain.player.PlaybackTuning
-import com.tasnimulhasan.domain.player.PlaybackTuningController
 import com.tasnimulhasan.entity.enums.SortType
 import com.tasnimulhasan.entity.home.MusicEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,14 +38,15 @@ class PlayerViewModel @Inject constructor(
     private val observeFavouriteIdsUseCase: com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase,
     private val toggleFavouriteUseCase: com.tasnimulhasan.domain.localusecase.favourite.ToggleFavouriteUseCase,
     private val getSortTypeUseCase: GetSortTypeUseCase,
-    private val exoPlayer: ExoPlayer,
+    private val exoPlayer: ExoPlayer, // volume-boost only
     private val sleepTimerController: SleepTimerController,
-    private val tuningController: PlaybackTuningController,
+    private val playQueueIndex: com.tasnimulhasan.domain.localusecase.player.PlayQueueIndexUseCase,
+    private val tuningController: com.tasnimulhasan.domain.player.PlaybackTuningController,
     savedStateHandle: SavedStateHandle,
     context: Context,
 ) : BaseViewModel() {
 
-    // The song this screen was navigated to for. Read once from the nav arg via// volume-boost only
+    // The song this screen was navigated to for. Read once from the nav arg via
     // SavedStateHandle (Navigation Compose populates this automatically for a type-safe
     // route) - NOT from any Compose-observed ViewModel state, which is what made the old
     // "is this already the current song" check in PlayerScreen racy: currentSelectedAudio
@@ -87,7 +86,9 @@ class PlayerViewModel @Inject constructor(
 
     // Pass-throughs onto the repository's single shared StateFlow - see MainViewModel for
     // why this must not be independently fetched/derived here.
-    val audioList: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList()
+    // The queue ExoPlayer actually has loaded: the whole library normally, but only the playlist's
+    // songs while a playlist is playing - so the pager, next/previous and the page indices all agree.
+    val audioList: StateFlow<List<MusicEntity>> = playerUseCases.observeAudioList.queue()
 
     // Seed with the repository's real current song, not a dummy: a dummy first value made
     // the screen briefly believe "nothing is selected", which is what let it misfire.
@@ -147,7 +148,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     // Speed / pitch (with optional per-song memory) - see PlaybackTuningManager.
-    val tuning: StateFlow<PlaybackTuning> = tuningController.tuning
+    val tuning: StateFlow<com.tasnimulhasan.domain.player.PlaybackTuning> = tuningController.tuning
     fun setTuning(speed: Float, pitch: Float) = tuningController.setTuning(speed, pitch)
     fun setRememberTuning(enabled: Boolean) = tuningController.setRememberForSong(enabled)
     fun resetTuning() = tuningController.reset()
@@ -226,7 +227,7 @@ class PlayerViewModel @Inject constructor(
                 isSeekingFromSlider = false
             }
             UIEvents.SeekToNext -> playerUseCases.next()
-            is UIEvents.SelectedAudioChange -> playerUseCases.selectAudioChange(uiEvents.index)
+            is UIEvents.SelectedAudioChange -> playQueueIndex(uiEvents.index)
             is UIEvents.UpdateProgress -> playerUseCases.updateProgress(uiEvents.newProgress)
             UIEvents.SeekToPrevious -> playerUseCases.previous()
             UIEvents.RepeatOne -> {
