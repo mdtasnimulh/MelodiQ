@@ -132,4 +132,6 @@
 -dontwarn com.android.extensions.xr.splitengine.RequestCallback
 -dontwarn com.android.extensions.xr.splitengine.SystemRendererConnection
 -dontwarn com.android.extensions.xr.subspace.Subspace
--dontwarn com.gemalto.jp2.JP2Decoder
+
+# android.hardware.radio is a @SystemApi used by feature:radio via compile-only stubs; absent from the SDK jar.
+-dontwarn android.hardware.radio.**

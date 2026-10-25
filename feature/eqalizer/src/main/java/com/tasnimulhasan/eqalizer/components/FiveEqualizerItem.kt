@@ -44,7 +44,10 @@ fun FiveEqualizerItem(
     onBandValueChange: (index: Int, gainValue: Int) -> Unit,
 ) {
     val xAxisLabels = frequencyLabels
-    val xAxisLabelName = listOf("Bass / Sub-bass", "Low Mids / Warmth", "Mids / Vocal body", "Upper Mids / Clarity", "Upper Mids / Clarity")
+    // Always exactly five rows. This used to follow frequencyLabels.size, which becomes 10 the
+    // moment the user switches to 10 bands while this view is still fading out, and indexing the
+    // five names below then crashed the app.
+    val xAxisLabelName = listOf("Bass / Sub-bass", "Low Mids / Warmth", "Mids / Vocal body", "Upper Mids / Clarity", "Treble / Air")
 
     var currentAngle by remember { mutableFloatStateOf(-90f) }
     val progress = ((currentAngle + 90f) / 360f * 100f).coerceIn(0f, 100f)
@@ -59,7 +62,7 @@ fun FiveEqualizerItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            items(xAxisLabels.size) { index ->
+            items(xAxisLabelName.size) { index ->
                 ConstraintLayout(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -130,7 +133,7 @@ fun FiveEqualizerItem(
                             Spacer(modifier = modifier.width(4.dp))
 
                             Text(
-                                text = "(${xAxisLabels[index]})",
+                                text = "(${xAxisLabels.getOrNull(index).orEmpty()})",
                                 fontSize = 12.sp,
                                 style = TextStyle(
                                     textAlign = TextAlign.Center,

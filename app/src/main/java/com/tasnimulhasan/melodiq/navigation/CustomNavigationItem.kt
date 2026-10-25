@@ -22,6 +22,10 @@ enum class CustomNavigationItem(
         title = "Library",
         icon = Res.drawable.ic_library,
     ),
+    RADIO(
+        title = "Radio",
+        icon = Res.drawable.ic_radio,
+    ),
     SETTINGS(
         title = "Settings",
         icon = Res.drawable.ic_settings,

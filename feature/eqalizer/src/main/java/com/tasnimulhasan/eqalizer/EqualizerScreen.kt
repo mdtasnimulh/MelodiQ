@@ -287,13 +287,14 @@ fun PresetsView(viewModel: EqualizerViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EqualizerView(viewModel: EqualizerViewModel) {
-    val frequencyLabels by viewModel.frequencyLabels.collectAsState()
     val audioEffects by viewModel.audioEffects.collectAsState()
 
+    // Fixed labels: this view stays on screen while it fades out after a switch to 10 bands, and
+    // must not pick up the 10-band label list meanwhile.
     FiveEqualizerItem(
         modifier = Modifier,
         audioEffects = audioEffects,
-        frequencyLabels = frequencyLabels.ifEmpty { listOf("60Hz", "230Hz", "910Hz", "3kHz", "14kHz") },
+        frequencyLabels = com.tasnimulhasan.common.audio.EqBands.labelsFor(5),
         onBandValueChange = { index, value -> viewModel.onBandLevelChanged(index, value) }
     )
 }
@@ -301,7 +302,7 @@ fun EqualizerView(viewModel: EqualizerViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EqualizerView10Band(viewModel: EqualizerViewModel) {
-    val frequencyLabels by viewModel.frequencyLabels.collectAsState()
+    val frequencyLabels = com.tasnimulhasan.common.audio.EqBands.labelsFor(10)
     val audioEffects by viewModel.audioEffects.collectAsState()
 
     // One full-width row per band (frequency, slider, dB) - easier to drag precisely than ten

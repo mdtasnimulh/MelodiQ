@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Internet radio streaming. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Foreground media service that keeps radio playing and shows the notification. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Audio focus and the tuner's mute use the normal audio APIs. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!--
+        Hardware FM tuner (android.hardware.radio.RadioManager). This is a signature|privileged
+        permission: it is granted only to system / privileged apps or on a custom ROM. On a normal
+        install it is NOT granted, RadioManager yields null or throws SecurityException, and the
+        Radio screen shows its "hardware unavailable" warning. It is declared so a privileged build
+        works, and lint's ProtectedPermissions check is silenced because that is intended.
+    -->
+    <uses-permission
+        android:name="android.permission.ACCESS_BROADCAST_RADIO"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- FM hardware is optional: the app must still install on phones without it. -->
+    <uses-feature android:name="android.hardware.broadcastradio" android:required="false" />
+
+    <application>
+        <service
+            android:name=".service.RadioPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+    </application>
+
+</manifest>

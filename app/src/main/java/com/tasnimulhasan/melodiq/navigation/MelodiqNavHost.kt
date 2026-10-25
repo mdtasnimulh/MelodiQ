@@ -25,6 +25,7 @@ import com.tasnimulhasan.library.navigation.navigateToSearch
 import com.tasnimulhasan.melodiq.ui.MelodiQAppState
 import com.tasnimulhasan.playlistdetails.navigation.playlistDetailsScreen
 import com.tasnimulhasan.playlists.navigation.playlistsScreen
+import com.tasnimulhasan.radio.navigation.radioScreen
 import com.tasnimulhasan.settings.navigation.settingsScreen
 import com.tasnimulhasan.songdetails.navigation.navigateToSongDetails
 import com.tasnimulhasan.songdetails.navigation.songDetailsScreen
@@ -99,6 +100,7 @@ fun MelodiQNavHost(
             navigateBack = navigateBack,
         )
         feedbackScreen()
+        radioScreen()
         equalizerScreen()
         playlistDetailsScreen(
             navigateBack = navigateBack,

@@ -53,6 +53,8 @@
             <option value="$PROJECT_DIR$/feature/home" />
             <option value="$PROJECT_DIR$/feature/library" />
             <option value="$PROJECT_DIR$/feature/playlists" />
+            <option value="$PROJECT_DIR$/feature/radio" />
+            <option value="$PROJECT_DIR$/feature/radio-stubs" />
             <option value="$PROJECT_DIR$/feature/songs" />
             <option value="$PROJECT_DIR$/fetaure-playlist" />
             <option value="$PROJECT_DIR$/fetaure-playlist/playlist-details" />

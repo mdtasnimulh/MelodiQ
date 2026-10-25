@@ -36,6 +36,7 @@ fun CustomDrawer(
     onFeedBackClick: () -> Unit,
     onFavouriteClick: () -> Unit,
     onLibraryClick: () -> Unit,
+    onRadioClick: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
     // The logo follows the launcher icon the user picked in Settings > App icon.
@@ -96,6 +97,10 @@ fun CustomDrawer(
                         }
                         CustomNavigationItem.LIBRARY -> {
                             onLibraryClick.invoke()
+                            onDrawerCloseClick.invoke()
+                        }
+                        CustomNavigationItem.RADIO -> {
+                            onRadioClick.invoke()
                             onDrawerCloseClick.invoke()
                         }
                         CustomNavigationItem.SETTINGS -> {

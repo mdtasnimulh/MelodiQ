@@ -30,9 +30,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("app-credential/melodiq.jks")
-            storePassword = "Melodiq@#$123"
+            storePassword = "melodiq107"
             keyAlias = "melodiq"
-            keyPassword = "Melodiq@#$123"
+            keyPassword = "melodiq107"
         }
     }
 
@@ -45,14 +45,9 @@ android {
             isShrinkResources = true
             applicationIdSuffix = MelodiqBuildType.RELEASE.applicationIdSuffix
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.named("release").get()
-
-            ndk {
-                abiFilters.addAll(setOf("arm64-v8a"))
-            }
+            signingConfig = signingConfigs.named("debug").get()
         }
     }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -65,17 +60,6 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-
-
-    applicationVariants.all {
-        if (buildType.name == "release") {
-            outputs.all {
-                val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-                output.outputFileName =
-                    "MelodiQ_V${versionName}_C${versionCode}.apk"
-            }
         }
     }
 }
@@ -105,6 +89,7 @@ dependencies {
         implementation(feature.playlists)
         implementation(feature.eqalizer)
         implementation(feature.library)
+        implementation(feature.radio)
         implementation(featurePlayer)
         implementation(featureQueue)
         implementation(featureFavourite)

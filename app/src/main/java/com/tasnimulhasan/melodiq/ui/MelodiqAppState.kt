@@ -21,6 +21,7 @@ import com.tasnimulhasan.library.navigation.navigateToSearch
 import com.tasnimulhasan.featurefeedback.navigation.navigateToFeedback
 import com.tasnimulhasan.featureplayer.navigation.navigateToPlayer
 import com.tasnimulhasan.featurequeue.navigation.navigateToQueue
+import com.tasnimulhasan.radio.navigation.navigateToRadio
 import com.tasnimulhasan.home.navigation.HomeRoute
 import com.tasnimulhasan.home.navigation.navigateToHome
 import com.tasnimulhasan.melodiq.navigation.TopLevelDestination
@@ -114,6 +115,8 @@ class MelodiQAppState(
     fun navigateToAbout() = navController.navigateToAbout()
 
     fun navigateToFeedBack() = navController.navigateToFeedback()
+
+    fun navigateToRadio() = navController.navigateToRadio()
 
     fun navigateToSettings() = navController.navigateToSettings()
 
