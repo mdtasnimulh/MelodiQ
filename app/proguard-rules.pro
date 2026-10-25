@@ -135,3 +135,4 @@
 
 # android.hardware.radio is a @SystemApi used by feature:radio via compile-only stubs; absent from the SDK jar.
 -dontwarn android.hardware.radio.**
+-dontwarn com.gemalto.jp2.JP2Decoder
