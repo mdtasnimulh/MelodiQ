@@ -100,7 +100,9 @@ fun MelodiQNavHost(
             navigateBack = navigateBack,
         )
         feedbackScreen()
-        radioScreen()
+        radioScreen(
+            navigateBack = navigateBack,
+        )
         equalizerScreen()
         playlistDetailsScreen(
             navigateBack = navigateBack,

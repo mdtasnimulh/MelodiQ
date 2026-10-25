@@ -8,7 +8,8 @@ import com.tasnimulhasan.radio.ui.RadioScreen
 import com.tasnimulhasan.ui.motion.MelodiqMotion
 import kotlinx.serialization.Serializable
 
-@Serializable object RadioRoute
+@Serializable
+object RadioRoute
 
 fun NavController.navigateToRadio(navOptions: NavOptionsBuilder.() -> Unit = {}) {
     navigate(route = RadioRoute) {
@@ -16,13 +17,17 @@ fun NavController.navigateToRadio(navOptions: NavOptionsBuilder.() -> Unit = {})
     }
 }
 
-fun NavGraphBuilder.radioScreen() {
+fun NavGraphBuilder.radioScreen(
+    navigateBack: () -> Unit,
+) {
     composable<RadioRoute>(
         enterTransition = { MelodiqMotion.pushEnter() },
         exitTransition = { MelodiqMotion.pushExit() },
         popEnterTransition = { MelodiqMotion.popEnter() },
         popExitTransition = { MelodiqMotion.popExit() }
     ) {
-        RadioScreen()
+        RadioScreen(
+            navigateBack = navigateBack
+        )
     }
 }

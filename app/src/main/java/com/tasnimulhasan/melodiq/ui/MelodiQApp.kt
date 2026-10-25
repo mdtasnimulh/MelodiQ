@@ -94,6 +94,7 @@ import com.tasnimulhasan.melodiq.ui.miniplayer.PopUpPlayer
 import com.tasnimulhasan.melodiq.ui.viewmodel.MainViewModel
 import com.tasnimulhasan.melodiq.ui.viewmodel.UiEvent
 import com.tasnimulhasan.playlists.navigation.PlaylistsRoute
+import com.tasnimulhasan.radio.navigation.RadioRoute
 import com.tasnimulhasan.settings.navigation.SettingsRoute
 import com.tasnimulhasan.songs.navigation.SongsRoute
 import kotlin.math.roundToInt
@@ -264,9 +265,10 @@ internal fun MmApp(
             topBar = {
                 // The Audio Book screens draw their own header, so the app bar is hidden there.
                 val hideAppBar = currentDestination.isRouteInHierarchy(PlayerRoute::class) ||
-                    currentDestination.isRouteInHierarchy(AudioBookRoute::class) ||
-                    currentDestination.isRouteInHierarchy(AudioBookDetailsRoute::class) ||
-                    currentDestination.isRouteInHierarchy(BookReaderRoute::class)
+                        currentDestination.isRouteInHierarchy(AudioBookRoute::class) ||
+                        currentDestination.isRouteInHierarchy(AudioBookDetailsRoute::class) ||
+                        currentDestination.isRouteInHierarchy(BookReaderRoute::class) ||
+                        currentDestination.isRouteInHierarchy(RadioRoute::class)
                 if (!hideAppBar) {
                     val onSearch = currentDestination.isRouteInHierarchy(SearchNavRoute::class)
                     val onSettings = currentDestination.isRouteInHierarchy(SettingsRoute::class)
@@ -359,8 +361,10 @@ internal fun MmApp(
                                         // Snap to whichever corner it was dropped nearest to.
                                         val startsEnd = miniPosition.name.endsWith("END")
                                         val startsBottom = miniPosition.name.startsWith("BOTTOM")
-                                        val toEnd = if (startsEnd) miniDrag.x > -containerSize.width / 4f else miniDrag.x > containerSize.width / 4f
-                                        val toBottom = if (startsBottom) miniDrag.y > -containerSize.height / 4f else miniDrag.y > containerSize.height / 4f
+                                        val toEnd =
+                                            if (startsEnd) miniDrag.x > -containerSize.width / 4f else miniDrag.x > containerSize.width / 4f
+                                        val toBottom =
+                                            if (startsBottom) miniDrag.y > -containerSize.height / 4f else miniDrag.y > containerSize.height / 4f
                                         miniDrag = Offset.Zero
                                         viewModel.setMiniPlayerPosition(
                                             when {
@@ -405,7 +409,9 @@ internal fun MmApp(
                     }
 
                     AnimatedVisibility(
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (isTopLevelDestination) FloatingBarSpace else 0.dp),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = if (isTopLevelDestination) FloatingBarSpace else 0.dp),
                         visible = showPopUpPlayer,
                         enter = scaleIn(
                             animationSpec = tween(durationMillis = 500),
