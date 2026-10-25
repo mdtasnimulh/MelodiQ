@@ -23,7 +23,7 @@ enum class CustomNavigationItem(
         icon = Res.drawable.ic_library,
     ),
     RADIO(
-        title = "Radio/Podcasts",
+        title = "Radio",
         icon = Res.drawable.ic_radio,
     ),
     SETTINGS(

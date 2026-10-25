@@ -35,7 +35,6 @@ enum class StationGroup(val label: String) {
     BANGLADESHI("Bangladeshi"),
     NEWS("News"),
     MUSIC("Music"),
-    PODCASTS("Podcasts"),
     EDUCATION("Education"),
     TECHNOLOGY("Technology"),
     OTHERS("Others")
