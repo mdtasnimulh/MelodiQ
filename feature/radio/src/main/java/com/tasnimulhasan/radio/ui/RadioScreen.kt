@@ -6,14 +6,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Grid
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -345,7 +350,7 @@ private fun InternetSection(
                         text = if (group == StationGroup.BANGLADESHI) {
                             "No Bangladeshi stations yet. Paste a stream address below, choose Bangladeshi and tap Save."
                         } else {
-                            "No stations in this group yet."
+                            "No stations in this group yet. Add new stations to your saved list for this group."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -394,12 +399,29 @@ private fun InternetSection(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StationGroup.entries.forEach { group ->
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 110.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 160.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(StationGroup.entries.size) { index ->
+                    val group = StationGroup.entries[index]
+
                     FilterChip(
                         selected = state.customGroup == group,
                         onClick = { onCustomGroupChanged(group) },
-                        label = { Text(group.label) },
+                        label = {
+                            Text(
+                                text = group.label,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
