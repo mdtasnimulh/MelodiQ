@@ -32,8 +32,8 @@ sealed interface RadioError {
 
 /** The sections the station list is split into. */
 enum class StationGroup(val label: String) {
-    NEWS("News"),
     BANGLADESHI("Bangladeshi"),
+    NEWS("News"),
     MUSIC("Music"),
     PODCASTS("Podcasts"),
     EDUCATION("Education"),
