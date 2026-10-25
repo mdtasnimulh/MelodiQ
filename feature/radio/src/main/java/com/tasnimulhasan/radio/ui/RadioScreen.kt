@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Pause
@@ -35,10 +36,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -65,6 +69,7 @@ import com.tasnimulhasan.radio.domain.RadioError
 import com.tasnimulhasan.radio.domain.RadioMode
 import com.tasnimulhasan.radio.domain.RadioStation
 import com.tasnimulhasan.radio.domain.RadioStatus
+import com.tasnimulhasan.radio.domain.StationGroup
 import com.tasnimulhasan.ui.motion.entrance
 
 /** Entry point used by navigation: wires the ViewModel to the stateless [RadioContent]. */
@@ -80,7 +85,11 @@ internal fun RadioScreen(
         onModeSelected = viewModel::onModeSelected,
         onStationSelected = viewModel::onStationSelected,
         onCustomUrlChanged = viewModel::onCustomUrlChanged,
+        onCustomNameChanged = viewModel::onCustomNameChanged,
+        onCustomGroupChanged = viewModel::onCustomGroupChanged,
         onPlayCustomUrl = viewModel::onPlayCustomUrl,
+        onSaveCustomStation = viewModel::onSaveCustomStation,
+        onRemoveStation = viewModel::onRemoveStation,
         onFrequencyChanged = viewModel::onFrequencyChanged,
         onFrequencyCommitted = viewModel::onFrequencyCommitted,
         onTogglePlayPause = viewModel::onTogglePlayPause,
@@ -95,7 +104,11 @@ internal fun RadioContent(
     onModeSelected: (RadioMode) -> Unit,
     onStationSelected: (RadioStation) -> Unit,
     onCustomUrlChanged: (String) -> Unit,
+    onCustomNameChanged: (String) -> Unit,
+    onCustomGroupChanged: (StationGroup) -> Unit,
     onPlayCustomUrl: () -> Unit,
+    onSaveCustomStation: () -> Unit,
+    onRemoveStation: (RadioStation) -> Unit,
     onFrequencyChanged: (Int) -> Unit,
     onFrequencyCommitted: () -> Unit,
     onTogglePlayPause: () -> Unit,
@@ -143,7 +156,11 @@ internal fun RadioContent(
                 state = state,
                 onStationSelected = onStationSelected,
                 onCustomUrlChanged = onCustomUrlChanged,
+                onCustomNameChanged = onCustomNameChanged,
+                onCustomGroupChanged = onCustomGroupChanged,
                 onPlayCustomUrl = onPlayCustomUrl,
+                onSaveCustomStation = onSaveCustomStation,
+                onRemoveStation = onRemoveStation,
             )
             RadioMode.HARDWARE -> FmTunerCard(
                 state = state,
@@ -267,7 +284,11 @@ private fun InternetSection(
     state: RadioUiState,
     onStationSelected: (RadioStation) -> Unit,
     onCustomUrlChanged: (String) -> Unit,
+    onCustomNameChanged: (String) -> Unit,
+    onCustomGroupChanged: (StationGroup) -> Unit,
     onPlayCustomUrl: () -> Unit,
+    onSaveCustomStation: () -> Unit,
+    onRemoveStation: (RadioStation) -> Unit,
 ) {
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -312,18 +333,34 @@ private fun InternetSection(
         modifier = Modifier.fillMaxWidth().entrance(3),
     ) {
         Column(Modifier.padding(vertical = 8.dp)) {
-            Text(
-                "Stations",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
-            )
-            state.stations.forEach { station ->
-                StationRow(
-                    station = station,
-                    selected = station.url == state.selectedStationUrl,
-                    active = state.isActive,
-                    onClick = { onStationSelected(station) },
+            state.groups.forEach { (group, stations) ->
+                Text(
+                    group.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
                 )
+                if (stations.isEmpty()) {
+                    Text(
+                        text = if (group == StationGroup.BANGLADESHI) {
+                            "No Bangladeshi stations yet. Paste a stream address below, choose Bangladeshi and tap Save."
+                        } else {
+                            "No stations in this group yet."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+                stations.forEach { station ->
+                    StationRow(
+                        station = station,
+                        selected = station.url == state.selectedStationUrl,
+                        active = state.isActive,
+                        onClick = { onStationSelected(station) },
+                        onRemove = if (station in state.savedStations) ({ onRemoveStation(station) }) else null,
+                    )
+                }
             }
         }
     }
@@ -337,6 +374,13 @@ private fun InternetSection(
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Your own stream", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
+                value = state.customName,
+                onValueChange = onCustomNameChanged,
+                label = { Text("Name (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
                 value = state.customUrl,
                 onValueChange = onCustomUrlChanged,
                 label = { Text("Stream address (https://...)") },
@@ -345,12 +389,30 @@ private fun InternetSection(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { onPlayCustomUrl() }),
             )
-            Button(
-                onClick = onPlayCustomUrl,
-                enabled = state.customUrl.isNotBlank(),
+            Text(
+                "Save it under",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StationGroup.entries.forEach { group ->
+                    FilterChip(
+                        selected = state.customGroup == group,
+                        onClick = { onCustomGroupChanged(group) },
+                        label = { Text(group.label) },
+                    )
+                }
+            }
+            Row(
                 modifier = Modifier.align(Alignment.End),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Play stream")
+                OutlinedButton(onClick = onSaveCustomStation, enabled = state.customUrl.isNotBlank()) {
+                    Text("Save")
+                }
+                Button(onClick = onPlayCustomUrl, enabled = state.customUrl.isNotBlank()) {
+                    Text("Play stream")
+                }
             }
         }
     }
@@ -362,6 +424,7 @@ private fun StationRow(
     selected: Boolean,
     active: Boolean,
     onClick: () -> Unit,
+    onRemove: (() -> Unit)?,
 ) {
     Row(
         modifier = Modifier
@@ -397,6 +460,11 @@ private fun StationRow(
         }
         if (selected && active) {
             Text("On air", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        }
+        if (onRemove != null) {
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Filled.Close, contentDescription = "Remove ${station.name}")
+            }
         }
     }
 }

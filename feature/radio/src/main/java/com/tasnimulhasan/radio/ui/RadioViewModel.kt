@@ -6,6 +6,7 @@ import com.tasnimulhasan.radio.data.RadioController
 import com.tasnimulhasan.radio.domain.RadioMode
 import com.tasnimulhasan.radio.domain.RadioState
 import com.tasnimulhasan.radio.domain.RadioStation
+import com.tasnimulhasan.radio.domain.StationGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,13 +29,17 @@ class RadioViewModel @Inject constructor(
 
     /** The text in the "custom stream" box: the only state that belongs to the screen alone. */
     private val customUrl = MutableStateFlow("")
+    private val customName = MutableStateFlow("")
+    private val customGroup = MutableStateFlow(StationGroup.OTHERS)
 
     val uiState: StateFlow<RadioUiState> =
-        combine(controller.state, customUrl) { radio, url -> radio.toUi(url) }
+        combine(controller.state, customUrl, customName, customGroup) { radio, url, name, group ->
+            radio.toUi(url, name, group)
+        }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = controller.state.value.toUi(customUrl.value),
+                initialValue = controller.state.value.toUi(customUrl.value, customName.value, customGroup.value),
             )
 
     fun onModeSelected(mode: RadioMode) = controller.selectMode(mode)
@@ -43,7 +48,15 @@ class RadioViewModel @Inject constructor(
 
     fun onCustomUrlChanged(text: String) = customUrl.update { text }
 
+    fun onCustomNameChanged(text: String) = customName.update { text }
+
+    fun onCustomGroupChanged(group: StationGroup) = customGroup.update { group }
+
     fun onPlayCustomUrl() = controller.playCustomUrl(customUrl.value)
+
+    fun onSaveCustomStation() = controller.saveStation(customName.value, customUrl.value, customGroup.value)
+
+    fun onRemoveStation(station: RadioStation) = controller.removeStation(station)
 
     /** Dial is moving: update the display without touching the chip. */
     fun onFrequencyChanged(khz: Int) = controller.setFrequency(khz)
@@ -57,12 +70,15 @@ class RadioViewModel @Inject constructor(
 
     fun onDismissError() = controller.clearError()
 
-    private fun RadioState.toUi(customUrlText: String) = RadioUiState(
+    private fun RadioState.toUi(customUrlText: String, customNameText: String, group: StationGroup) = RadioUiState(
         mode = mode,
         status = status,
         selectedStationUrl = stationUrl,
         stationName = stationName,
         customUrl = customUrlText,
+        customName = customNameText,
+        customGroup = group,
+        savedStations = savedStations,
         frequencyKhz = frequencyKhz,
         nowPlaying = nowPlaying,
         headphonesPlugged = headphonesPlugged,

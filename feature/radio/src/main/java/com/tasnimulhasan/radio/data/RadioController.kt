@@ -11,6 +11,7 @@ import com.tasnimulhasan.radio.domain.RadioMode
 import com.tasnimulhasan.radio.domain.RadioState
 import com.tasnimulhasan.radio.domain.RadioStation
 import com.tasnimulhasan.radio.domain.RadioStations
+import com.tasnimulhasan.radio.domain.StationGroup
 import com.tasnimulhasan.radio.domain.RadioStatus
 import com.tasnimulhasan.radio.service.RadioPlaybackService
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -53,6 +54,7 @@ class RadioController @Inject constructor(
     private val internet: InternetRadioPlayer,
     private val hardware: HardwareRadioTuner,
     private val headset: WiredHeadsetMonitor,
+    private val savedStations: SavedStationStore,
     private val pauseMusic: PauseUseCase,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -63,6 +65,7 @@ class RadioController @Inject constructor(
             stationName = RadioStations.defaults.first().name,
             stationUrl = RadioStations.defaults.first().url,
             headphonesPlugged = headset.isPlugged.value,
+            savedStations = savedStations.stations.value,
         )
     )
     val state: StateFlow<RadioState> = _state.asStateFlow()
@@ -94,6 +97,9 @@ class RadioController @Inject constructor(
             }
         }
         scope.launch {
+            savedStations.stations.collect { list -> _state.update { it.copy(savedStations = list) } }
+        }
+        scope.launch {
             headset.isPlugged.collect { plugged -> onHeadsetChanged(plugged) }
         }
     }
@@ -117,6 +123,18 @@ class RadioController @Inject constructor(
         }
         playUrl("Custom stream", url)
     }
+
+    /** Saves a station under [group] so it appears in that section next time. */
+    fun saveStation(name: String, rawUrl: String, group: StationGroup) {
+        val url = rawUrl.trim()
+        if (!url.startsWith("http://", true) && !url.startsWith("https://", true)) {
+            _state.update { it.copy(error = RadioError.StreamFailed("Enter a full stream address starting with https://")) }
+            return
+        }
+        savedStations.save(RadioStation(name.trim().ifEmpty { "My station" }, "Saved by you", url, group))
+    }
+
+    fun removeStation(station: RadioStation) = savedStations.remove(station.url)
 
     /** Moves the dial. Updates the display at once; the chip is retuned by [commitFrequency]. */
     fun setFrequency(khz: Int) {

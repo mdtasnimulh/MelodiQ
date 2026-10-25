@@ -30,8 +30,20 @@ sealed interface RadioError {
     data object FocusDenied : RadioError
 }
 
+/** The sections the station list is split into. */
+enum class StationGroup(val label: String) {
+    NEWS("News"),
+    BANGLADESHI("Bangladeshi"),
+    OTHERS("Others"),
+}
+
 /** An internet radio station the user can pick. */
-data class RadioStation(val name: String, val genre: String, val url: String)
+data class RadioStation(
+    val name: String,
+    val genre: String,
+    val url: String,
+    val group: StationGroup = StationGroup.OTHERS,
+)
 
 /** The FM broadcast band the tuner dial covers. All values are in kilohertz, which is what the API wants. */
 object FmBand {
@@ -69,15 +81,28 @@ data class RadioState(
     val nowPlaying: String? = null,
     val headphonesPlugged: Boolean = false,
     val error: RadioError? = null,
+    /** Stations the user saved, shown in their chosen group. */
+    val savedStations: List<RadioStation> = emptyList(),
 )
 
-/** Built-in stations. They are all https so Android's cleartext block does not stop them. */
+/**
+ * Built-in stations, all https so Android's cleartext block does not stop them. Stream addresses
+ * change without notice, so any of these can stop working; users can add their own and save them
+ * under any group (see SavedStationStore).
+ *
+ * The Bangladeshi group has no built-in entries: no current, verified https stream addresses were
+ * available when this was written. Saved stations the user puts in that group appear there.
+ */
 object RadioStations {
     val defaults = listOf(
-        RadioStation("SomaFM Groove Salad", "Ambient / downtempo", "https://ice1.somafm.com/groovesalad-128-mp3"),
-        RadioStation("SomaFM Defcon", "Electronic", "https://ice1.somafm.com/defcon-128-mp3"),
-        RadioStation("Radio Paradise", "Eclectic rock", "https://stream.radioparadise.com/aac-320"),
-        RadioStation("KEXP Seattle", "Indie / alternative", "https://kexp.streamguys1.com/kexp160.aac"),
-        RadioStation("BBC World Service", "News and talk", "https://stream.live.vc.bbcmedia.co.uk/bbc_world_service"),
+        RadioStation("BBC World Service", "World news", "https://stream.live.vc.bbcmedia.co.uk/bbc_world_service", StationGroup.NEWS),
+        RadioStation("NPR News", "US news and talk", "https://npr-ice.streamguys1.com/live.mp3", StationGroup.NEWS),
+        RadioStation("LBC", "UK news and talk", "https://media-ssl.musicradio.com/LBC", StationGroup.NEWS),
+        RadioStation("KQED", "Public radio news", "https://streams.kqed.org/kqedradio", StationGroup.NEWS),
+
+        RadioStation("SomaFM Groove Salad", "Ambient / downtempo", "https://ice1.somafm.com/groovesalad-128-mp3", StationGroup.OTHERS),
+        RadioStation("SomaFM Defcon", "Electronic", "https://ice1.somafm.com/defcon-128-mp3", StationGroup.OTHERS),
+        RadioStation("Radio Paradise", "Eclectic rock", "https://stream.radioparadise.com/aac-320", StationGroup.OTHERS),
+        RadioStation("KEXP Seattle", "Indie / alternative", "https://kexp.streamguys1.com/kexp160.aac", StationGroup.OTHERS),
     )
 }

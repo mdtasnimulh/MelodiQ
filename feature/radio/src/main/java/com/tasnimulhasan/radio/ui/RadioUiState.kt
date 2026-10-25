@@ -5,6 +5,7 @@ import com.tasnimulhasan.radio.domain.RadioError
 import com.tasnimulhasan.radio.domain.RadioMode
 import com.tasnimulhasan.radio.domain.RadioStation
 import com.tasnimulhasan.radio.domain.RadioStations
+import com.tasnimulhasan.radio.domain.StationGroup
 import com.tasnimulhasan.radio.domain.RadioStatus
 
 /**
@@ -14,15 +15,23 @@ import com.tasnimulhasan.radio.domain.RadioStatus
 data class RadioUiState(
     val mode: RadioMode = RadioMode.INTERNET,
     val status: RadioStatus = RadioStatus.IDLE,
-    val stations: List<RadioStation> = RadioStations.defaults,
+    val savedStations: List<RadioStation> = emptyList(),
     val selectedStationUrl: String? = null,
     val stationName: String? = null,
     val customUrl: String = "",
+    val customName: String = "",
+    val customGroup: StationGroup = StationGroup.OTHERS,
     val frequencyKhz: Int = FmBand.DEFAULT_KHZ,
     val nowPlaying: String? = null,
     val headphonesPlugged: Boolean = false,
     val error: RadioError? = null,
 ) {
+    /** Built-in plus saved stations, split into the News / Bangladeshi / Others sections. */
+    val groups: List<Pair<StationGroup, List<RadioStation>>>
+        get() = StationGroup.entries.map { group ->
+            group to (RadioStations.defaults + savedStations).filter { it.group == group }
+        }
+
     val isActive: Boolean get() = status == RadioStatus.PLAYING || status == RadioStatus.BUFFERING
     val isBuffering: Boolean get() = status == RadioStatus.BUFFERING
 
