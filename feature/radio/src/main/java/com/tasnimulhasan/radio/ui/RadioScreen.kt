@@ -350,7 +350,7 @@ private fun InternetSection(
                         text = if (group == StationGroup.BANGLADESHI) {
                             "No Bangladeshi stations yet. Paste a stream address below, choose Bangladeshi and tap Save."
                         } else {
-                            "No stations in this group yet. Add new stations to your saved list for this group."
+                            "No stations here yet. Add your favorite stations to get started!"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
