@@ -88,6 +88,7 @@ internal fun SettingsRoute(
     val uiStyle by viewModel.uiStyle.collectAsStateWithLifecycle()
     val customPalette by viewModel.customPalette.collectAsStateWithLifecycle()
     val showNavLabels by viewModel.showNavLabels.collectAsStateWithLifecycle()
+    val appFont by viewModel.appFont.collectAsStateWithLifecycle()
 
     // Visualizer capture is gated behind RECORD_AUDIO by Android (even though it only reads
     // this app's own playback, not the microphone). Asked for only at the moment the user
@@ -135,6 +136,8 @@ internal fun SettingsRoute(
         },
         showNavLabels = showNavLabels,
         onNavLabelsToggled = viewModel::setNavLabels,
+        appFont = appFont,
+        onAppFontSelected = viewModel::setAppFont,
         onExportBackup = { exportLauncher.launch("melodiq_backup.json") },
         onImportBackup = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
         sortType = sortType,
@@ -293,6 +296,8 @@ internal fun SettingsScreen(
     onLockedPaletteClick: () -> Unit = {},
     showNavLabels: Boolean = true,
     onNavLabelsToggled: (Boolean) -> Unit = {},
+    appFont: com.tasnimulhasan.entity.enums.AppFont = com.tasnimulhasan.entity.enums.AppFont.DEFAULT,
+    onAppFontSelected: (com.tasnimulhasan.entity.enums.AppFont) -> Unit = {},
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
 ) {
@@ -370,6 +375,19 @@ internal fun SettingsScreen(
                 savedStyle = customPalette.style,
                 onPick = onCustomPalettePicked,
                 onLockedClick = onLockedPaletteClick,
+            )
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+        item { SectionHeader("App font") }
+        items(com.tasnimulhasan.entity.enums.AppFont.entries.toList()) { option ->
+            SettingsRadioRow(
+                label = option.label,
+                selected = option == appFont,
+                onClick = { onAppFontSelected(option) },
+                // Each row is drawn in its own font so the list doubles as a preview.
+                fontFamily = com.tasnimulhasan.designsystem.theme.appFontFamily(option),
             )
         }
 
@@ -501,6 +519,7 @@ private fun SettingsRadioRow(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
 ) {
     Column(
         modifier = Modifier
@@ -513,7 +532,11 @@ private fun SettingsRadioRow(
             modifier = Modifier.fillMaxWidth()
         ) {
             RadioButton(selected = selected, onClick = onClick)
-            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontFamily = fontFamily ?: com.tasnimulhasan.designsystem.theme.RobotoFontFamily,
+            )
         }
     }
 }

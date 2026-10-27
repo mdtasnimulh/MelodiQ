@@ -1,5 +1,6 @@
 package com.tasnimulhasan.featureplayer
 
+import com.tasnimulhasan.designsystem.theme.LocalAppFontFamily
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -512,7 +513,8 @@ internal fun SharedTransitionScope.PlayerScreen(
                     Text(
                         text = "Sleeping in " + formatSleepRemaining(sleepTimerRemainingMillis),
                         style = TextStyle(
-                            color = Color(darkPaletteColor),
+fontFamily = LocalAppFontFamily.current,
+color = Color(darkPaletteColor),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -577,7 +579,8 @@ internal fun SharedTransitionScope.PlayerScreen(
                                 text = currentTrack.songTitle,
                                 maxLines = 1,
                                 style = TextStyle(
-                                    color = primaryText,
+fontFamily = LocalAppFontFamily.current,
+color = primaryText,
                                     fontSize = 26.sp,
                                     fontWeight = FontWeight.SemiBold,
                                 ),
@@ -587,7 +590,8 @@ internal fun SharedTransitionScope.PlayerScreen(
                                 text = currentTrack.artist,
                                 maxLines = 1,
                                 style = TextStyle(
-                                    color = secondaryText,
+fontFamily = LocalAppFontFamily.current,
+color = secondaryText,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Normal,
                                 ),
@@ -639,11 +643,15 @@ internal fun SharedTransitionScope.PlayerScreen(
                         Text(
                             modifier = Modifier.clickable { viewModel.toggleTimeDisplay() },
                             text = progressString,
-                            style = TextStyle(color = secondaryText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            style = TextStyle(
+fontFamily = LocalAppFontFamily.current,
+color = secondaryText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         )
                         Text(
                             text = viewModel.convertLongToReadableDateTime(currentTrack.duration.toLong(), "mm:ss"),
-                            style = TextStyle(color = secondaryText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            style = TextStyle(
+fontFamily = LocalAppFontFamily.current,
+color = secondaryText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         )
                     }
 

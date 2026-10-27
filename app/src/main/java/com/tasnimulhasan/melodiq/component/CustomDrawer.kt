@@ -1,7 +1,6 @@
 package com.tasnimulhasan.melodiq.component
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,11 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import com.tasnimulhasan.designsystem.component.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,6 +30,8 @@ import com.tasnimulhasan.designsystem.R as Res
 
 @Composable
 fun CustomDrawer(
+    selectedItem: CustomNavigationItem? = null,
+    progress: Float = 1f,
     onDrawerCloseClick: () -> Unit,
     onAboutClick: () -> Unit,
     onFeedBackClick: () -> Unit,
@@ -48,39 +49,46 @@ fun CustomDrawer(
             .takeIf { it != 0 } ?: Res.drawable.ic_logo_main
     }
 
+    val appName = remember {
+        runCatching { context.applicationInfo.loadLabel(context.packageManager).toString() }
+            .getOrDefault("MelodiQ")
+    }
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .fillMaxWidth(fraction = 0.6f)
-            .padding(horizontal = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxWidth(fraction = 0.66f)
+            .padding(start = 28.dp, end = 8.dp)
+            .graphicsLayer { alpha = progress; translationX = -40f * (1f - progress) },
+        horizontalAlignment = Alignment.Start
     ) {
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 24.dp)
-        ) {
-            IconButton(onClick = onDrawerCloseClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back Arrow Icon",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        // The full logo artwork (not the adaptive-icon foreground, which carries a large empty
-        // margin), larger and with rounded corners.
+        Spacer(modifier = Modifier.height(48.dp))
+        // The launcher icon in a squircle-style rounded square.
         Image(
             modifier = Modifier
-                .size(128.dp)
-                .clip(RoundedCornerShape(32.dp)),
+                .size(76.dp)
+                .clip(RoundedCornerShape(26.dp)),
             painter = painterResource(id = logoRes),
             contentDescription = "App Logo"
         )
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "Hi!",
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 18.sp,
+        )
+        Text(
+            text = appName,
+            color = Color.White,
+            fontSize = 34.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+        Spacer(modifier = Modifier.height(36.dp))
         CustomNavigationItem.entries.toTypedArray().forEach { navigationItem ->
             CustomNavigationItemView(
                 navigationItem = navigationItem,
+                selected = navigationItem == selectedItem,
                 onClick = {
                     when(navigationItem) {
                         CustomNavigationItem.ABOUT -> {
@@ -110,7 +118,7 @@ fun CustomDrawer(
                     }
                 }
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
         }
     }
 }

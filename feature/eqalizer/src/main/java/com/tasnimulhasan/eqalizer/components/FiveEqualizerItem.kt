@@ -1,5 +1,6 @@
 package com.tasnimulhasan.eqalizer.components
 
+import com.tasnimulhasan.designsystem.theme.LocalAppFontFamily
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -123,7 +124,8 @@ fun FiveEqualizerItem(
                                 text = xAxisLabelName[index],
                                 fontSize = 12.sp,
                                 style = TextStyle(
-                                    textAlign = TextAlign.Center,
+fontFamily = LocalAppFontFamily.current,
+textAlign = TextAlign.Center,
                                     color = Color.DarkGray,
                                     fontWeight = FontWeight.Medium,
                                     platformStyle = PlatformTextStyle(includeFontPadding = false)
@@ -136,7 +138,8 @@ fun FiveEqualizerItem(
                                 text = "(${xAxisLabels.getOrNull(index).orEmpty()})",
                                 fontSize = 12.sp,
                                 style = TextStyle(
-                                    textAlign = TextAlign.Center,
+fontFamily = LocalAppFontFamily.current,
+textAlign = TextAlign.Center,
                                     color = Color.Gray,
                                     fontWeight = FontWeight.Medium,
                                     platformStyle = PlatformTextStyle(includeFontPadding = false)
@@ -151,7 +154,8 @@ fun FiveEqualizerItem(
                             text = "${(gainValue * 1000).toInt() / 100f}dB",
                             fontSize = 12.sp,
                             style = TextStyle(
-                                textAlign = TextAlign.Center,
+fontFamily = LocalAppFontFamily.current,
+textAlign = TextAlign.Center,
                                 color = Color.DarkGray,
                                 fontWeight = FontWeight.SemiBold,
                                 platformStyle = PlatformTextStyle(includeFontPadding = false)

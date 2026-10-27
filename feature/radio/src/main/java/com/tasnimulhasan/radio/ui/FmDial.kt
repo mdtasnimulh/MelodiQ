@@ -100,9 +100,10 @@ internal fun FmDial(
 
     val dragState = rememberDraggableState { delta -> moveTo(position - delta / tickPx) }
 
-    val majorLabels = remember(textMeasurer, labelColor) {
+    val dialFont = com.tasnimulhasan.designsystem.theme.LocalAppFontFamily.current
+    val majorLabels = remember(textMeasurer, labelColor, dialFont) {
         (88..108).associateWith {
-            textMeasurer.measure(it.toString(), TextStyle(color = labelColor, fontSize = 11.sp))
+            textMeasurer.measure(it.toString(), TextStyle(fontFamily = dialFont, color = labelColor, fontSize = 11.sp))
         }
     }
 

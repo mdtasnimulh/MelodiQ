@@ -1,5 +1,6 @@
 package com.tasnimulhasan.home.components
 
+import com.tasnimulhasan.designsystem.theme.LocalAppFontFamily
 import android.content.ContentUris
 import android.graphics.Bitmap
 import android.net.Uri
@@ -133,7 +134,7 @@ fun SharedTransitionScope.MusicCard(
                         fontSize = 14.sp,
                         color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium,
-                        fontFamily = RobotoFontFamily
+                        fontFamily = LocalAppFontFamily.current ?: RobotoFontFamily
                     ),
                     maxLines = 2
                 )
@@ -145,7 +146,7 @@ fun SharedTransitionScope.MusicCard(
                         fontSize = 11.sp,
                         color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Normal,
-                        fontFamily = RobotoFontFamily
+                        fontFamily = LocalAppFontFamily.current ?: RobotoFontFamily
                     )
                 )
                 Text(
@@ -155,7 +156,7 @@ fun SharedTransitionScope.MusicCard(
                         fontSize = 11.sp,
                         color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Normal,
-                        fontFamily = RobotoFontFamily
+                        fontFamily = LocalAppFontFamily.current ?: RobotoFontFamily
                     )
                 )
             }

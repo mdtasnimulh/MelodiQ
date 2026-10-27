@@ -47,8 +47,12 @@ fun MelodiqTheme(
     uiStyle: UiStyle = UiStyle.DEFAULT,
     // When set (custom palette), [seedColor] is expanded with this style instead of the simple preset scheme.
     paletteStyle: com.tasnimulhasan.entity.enums.PaletteStyle? = null,
+    // The typeface the user picked in Settings; DEFAULT keeps the app's shipped fonts.
+    appFont: com.tasnimulhasan.entity.enums.AppFont = com.tasnimulhasan.entity.enums.AppFont.DEFAULT,
     content: @Composable () -> Unit
 ) {
+    val fontFamily = appFontFamily(appFont)
+    val appTypography = remember(fontFamily) { typographyFor(fontFamily) }
     var colorScheme = when {
         seedColor != null && paletteStyle != null -> paletteColorScheme(seedColor, paletteStyle, darkTheme)
         seedColor != null -> seedColorScheme(seedColor, darkTheme)
@@ -73,11 +77,12 @@ fun MelodiqTheme(
         val glassScheme = remember(colorScheme, tokens) { colorScheme.toGlass(tokens) }
         MaterialTheme(
             colorScheme = glassScheme,
-            typography = Typography,
+            typography = appTypography,
             shapes = GlassShapes,
         ) {
             CompositionLocalProvider(
                 LocalGlass provides tokens,
+                LocalAppFontFamily provides fontFamily,
                 LocalContentColor provides glassScheme.onBackground,
             ) {
                 // Every screen is transparent in Glass mode; this gradient is what they sit on.
@@ -87,8 +92,9 @@ fun MelodiqTheme(
     } else {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
-            content = content
-        )
+            typography = appTypography,
+        ) {
+            CompositionLocalProvider(LocalAppFontFamily provides fontFamily) { content() }
+        }
     }
 }

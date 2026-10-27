@@ -140,6 +140,7 @@ class MainActivity : ComponentActivity() {
             val uiStyle by mainActivityViewModel.uiStyle.collectAsStateWithLifecycle()
             val paletteStyle by mainActivityViewModel.paletteStyle.collectAsStateWithLifecycle()
             val showNavLabels by mainActivityViewModel.showNavLabels.collectAsStateWithLifecycle()
+            val appFont by mainActivityViewModel.appFont.collectAsStateWithLifecycle()
 
             MelodiqTheme(
                 darkTheme = darkTheme,
@@ -148,6 +149,7 @@ class MainActivity : ComponentActivity() {
                 seedColor = accentSeedColor,
                 uiStyle = uiStyle,
                 paletteStyle = paletteStyle,
+                appFont = appFont,
             ) {
                 val playerType by mainActivityViewModel.playerType.collectAsStateWithLifecycle()
 

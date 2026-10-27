@@ -359,7 +359,23 @@ class PreferencesDataStoreRepoImpl @Inject constructor(
             .distinctUntilChanged()
     }
 
+    override suspend fun saveAppFont(font: com.tasnimulhasan.entity.enums.AppFont) {
+        tryIt {
+            dataStorePreferences.edit { preferences -> preferences[PreferencesKeys.appFont] = font.name }
+        }
+    }
+
+    override fun getAppFont(): Flow<com.tasnimulhasan.entity.enums.AppFont> {
+        return dataStorePreferences.data
+            .map { preferences ->
+                com.tasnimulhasan.entity.enums.AppFont.entries.find { it.name == preferences[PreferencesKeys.appFont] }
+                    ?: com.tasnimulhasan.entity.enums.AppFont.DEFAULT
+            }
+            .distinctUntilChanged()
+    }
+
     private object PreferencesKeys {
+        val appFont = stringPreferencesKey("app_font")
         val customPalette = stringPreferencesKey("custom_palette")
         val navLabels = booleanPreferencesKey("nav_labels")
         val miniPlayerPosition = stringPreferencesKey("mini_player_position")

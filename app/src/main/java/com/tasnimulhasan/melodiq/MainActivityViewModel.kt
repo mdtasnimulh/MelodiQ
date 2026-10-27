@@ -39,6 +39,7 @@ class MainActivityViewModel @Inject constructor(
     getUiStyleUseCase: GetUiStyleUseCase,
     getCustomPaletteUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetCustomPaletteUseCase,
     getNavLabelsUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetNavLabelsUseCase,
+    getAppFontUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetAppFontUseCase,
     getPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetPlayerTypeUseCase,
     private val setPlayerTypeUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetPlayerTypeUseCase,
     private val playerUseCases: PlayerUseCases,
@@ -90,6 +91,10 @@ class MainActivityViewModel @Inject constructor(
     val paletteStyle: StateFlow<com.tasnimulhasan.entity.enums.PaletteStyle?> = combine(accentColorOption, customPalette) { o, p ->
         if (o == AccentColorOption.CUSTOM) p.style else null
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The typeface chosen in Settings; applied to the whole app by MelodiqTheme. */
+    val appFont: StateFlow<com.tasnimulhasan.entity.enums.AppFont> = getAppFontUseCase()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, com.tasnimulhasan.entity.enums.AppFont.DEFAULT)
 
     /** Show the tab name next to the selected icon in the bottom bar. */
     val showNavLabels: StateFlow<Boolean> = getNavLabelsUseCase()

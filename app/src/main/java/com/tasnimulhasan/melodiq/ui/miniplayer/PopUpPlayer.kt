@@ -1,5 +1,6 @@
 package com.tasnimulhasan.melodiq.ui.miniplayer
 
+import com.tasnimulhasan.designsystem.theme.LocalAppFontFamily
 import android.net.Uri
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
@@ -173,7 +174,8 @@ fun PopUpPlayer(
                     .basicMarquee(),
                 text = songTitle,
                 style = TextStyle(
-                    color = MaterialTheme.colorScheme.onSurface,
+fontFamily = LocalAppFontFamily.current,
+color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium,
                     fontSize = 14.sp,
                     platformStyle = PlatformTextStyle(
@@ -212,7 +214,8 @@ fun PopUpPlayer(
                     },
                 text = progressString,
                 style = TextStyle(
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+fontFamily = LocalAppFontFamily.current,
+color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium,
                     fontSize = 12.sp,
                     platformStyle = PlatformTextStyle(

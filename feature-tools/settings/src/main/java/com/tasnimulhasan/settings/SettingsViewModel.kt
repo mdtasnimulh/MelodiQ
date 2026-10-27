@@ -66,6 +66,8 @@ class SettingsViewModel @Inject constructor(
     private val setCustomPaletteUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetCustomPaletteUseCase,
     private val getNavLabelsUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetNavLabelsUseCase,
     private val setNavLabelsUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetNavLabelsUseCase,
+    private val getAppFontUseCase: com.tasnimulhasan.domain.localusecase.datastore.GetAppFontUseCase,
+    private val setAppFontUseCase: com.tasnimulhasan.domain.localusecase.datastore.SetAppFontUseCase,
     private val createBackupUseCase: CreateBackupUseCase,
     private val restoreBackupUseCase: RestoreBackupUseCase,
     @ApplicationContext private val context: Context,
@@ -228,13 +230,20 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** "Use system Material You": on = wallpaper colors, off = the saved custom palette. */
+    /** "Use system Material You": on = wallpaper colours, off = the saved custom palette. */
     fun setSystemColors(on: Boolean) {
         viewModelScope.launch { setAccentColorUseCase(if (on) AccentColorOption.DYNAMIC else AccentColorOption.CUSTOM) }
     }
 
     val showNavLabels: StateFlow<Boolean> = getNavLabelsUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    val appFont: StateFlow<com.tasnimulhasan.entity.enums.AppFont> = getAppFontUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.tasnimulhasan.entity.enums.AppFont.DEFAULT)
+
+    fun setAppFont(font: com.tasnimulhasan.entity.enums.AppFont) {
+        viewModelScope.launch { setAppFontUseCase(font) }
+    }
 
     fun setNavLabels(show: Boolean) {
         viewModelScope.launch { setNavLabelsUseCase(show) }

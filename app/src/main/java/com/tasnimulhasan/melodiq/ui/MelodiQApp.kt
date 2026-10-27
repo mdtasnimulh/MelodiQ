@@ -2,7 +2,6 @@ package com.tasnimulhasan.melodiq.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -11,6 +10,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -22,43 +22,37 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material3.ExperimentalMaterial3Api
-import com.tasnimulhasan.designsystem.component.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import com.tasnimulhasan.library.navigation.SearchNavRoute
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.IntSize
-import com.tasnimulhasan.entity.enums.MiniPlayerPosition
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,27 +60,27 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.tasnimulhasan.albums.navigation.AlbumRoute
-import com.tasnimulhasan.common.utils.coloredShadow
+import com.tasnimulhasan.designsystem.component.FloatingNavAction
 import com.tasnimulhasan.designsystem.component.FloatingNavItem
 import com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding
-import com.tasnimulhasan.designsystem.component.FloatingNavAction
 import com.tasnimulhasan.designsystem.component.MelodiqFloatingNavBar
-import androidx.compose.material.icons.filled.Headphones
-import com.tasnimulhasan.featureaudiobook.navigation.AudioBookDetailsRoute
-import com.tasnimulhasan.featureaudiobook.navigation.BookReaderRoute
-import com.tasnimulhasan.featureaudiobook.navigation.AudioBookRoute
 import com.tasnimulhasan.designsystem.component.MelodiqSearchTopBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
+import com.tasnimulhasan.designsystem.theme.glassBackdrop
+import com.tasnimulhasan.entity.enums.MiniPlayerPosition
 import com.tasnimulhasan.eqalizer.navigation.EqualizerRoute
 import com.tasnimulhasan.featureabout.navigation.AboutRoute
-import com.tasnimulhasan.library.navigation.LibraryHubNavRoute
+import com.tasnimulhasan.featureaudiobook.navigation.AudioBookDetailsRoute
+import com.tasnimulhasan.featureaudiobook.navigation.AudioBookRoute
+import com.tasnimulhasan.featureaudiobook.navigation.BookReaderRoute
 import com.tasnimulhasan.featurefavourite.navigation.FavouriteRoute
 import com.tasnimulhasan.featurefeedback.navigation.FeedbackRoute
 import com.tasnimulhasan.featureplayer.navigation.PlayerRoute
 import com.tasnimulhasan.featurequeue.navigation.QueueRoute
 import com.tasnimulhasan.home.navigation.HomeRoute
+import com.tasnimulhasan.library.navigation.LibraryHubNavRoute
+import com.tasnimulhasan.library.navigation.SearchNavRoute
 import com.tasnimulhasan.melodiq.component.CustomDrawer
-import com.tasnimulhasan.designsystem.theme.glassBackdrop
 import com.tasnimulhasan.melodiq.navigation.CustomNavigationItem
 import com.tasnimulhasan.melodiq.navigation.MelodiQNavHost
 import com.tasnimulhasan.melodiq.ui.miniplayer.MiniPlayer
@@ -198,14 +192,31 @@ internal fun MmApp(
         derivedStateOf { (configuration.screenWidthDp * density).roundToInt() }
     }
     val offsetValue by remember { derivedStateOf { (screenWidth.value / 4.5).dp } }
-    val animatedOffset by animateDpAsState(
-        targetValue = if (customDrawerState.isOpened()) offsetValue else 0.dp,
-        label = "Animated Offset"
+    // 0 = drawer closed, 1 = fully open. Drives the slide, shrink and 3D tilt of the main screen together.
+    val drawerProgress by animateFloatAsState(
+        targetValue = if (customDrawerState.isOpened()) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 420),
+        label = "Drawer Progress"
     )
-    val animatedScale by animateFloatAsState(
-        targetValue = if (customDrawerState.isOpened()) 0.9f else 1f,
-        label = "Animated Scale"
-    )
+    val drawerVisible = customDrawerState.isOpened() || drawerProgress > 0.001f
+    val selectedDrawerItem = when {
+        currentDestination.isRouteInHierarchy(SettingsRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.SETTINGS
+        currentDestination.isRouteInHierarchy(RadioRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.RADIO
+        currentDestination.isRouteInHierarchy(FavouriteRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.FAVOURITE
+        currentDestination.isRouteInHierarchy(LibraryHubNavRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.LIBRARY
+        currentDestination.isRouteInHierarchy(AboutRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.ABOUT
+        currentDestination.isRouteInHierarchy(FeedbackRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.FEEDBACK
+        else -> null
+    }
+    val drawerPrimary = MaterialTheme.colorScheme.primary
+    val drawerBrush = remember(drawerPrimary) {
+        androidx.compose.ui.graphics.Brush.linearGradient(
+            colors = listOf(
+                androidx.compose.ui.graphics.lerp(drawerPrimary, Color.Black, 0.55f),
+                androidx.compose.ui.graphics.lerp(drawerPrimary, Color.Black, 0.88f),
+            ),
+        )
+    }
     BackHandler(enabled = customDrawerState.isOpened()) {
         customDrawerState = CustomDrawerState.Closed
     }
@@ -229,13 +240,16 @@ internal fun MmApp(
         modifier = Modifier
             .background(MaterialTheme.colorScheme.surface)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+            .then(if (drawerVisible) Modifier.background(drawerBrush, alpha = drawerProgress) else Modifier)
             .statusBarsPadding()
             .navigationBarsPadding()
             .fillMaxSize()
     ) {
         // Only compose the drawer while it is open or still animating, so it can never show
         // through a transparent (Glass) page.
-        if (customDrawerState.isOpened() || animatedScale < 0.999f) CustomDrawer(
+        if (drawerVisible) CustomDrawer(
+            selectedItem = selectedDrawerItem,
+            progress = drawerProgress,
             onDrawerCloseClick = { customDrawerState = CustomDrawerState.Closed },
             onAboutClick = { appState.navigateToAbout() },
             onFeedBackClick = { appState.navigateToFeedBack() },
@@ -246,13 +260,23 @@ internal fun MmApp(
         )
         Scaffold(
             modifier = modifier
-                .offset { IntOffset(x = animatedOffset.roundToPx(), y = 0) }
-                .scale(scale = animatedScale)
-                .coloredShadow(
-                    color = Color.Black,
-                    alpha = 0.1f,
-                    shadowRadius = 50.dp
-                )
+                // The page leans back in perspective as the drawer opens: pivot on its left edge,
+                // swing the right edge away from the viewer, shrink and slide it right.
+                // If the tilt leans the wrong way on a device, flip the sign of rotationY.
+                .graphicsLayer {
+                    val p = drawerProgress
+                    transformOrigin = TransformOrigin(0f, 0.5f)
+                    cameraDistance = 14f * density
+                    translationX = size.width * 0.66f * p
+                    rotationY = 24f * p
+                    val s = 1f - 0.16f * p
+                    scaleX = s
+                    scaleY = s
+                    if (p > 0f) {
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape((28f * p).dp)
+                        clip = true
+                    }
+                }
                 // Glass screens are transparent: the page carries its own opaque backdrop so the
                 // drawer behind it never shows through.
                 .then(
@@ -265,10 +289,9 @@ internal fun MmApp(
             topBar = {
                 // The Audio Book screens draw their own header, so the app bar is hidden there.
                 val hideAppBar = currentDestination.isRouteInHierarchy(PlayerRoute::class) ||
-                        currentDestination.isRouteInHierarchy(AudioBookRoute::class) ||
-                        currentDestination.isRouteInHierarchy(AudioBookDetailsRoute::class) ||
-                        currentDestination.isRouteInHierarchy(BookReaderRoute::class) ||
-                        currentDestination.isRouteInHierarchy(RadioRoute::class)
+                    currentDestination.isRouteInHierarchy(AudioBookRoute::class) ||
+                    currentDestination.isRouteInHierarchy(AudioBookDetailsRoute::class) ||
+                    currentDestination.isRouteInHierarchy(BookReaderRoute::class)
                 if (!hideAppBar) {
                     val onSearch = currentDestination.isRouteInHierarchy(SearchNavRoute::class)
                     val onSettings = currentDestination.isRouteInHierarchy(SettingsRoute::class)
@@ -361,10 +384,8 @@ internal fun MmApp(
                                         // Snap to whichever corner it was dropped nearest to.
                                         val startsEnd = miniPosition.name.endsWith("END")
                                         val startsBottom = miniPosition.name.startsWith("BOTTOM")
-                                        val toEnd =
-                                            if (startsEnd) miniDrag.x > -containerSize.width / 4f else miniDrag.x > containerSize.width / 4f
-                                        val toBottom =
-                                            if (startsBottom) miniDrag.y > -containerSize.height / 4f else miniDrag.y > containerSize.height / 4f
+                                        val toEnd = if (startsEnd) miniDrag.x > -containerSize.width / 4f else miniDrag.x > containerSize.width / 4f
+                                        val toBottom = if (startsBottom) miniDrag.y > -containerSize.height / 4f else miniDrag.y > containerSize.height / 4f
                                         miniDrag = Offset.Zero
                                         viewModel.setMiniPlayerPosition(
                                             when {
@@ -409,9 +430,7 @@ internal fun MmApp(
                     }
 
                     AnimatedVisibility(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = if (isTopLevelDestination) FloatingBarSpace else 0.dp),
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (isTopLevelDestination) FloatingBarSpace else 0.dp),
                         visible = showPopUpPlayer,
                         enter = scaleIn(
                             animationSpec = tween(durationMillis = 500),

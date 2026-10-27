@@ -224,6 +224,10 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
     var showGoTo by remember { mutableStateOf(false) }
     var showDisplay by remember { mutableStateOf(false) }
     var paperIndex by rememberSaveable { mutableIntStateOf(0) }
+    // Reading font for EPUB text, remembered between books. 0 = the classic serif.
+    val readerPrefs = remember { context.getSharedPreferences("reader_prefs", Context.MODE_PRIVATE) }
+    var fontIndex by rememberSaveable { mutableIntStateOf(readerPrefs.getInt("epub_font", 0)) }
+    val readerFont = com.tasnimulhasan.entity.enums.AppFont.entries[fontIndex.coerceIn(0, com.tasnimulhasan.entity.enums.AppFont.entries.lastIndex)]
     var selection by remember { mutableStateOf<ReaderSelection?>(null) }
     val shownPage by remember { derivedStateOf { listState.firstVisibleItemIndex } }
 
@@ -319,7 +323,7 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                     onClear = { selection = null },
                 )
             } else {
-                EpubPagesList(source, pageCount, listState, zoom, state, PaperTheme.entries[paperIndex.coerceIn(0, PaperTheme.entries.lastIndex)])
+                EpubPagesList(source, pageCount, listState, zoom, state, PaperTheme.entries[paperIndex.coerceIn(0, PaperTheme.entries.lastIndex)], readerFontFamily(readerFont))
             }
         }
 
@@ -395,6 +399,8 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
             onZoom = { zoom = it.coerceIn(1f, 3f) },
             paperIndex = paperIndex,
             onPaper = { paperIndex = it },
+            fontIndex = fontIndex,
+            onFont = { fontIndex = it; readerPrefs.edit().putInt("epub_font", it).apply() },
             onDismiss = { showDisplay = false },
         )
     }
@@ -532,7 +538,7 @@ private fun PdfPagesList(
 }
 
 @Composable
-private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyListState, zoom: Float, state: SpeechState, paper: PaperTheme) {
+private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyListState, zoom: Float, state: SpeechState, paper: PaperTheme, bodyFont: FontFamily) {
     val scheme = MaterialTheme.colorScheme
     val fontSize = 15f + (zoom - 1f) * 4f
     val sentenceBg = scheme.primary.copy(alpha = 0.22f)
@@ -569,7 +575,7 @@ private fun EpubPagesList(source: BookSource?, pageCount: Int, listState: LazyLi
                 SelectionContainer {
                     Text(
                         text = annotated,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = bodyFont,
                         fontSize = fontSize.sp,
                         lineHeight = (fontSize * 1.65f).sp,
                         color = paper.text,
@@ -779,6 +785,8 @@ private fun DisplaySheet(
     onZoom: (Float) -> Unit,
     paperIndex: Int,
     onPaper: (Int) -> Unit,
+    fontIndex: Int,
+    onFont: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -816,11 +824,47 @@ private fun DisplaySheet(
                     }
                 }
             }
+            Text(
+                "Font", style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 18.dp, bottom = 8.dp),
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            ) {
+                com.tasnimulhasan.entity.enums.AppFont.entries.forEachIndexed { i, f ->
+                    val on = i == fontIndex
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (on) scheme.primaryContainer else scheme.surfaceContainerHighest)
+                            .border(if (on) 2.dp else 1.dp, if (on) scheme.primary else scheme.outlineVariant, RoundedCornerShape(14.dp))
+                            .clickable { onFont(i) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text(
+                            if (f == com.tasnimulhasan.entity.enums.AppFont.DEFAULT) "Serif" else f.label,
+                            fontFamily = readerFontFamily(f),
+                            fontSize = 15.sp,
+                            color = if (on) scheme.onPrimaryContainer else scheme.onSurface,
+                        )
+                    }
+                }
+            }
+        } else {
+            Text(
+                "PDF pages keep the fonts built into the file, so the font can't be changed for PDFs. Use Zoom to make them larger.",
+                fontSize = 12.sp, color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 14.dp),
+            )
         }
         Spacer(Modifier.height(20.dp))
         com.tasnimulhasan.ui.component.SheetPrimaryButton(text = "Done", onClick = dismiss)
     }
 }
+
+/** The family used for EPUB body text; the first choice keeps the original serif look. */
+private fun readerFontFamily(font: com.tasnimulhasan.entity.enums.AppFont): FontFamily =
+    com.tasnimulhasan.designsystem.theme.appFontFamily(font) ?: FontFamily.Serif
 
 @Composable
 private fun NarratorDialog(

@@ -1,5 +1,6 @@
 package com.tasnimulhasan.albums
 
+import com.tasnimulhasan.designsystem.theme.LocalAppFontFamily
 import com.tasnimulhasan.ui.motion.entrance
 
 import android.net.Uri
@@ -165,7 +166,7 @@ private fun AlbumSongRow(
                         fontSize = 14.sp,
                         color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium,
-                        fontFamily = RobotoFontFamily
+                        fontFamily = LocalAppFontFamily.current ?: RobotoFontFamily
                     ),
                     maxLines = 1
                 )
@@ -174,7 +175,7 @@ private fun AlbumSongRow(
                     style = TextStyle(
                         fontSize = 11.sp,
                         color = if (isSelected) WhiteOrange else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = RobotoFontFamily
+                        fontFamily = LocalAppFontFamily.current ?: RobotoFontFamily
                     ),
                     maxLines = 1
                 )

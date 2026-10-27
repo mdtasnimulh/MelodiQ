@@ -1,6 +1,7 @@
 package com.tasnimulhasan.domain.localusecase.datastore
 
 import com.tasnimulhasan.domain.repository.PreferencesDataStoreRepository
+import com.tasnimulhasan.entity.enums.AppFont
 import com.tasnimulhasan.entity.enums.PaletteChoice
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -27,4 +28,16 @@ class SetNavLabelsUseCase @Inject constructor(
     private val repository: PreferencesDataStoreRepository
 ) {
     suspend operator fun invoke(show: Boolean) = repository.saveNavLabels(show)
+}
+
+class GetAppFontUseCase @Inject constructor(
+    private val repository: PreferencesDataStoreRepository
+) {
+    operator fun invoke(): Flow<AppFont> = repository.getAppFont()
+}
+
+class SetAppFontUseCase @Inject constructor(
+    private val repository: PreferencesDataStoreRepository
+) {
+    suspend operator fun invoke(font: AppFont) = repository.saveAppFont(font)
 }

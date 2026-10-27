@@ -62,4 +62,7 @@ interface PreferencesDataStoreRepository {
 
     suspend fun saveNavLabels(show: Boolean)
     fun getNavLabels(): Flow<Boolean>
+
+    suspend fun saveAppFont(font: com.tasnimulhasan.entity.enums.AppFont)
+    fun getAppFont(): Flow<com.tasnimulhasan.entity.enums.AppFont>
 }

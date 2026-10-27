@@ -1,5 +1,6 @@
 package com.tasnimulhasan.eqalizer
 
+import com.tasnimulhasan.designsystem.theme.LocalAppFontFamily
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -93,7 +94,8 @@ internal fun EqualizerScreen(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     style = TextStyle(
-                        color = MaterialTheme.colorScheme.onBackground,
+fontFamily = LocalAppFontFamily.current,
+color = MaterialTheme.colorScheme.onBackground,
                     )
                 )
 
