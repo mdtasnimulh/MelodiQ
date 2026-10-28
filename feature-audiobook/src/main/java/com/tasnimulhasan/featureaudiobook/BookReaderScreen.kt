@@ -19,7 +19,11 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Speed
@@ -97,6 +101,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -121,7 +126,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** Renders pages of one PDF with [PdfRenderer]. Only one page may be open at a time, hence the lock. */
-private class PdfPages(context: Context, uri: String) {
+internal class PdfPages(context: Context, uri: String) {
     private val fd: ParcelFileDescriptor? =
         runCatching { context.contentResolver.openFileDescriptor(Uri.parse(uri), "r") }.getOrNull()
     private val renderer: PdfRenderer? = fd?.let { runCatching { PdfRenderer(it) }.getOrNull() }
@@ -185,7 +190,7 @@ internal fun BookReaderRouteScreen(
     }
 }
 
-/** A run of selected words on one page (word indexes, either order). */
+/** A run of selected text on one page: character offsets into the page text, both included, either order. */
 private data class ReaderSelection(val page: Int, val anchor: Int, val focus: Int)
 
 /**
@@ -229,6 +234,29 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
     var fontIndex by rememberSaveable { mutableIntStateOf(readerPrefs.getInt("epub_font", 0)) }
     val readerFont = com.tasnimulhasan.entity.enums.AppFont.entries[fontIndex.coerceIn(0, com.tasnimulhasan.entity.enums.AppFont.entries.lastIndex)]
     var selection by remember { mutableStateOf<ReaderSelection?>(null) }
+
+    // ---- PDF viewer: zoom, night mode, search, bookmarks, thumbnails --------------------------------
+    val zoomState = remember { PdfZoomState() }
+    // No pinching or panning while text is selected.
+    androidx.compose.runtime.SideEffect { zoomState.locked = selection != null }
+    var pdfNight by rememberSaveable { mutableStateOf(readerPrefs.getBoolean("pdf_night", false)) }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var hits by remember { mutableStateOf<List<SearchHit>>(emptyList()) }
+    var hitIndex by remember { mutableIntStateOf(-1) }
+    var searchProgress by remember { mutableIntStateOf(0) }
+    var searchDone by remember { mutableStateOf(true) }
+    var showPages by remember { mutableStateOf(false) }
+    var pagesOnBookmarks by remember { mutableStateOf(false) }
+    var bookmarks by remember(book.id) {
+        mutableStateOf(
+            readerPrefs.getStringSet("bm_${book.id}", emptySet()).orEmpty().mapNotNull { it.toIntOrNull() }.toSet()
+        )
+    }
+    fun toggleBookmark(page: Int) {
+        bookmarks = if (page in bookmarks) bookmarks - page else bookmarks + page
+        readerPrefs.edit().putStringSet("bm_${book.id}", bookmarks.map { it.toString() }.toSet()).apply()
+    }
     val shownPage by remember { derivedStateOf { listState.firstVisibleItemIndex } }
 
     // Land exactly where the book was left, once that page has been measured.
@@ -278,13 +306,85 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
         listState.scrollToPosition(state.page, fractionFor(source, book.isEpub, state.page, state.permille), animate = false)
     }
 
+    // The Display sheet's zoom slider drives the viewer; pinching moves the slider back (up to its 3x end).
+    if (pdf != null) {
+        LaunchedEffect(zoom) {
+            if (kotlin.math.abs(zoom - zoomState.scale.coerceIn(1f, 3f)) > 0.02f) {
+                zoomState.zoomBy(zoom / zoomState.scale, Offset(zoomState.viewport.width / 2f, zoomState.viewport.height / 2f))
+            }
+        }
+        LaunchedEffect(zoomState) {
+            snapshotFlow { zoomState.scale }.collect { zoom = it.coerceIn(1f, 3f) }
+        }
+    }
+
+    // Search the whole document in the background (pages are read one by one; results appear as they come).
+    LaunchedEffect(query, searching) {
+        hits = emptyList()
+        hitIndex = -1
+        val q = query.trim()
+        val src = source
+        if (!searching || q.length < 2 || src == null || pdf == null) {
+            searchDone = true
+            return@LaunchedEffect
+        }
+        kotlinx.coroutines.delay(400)
+        searchDone = false
+        searchProgress = 0
+        val found = ArrayList<SearchHit>()
+        for (p in 0 until pageCount) {
+            val c = src.content(p)
+            var from = 0
+            while (found.size < 500) {
+                val i = c.text.indexOf(q, from, ignoreCase = true)
+                if (i < 0) break
+                val w = c.wordAt(i)
+                found.add(SearchHit(p, i, i + q.length, c.words.getOrNull(w)?.t ?: 0f))
+                from = i + q.length
+            }
+            searchProgress = p + 1
+            if (found.size >= 500) break
+            if (found.isNotEmpty() && (p % 6 == 5 || p == pageCount - 1)) {
+                hits = found.toList()
+                if (hitIndex < 0) hitIndex = 0
+            }
+        }
+        hits = found.toList()
+        if (hitIndex < 0 && found.isNotEmpty()) hitIndex = 0
+        searchDone = true
+    }
+    // Move to the current match.
+    LaunchedEffect(hitIndex) {
+        val h = hits.getOrNull(hitIndex) ?: return@LaunchedEffect
+        listState.scrollToPosition(h.page, (h.fraction - 0.12f).coerceAtLeast(0f), animate = true)
+    }
+
     // Coming back from the voice download screen: pick up any newly installed voices.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { speaker.refreshVoices() }
 
     val paper = PaperTheme.entries[paperIndex.coerceIn(0, PaperTheme.entries.lastIndex)]
-    val canvas = if (book.isEpub) paper.canvas else scheme.surfaceContainer
+    val canvas = if (book.isEpub) paper.canvas else if (pdfNight) Color(0xFF0C0C0D) else scheme.surfaceContainer
+    fun jumpToPage(page: Int) {
+        scope.launch {
+            listState.scrollToPosition(page, 0f, animate = false)
+            speaker.seek(page, 0)
+        }
+    }
     Column(Modifier.fillMaxSize().background(canvas)) {
-        Row(
+        if (searching && pdf != null) PdfSearchBar(
+            query = query,
+            onQuery = { query = it },
+            status = when {
+                hits.isNotEmpty() -> "${hitIndex + 1}/${hits.size}" + if (searchDone) "" else "…"
+                !searchDone -> "$searchProgress/$pageCount"
+                query.trim().length >= 2 -> "No results"
+                else -> ""
+            },
+            canStep = hits.isNotEmpty(),
+            onPrev = { if (hits.isNotEmpty()) hitIndex = (hitIndex - 1 + hits.size) % hits.size },
+            onNext = { if (hits.isNotEmpty()) hitIndex = (hitIndex + 1) % hits.size },
+            onClose = { searching = false; query = "" },
+        ) else Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -298,6 +398,19 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                     "${book.formatLabel} · $pageCount pages",
                     fontSize = 11.sp, color = scheme.onSurfaceVariant, maxLines = 1,
                 )
+            }
+            if (pdf != null) {
+                RoundIconButton(Icons.Filled.Search, "Search", onClick = { searching = true })
+                Spacer(Modifier.width(6.dp))
+                RoundIconButton(Icons.Filled.GridView, "Pages", onClick = { pagesOnBookmarks = false; showPages = true })
+                Spacer(Modifier.width(6.dp))
+                val here = shownPage.coerceIn(0, pageCount - 1)
+                RoundIconButton(
+                    if (here in bookmarks) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                    if (here in bookmarks) "Remove bookmark" else "Bookmark this page",
+                    onClick = { toggleBookmark(here) },
+                )
+                Spacer(Modifier.width(6.dp))
             }
             RoundIconButton(Icons.Filled.TextFields, "Display settings", onClick = { showDisplay = true })
         }
@@ -316,12 +429,16 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                     source = source,
                     pageCount = pageCount,
                     listState = listState,
-                    zoom = zoom,
+                    zoomState = zoomState,
+                    night = pdfNight,
+                    hits = hits,
+                    currentHit = hitIndex,
                     state = state,
                     selection = selection,
                     onSelect = { selection = it },
                     onClear = { selection = null },
                 )
+                PdfFastScroller(listState = listState, pageCount = pageCount, onJumpEnd = { jumpToPage(it) })
             } else {
                 EpubPagesList(source, pageCount, listState, zoom, state, PaperTheme.entries[paperIndex.coerceIn(0, PaperTheme.entries.lastIndex)], readerFontFamily(readerFont))
             }
@@ -330,14 +447,14 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
         val sel = selection
         if (sel != null) {
             val preview by produceState("", sel) {
-                value = source?.content(sel.page)?.textBetween(sel.anchor, sel.focus).orEmpty()
+                value = source?.content(sel.page)?.textInRange(sel.anchor, sel.focus).orEmpty()
             }
             SelectionBar(
                 preview = preview,
                 onClose = { selection = null },
                 onCopy = {
                     scope.launch {
-                        val text = source?.content(sel.page)?.textBetween(sel.anchor, sel.focus).orEmpty()
+                        val text = source?.content(sel.page)?.textInRange(sel.anchor, sel.focus).orEmpty()
                         if (text.isNotBlank()) {
                             val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             cm.setPrimaryClip(ClipData.newPlainText("Book text", text))
@@ -349,7 +466,7 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                 onRead = {
                     scope.launch {
                         val c = source?.content(sel.page)
-                        val word = c?.words?.getOrNull(minOf(sel.anchor, sel.focus))
+                        val word = c?.let { it.words.getOrNull(it.wordAt(minOf(sel.anchor, sel.focus))) }
                         selection = null
                         if (word != null) speaker.playFrom(sel.page, word.start)
                     }
@@ -357,7 +474,7 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                 onSelectAll = {
                     scope.launch {
                         val c = source?.content(sel.page) ?: return@launch
-                        if (c.words.isNotEmpty()) selection = ReaderSelection(sel.page, 0, c.words.lastIndex)
+                        if (c.text.isNotEmpty()) selection = ReaderSelection(sel.page, 0, c.text.length - 1)
                     }
                 },
             )
@@ -392,6 +509,17 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
             onDismiss = { showVoices = false },
         )
     }
+    if (showPages && pdf != null) {
+        PdfPagesSheet(
+            pdf = pdf,
+            pageCount = pageCount,
+            currentPage = shownPage.coerceIn(0, pageCount - 1),
+            bookmarks = bookmarks,
+            startOnBookmarks = pagesOnBookmarks,
+            onJump = { showPages = false; jumpToPage(it) },
+            onDismiss = { showPages = false },
+        )
+    }
     if (showDisplay) {
         DisplaySheet(
             isEpub = book.isEpub,
@@ -401,6 +529,8 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
             onPaper = { paperIndex = it },
             fontIndex = fontIndex,
             onFont = { fontIndex = it; readerPrefs.edit().putInt("epub_font", it).apply() },
+            pdfNight = pdfNight,
+            onPdfNight = { pdfNight = it; readerPrefs.edit().putBoolean("pdf_night", it).apply() },
             onDismiss = { showDisplay = false },
         )
     }
@@ -467,69 +597,83 @@ private fun PdfPagesList(
     source: BookSource?,
     pageCount: Int,
     listState: LazyListState,
-    zoom: Float,
+    zoomState: PdfZoomState,
+    night: Boolean,
+    hits: List<SearchHit>,
+    currentHit: Int,
     state: SpeechState,
     selection: ReaderSelection?,
     onSelect: (ReaderSelection) -> Unit,
     onClear: () -> Unit,
 ) {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val scope = rememberCoroutineScope()
+    BoxWithConstraints(Modifier.fillMaxSize().pdfZoomable(zoomState, scope)) {
         val density = LocalDensity.current
-        val pageWidth = maxWidth * zoom
-        // Render sharp enough for the zoom level, but cap it to keep memory sane.
-        val renderPx = with(density) { pageWidth.toPx() }.toInt().coerceIn(200, 2200)
-        Box(Modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.width(pageWidth),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(pageCount, key = { it }) { index ->
-                    val bitmap by produceState<Bitmap?>(null, index, renderPx) {
-                        value = pdf.render(index, renderPx)
+        // Pages are drawn at the width of the screen times the zoom, so they stay sharp when zoomed in.
+        // The resolution follows the zoom once it settles (not on every pinch frame).
+        var settledScale by remember { mutableFloatStateOf(1f) }
+        LaunchedEffect(zoomState) {
+            snapshotFlow { zoomState.scale }.debounce(250).collect { settledScale = it }
+        }
+        val rawPx = with(density) { (maxWidth * settledScale).toPx() }.toInt()
+        val renderPx = (((rawPx + 99) / 100) * 100).coerceIn(200, 2200)
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(pageCount, key = { it }) { index ->
+                val bitmap by produceState<Bitmap?>(null, index, renderPx) {
+                    value = pdf.render(index, renderPx)
+                }
+                // The words of the page (with their boxes) make it selectable and followable.
+                val content by produceState<PageContent?>(null, index, source) {
+                    value = source?.content(index)
+                }
+                val bmp = bitmap
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(3.dp, RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (night) Color(0xFF1B1B1B) else Color.White)
+                        .aspectRatio(if (bmp != null) bmp.width.toFloat() / bmp.height else 0.707f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (bmp != null) {
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = "Page ${index + 1}",
+                            contentScale = ContentScale.FillWidth,
+                            colorFilter = if (night) PdfInvertFilter else null,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
                     }
-                    // The words of the page (with their boxes) make it selectable and followable.
-                    val content by produceState<PageContent?>(null, index, source) {
-                        value = source?.content(index)
-                    }
-                    val bmp = bitmap
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(3.dp, RoundedCornerShape(6.dp))
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color.White)
-                            .aspectRatio(if (bmp != null) bmp.width.toFloat() / bmp.height else 0.707f),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (bmp != null) {
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "Page ${index + 1}",
-                                contentScale = ContentScale.FillWidth,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        } else {
-                            CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
-                        }
-                        val words = content?.words.orEmpty()
-                        if (bmp != null && words.isNotEmpty()) {
-                            val active = state.page == index && state.chunkStart >= 0
-                            val sel = selection?.takeIf { it.page == index }
-                            PdfTextLayer(
-                                words = words,
-                                sentenceStart = if (active) state.chunkStart else -1,
-                                sentenceEnd = if (active) state.chunkEnd else -1,
-                                wordStart = if (active) state.wordStart else -1,
-                                wordEnd = if (active) state.wordEnd else -1,
-                                selStart = sel?.anchor ?: -1,
-                                selEnd = sel?.focus ?: -1,
-                                onSelect = { a, f -> onSelect(ReaderSelection(index, a, f)) },
-                                onClear = { if (selection?.page == index) onClear() },
-                                modifier = Modifier.matchParentSize(),
-                            )
-                        }
+                    val words = content?.words.orEmpty()
+                    if (bmp != null && words.isNotEmpty()) {
+                        val active = state.page == index && state.chunkStart >= 0
+                        val sel = selection?.takeIf { it.page == index }
+                        val pageHits = remember(hits, index) { hits.filter { it.page == index } }
+                        val pageMatches = remember(pageHits) { pageHits.map { it.start until it.end } }
+                        val current = hits.getOrNull(currentHit)
+                        val currentOnPage = if (current != null && current.page == index) pageHits.indexOf(current) else -1
+                        PdfTextLayer(
+                            words = words,
+                            sentenceStart = if (active) state.chunkStart else -1,
+                            sentenceEnd = if (active) state.chunkEnd else -1,
+                            wordStart = if (active) state.wordStart else -1,
+                            wordEnd = if (active) state.wordEnd else -1,
+                            selStart = sel?.anchor ?: -1,
+                            selEnd = sel?.focus ?: -1,
+                            onSelect = { a, f -> onSelect(ReaderSelection(index, a, f)) },
+                            onClear = { if (selection?.page == index) onClear() },
+                            modifier = Modifier.matchParentSize(),
+                            matches = pageMatches,
+                            currentMatch = currentOnPage,
+                        )
                     }
                 }
             }
@@ -787,6 +931,8 @@ private fun DisplaySheet(
     onPaper: (Int) -> Unit,
     fontIndex: Int,
     onFont: (Int) -> Unit,
+    pdfNight: Boolean,
+    onPdfNight: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -852,8 +998,18 @@ private fun DisplaySheet(
                 }
             }
         } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Night mode", style = MaterialTheme.typography.labelLarge)
+                    Text("Light text on a dark page", fontSize = 12.sp, color = scheme.onSurfaceVariant)
+                }
+                Switch(checked = pdfNight, onCheckedChange = onPdfNight)
+            }
             Text(
-                "PDF pages keep the fonts built into the file, so the font can't be changed for PDFs. Use Zoom to make them larger.",
+                "Pinch or double-tap a page to zoom. PDF pages keep the fonts built into the file, so the font can't be changed for PDFs.",
                 fontSize = 12.sp, color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 14.dp),
             )
         }

@@ -39,7 +39,17 @@ internal class PageWord(
     val b: Float,
     /** What was put before this word in the narration text: "" (glued to the previous word), " " or a paragraph break. */
     val sepBefore: String,
-)
+    /** x of the boundary before each character, plus the end of the last one (page fractions); null = unknown. */
+    val edges: FloatArray? = null,
+) {
+    /** x (page fraction) of the boundary before character [j] of this word; j == length is the word's right end. */
+    fun edgeX(j: Int): Float {
+        val n = (end - start).coerceAtLeast(1)
+        val jj = j.coerceIn(0, n)
+        val e = edges
+        return if (e != null && jj < e.size) e[jj] else l + (r - l) * jj / n
+    }
+}
 
 /** The text of one page as it is narrated, with a box for each word when the page has a layout. */
 internal class PageContent(val text: String, val words: List<PageWord>) {
@@ -54,6 +64,13 @@ internal class PageContent(val text: String, val words: List<PageWord>) {
             sb.append(words[i].text)
         }
         return sb.toString()
+    }
+
+    /** The text of the characters [from]..[to] (inclusive, any order) of the page text, as it would be copied. */
+    fun textInRange(from: Int, to: Int): String {
+        val a = minOf(from, to).coerceAtLeast(0)
+        val b = (maxOf(from, to) + 1).coerceAtMost(text.length)
+        return if (a >= b) "" else text.substring(a, b)
     }
 
     /** Index of the word that contains character [offset] of the narration text, or the nearest one after it. */
@@ -74,7 +91,11 @@ internal class PageContent(val text: String, val words: List<PageWord>) {
 }
 
 /** A word as found by PDFBox or OCR, in page fractions, before the narration text is put together. */
-internal class RawWord(val text: String, val l: Float, val t: Float, val r: Float, val b: Float, val baseline: Float)
+internal class RawWord(
+    val text: String, val l: Float, val t: Float, val r: Float, val b: Float, val baseline: Float,
+    /** Boundary before each character plus the last one's end (page fractions), when the source knows it. */
+    val edges: FloatArray? = null,
+)
 
 /**
  * Turns the words of a page into narration text. Lines are joined into running text, a gap bigger
@@ -116,7 +137,8 @@ internal fun buildPageContent(raw: List<RawWord>): PageContent {
         sb.append(sep)
         val start = sb.length
         sb.append(text)
-        words.add(PageWord(text, start, sb.length, w.l, w.t, w.r, w.b, sep))
+        val edges = w.edges?.takeIf { it.size == w.text.length + 1 && w.text.startsWith(text) }
+        words.add(PageWord(text, start, sb.length, w.l, w.t, w.r, w.b, sep, edges))
         prev = w
     }
     return PageContent(sb.toString(), words)
@@ -165,6 +187,7 @@ private class WordCollector : PDFTextStripper() {
         var b = 0f
         var baseline = 0f
         var prevRight = Float.NaN
+        val edgeList = ArrayList<Float>()
 
         fun flush() {
             val word = sb.toString().trim()
@@ -175,10 +198,13 @@ private class WordCollector : PDFTextStripper() {
                         (l / pw).coerceIn(0f, 1f), (t / ph).coerceIn(0f, 1f),
                         (r / pw).coerceIn(0f, 1f), (b / ph).coerceIn(0f, 1f),
                         (baseline / ph).coerceIn(0f, 1f),
+                        // One boundary per character; a ligature such as "fi" is split evenly between its letters.
+                        if (edgeList.size == word.length + 1) FloatArray(edgeList.size) { (edgeList[it] / pw).coerceIn(0f, 1f) } else null,
                     )
                 )
             }
             sb.setLength(0)
+            edgeList.clear()
             l = Float.MAX_VALUE
             t = Float.MAX_VALUE
             r = 0f
@@ -198,6 +224,11 @@ private class WordCollector : PDFTextStripper() {
                 val gapLimit = maxOf(pos.widthOfSpace * 0.5f, pos.fontSizeInPt * 0.22f)
                 if (x - prevRight > gapLimit || kotlin.math.abs(pos.yDirAdj - baseline) > h * 0.5f) flush()
             }
+            // Drop the end-of-previous-glyph boundary; the next glyph's own start replaces it.
+            if (edgeList.isNotEmpty()) edgeList.removeAt(edgeList.size - 1)
+            val glyphW = pos.widthDirAdj
+            for (k in 0 until ch.length) edgeList.add(x + glyphW * k / ch.length)
+            edgeList.add(x + glyphW)
             sb.append(ch)
             l = minOf(l, x)
             r = maxOf(r, x + pos.widthDirAdj)
