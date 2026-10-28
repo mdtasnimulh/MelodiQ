@@ -360,8 +360,12 @@ private fun SongCard(
 }
 
 private fun formatDuration(durationMs: Long): String {
-    val df = SimpleDateFormat("mm:ss", Locale.US)
-    return df.format(durationMs)
+    val total = (durationMs / 1000).coerceAtLeast(0)
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    return if (h > 0) String.format(java.util.Locale.US, "%d:%02d:%02d", h, m, s)
+        else String.format(java.util.Locale.US, "%02d:%02d", m, s)
 }
 
 @Preview(showBackground = true)

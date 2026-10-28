@@ -291,7 +291,8 @@ internal fun MmApp(
                 val hideAppBar = currentDestination.isRouteInHierarchy(PlayerRoute::class) ||
                     currentDestination.isRouteInHierarchy(AudioBookRoute::class) ||
                     currentDestination.isRouteInHierarchy(AudioBookDetailsRoute::class) ||
-                    currentDestination.isRouteInHierarchy(BookReaderRoute::class)
+                    currentDestination.isRouteInHierarchy(BookReaderRoute::class) ||
+                    currentDestination.isRouteInHierarchy(RadioRoute::class)
                 if (!hideAppBar) {
                     val onSearch = currentDestination.isRouteInHierarchy(SearchNavRoute::class)
                     val onSettings = currentDestination.isRouteInHierarchy(SettingsRoute::class)

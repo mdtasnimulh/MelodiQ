@@ -161,8 +161,14 @@ fun MusicCard(
 }
 
 fun convertLongToReadableDateTime(time: Long, format: String): String {
-    val df = SimpleDateFormat(format, Locale.US)
-    return df.format(time)
+    if (format != "mm:ss") return SimpleDateFormat(format, Locale.US).format(time)
+    // Hours are shown once a track passes 60 minutes (1:55:20 instead of 55:20).
+    val total = (time / 1000).coerceAtLeast(0)
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    return if (h > 0) String.format(java.util.Locale.US, "%d:%02d:%02d", h, m, s)
+        else String.format(java.util.Locale.US, "%02d:%02d", m, s)
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
