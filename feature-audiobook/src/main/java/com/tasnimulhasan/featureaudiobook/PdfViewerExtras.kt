@@ -108,7 +108,7 @@ internal class PdfZoomState {
     var ty by mutableFloatStateOf(0f)
     var viewport: IntSize = IntSize.Zero
 
-    /** True while text is being selected: pinching, panning and double-tap zoom are switched off. */
+    /** True while a finger is dragging a text selection: pinching, panning and double-tap zoom are switched off. */
     var locked: Boolean = false
 
     fun clamp() {
@@ -159,7 +159,7 @@ internal fun Modifier.pdfZoomable(state: PdfZoomState, scope: CoroutineScope): M
                 lastTime = event.changes.maxOf { it.uptimeMillis }
                 val pressed = event.changes.count { it.pressed }
                 if (state.locked) {
-                    // Selecting text: leave the fingers to the text layer.
+                    // A selection is being dragged: leave the fingers to the text layer.
                 } else if (pressed >= 2) {
                     pinching = true
                     val zoom = event.calculateZoom()

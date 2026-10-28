@@ -47,7 +47,11 @@ internal fun PdfTextLayer(
     /** Search matches on this page as character ranges of the page text, and which one is the current one (-1 none). */
     matches: List<IntRange> = emptyList(),
     currentMatch: Int = -1,
+    /** True only while a finger is dragging a selection (so the viewer can ignore pinches then). */
+    onSelecting: (Boolean) -> Unit = {},
 ) {
+    val selecting by rememberUpdatedState(onSelecting)
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { selecting(false) } }
     val scheme = MaterialTheme.colorScheme
     val sentenceColor = scheme.primary.copy(alpha = 0.22f)
     val wordColor = Color(0xFFFF9F0A).copy(alpha = 0.62f) // the spoken word: orange, distinct from the sentence tint
@@ -75,6 +79,7 @@ internal fun PdfTextLayer(
                         if (anchor >= 0) {
                             select(anchor, anchor)
                             magnifierAt = longPress.position
+                            selecting(true)
                             drag(longPress.id) { change ->
                                 val i = nearestChar(currentWords, change.position, layerSize, 400f)
                                 if (i >= 0) select(anchor, i)
@@ -82,6 +87,7 @@ internal fun PdfTextLayer(
                                 change.consume()
                             }
                             magnifierAt = Offset.Unspecified
+                            selecting(false)
                         }
                     } else {
                         // Lifted without moving or waiting: a tap, which clears the selection.

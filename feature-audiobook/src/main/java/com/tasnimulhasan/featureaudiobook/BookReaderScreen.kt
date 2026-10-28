@@ -237,8 +237,9 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
 
     // ---- PDF viewer: zoom, night mode, search, bookmarks, thumbnails --------------------------------
     val zoomState = remember { PdfZoomState() }
-    // No pinching or panning while text is selected.
-    androidx.compose.runtime.SideEffect { zoomState.locked = selection != null }
+    // No pinching or panning while a finger is dragging a text selection (a finished selection can be zoomed again).
+    var draggingSelection by remember { mutableStateOf(false) }
+    androidx.compose.runtime.SideEffect { zoomState.locked = draggingSelection }
     var pdfNight by rememberSaveable { mutableStateOf(readerPrefs.getBoolean("pdf_night", false)) }
     var searching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -437,6 +438,7 @@ internal fun BookReaderScreen(book: Book, speaker: BookSpeaker, onBack: () -> Un
                     selection = selection,
                     onSelect = { selection = it },
                     onClear = { selection = null },
+                    onSelecting = { draggingSelection = it },
                 )
                 PdfFastScroller(listState = listState, pageCount = pageCount, onJumpEnd = { jumpToPage(it) })
             } else {
@@ -605,6 +607,7 @@ private fun PdfPagesList(
     selection: ReaderSelection?,
     onSelect: (ReaderSelection) -> Unit,
     onClear: () -> Unit,
+    onSelecting: (Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     BoxWithConstraints(Modifier.fillMaxSize().pdfZoomable(zoomState, scope)) {
@@ -673,6 +676,7 @@ private fun PdfPagesList(
                             modifier = Modifier.matchParentSize(),
                             matches = pageMatches,
                             currentMatch = currentOnPage,
+                            onSelecting = onSelecting,
                         )
                     }
                 }
