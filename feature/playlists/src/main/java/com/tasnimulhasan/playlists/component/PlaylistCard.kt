@@ -1,6 +1,5 @@
 package com.tasnimulhasan.playlists.component
 
-import android.net.Uri
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -283,12 +282,11 @@ private fun BoxScope.ShelfCover(
         label = "fanTilt",
     )
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "fanAlpha")
-    // Each cover is a gramophone disc: round, grooved, with a centre label and spindle hole.
     val disc = height * 0.8f
     Box(
         modifier = Modifier
             .align(Alignment.BottomStart)
-            .offset(x = x + (width - disc) / 2, y = (-12).dp - (height - disc) / 2)
+            .offset(x = x + (width - disc) / 2, y = -(70.dp - disc / 3))
             .zIndex(z)
             .graphicsLayer {
                 rotationZ = rotation
