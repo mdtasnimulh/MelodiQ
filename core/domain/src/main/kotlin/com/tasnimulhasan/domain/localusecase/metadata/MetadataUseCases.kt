@@ -30,6 +30,11 @@ class DeleteSongUseCase @Inject constructor(private val repo: FileManagementRepo
     suspend operator fun invoke(songId: Long): FileOpResult = repo.deleteSong(songId)
 }
 
+/** Deletes several songs with a single system confirmation. */
+class DeleteSongsUseCase @Inject constructor(private val repo: FileManagementRepository) {
+    suspend operator fun invoke(songIds: List<Long>): FileOpResult = repo.deleteSongs(songIds)
+}
+
 class RenameSongUseCase @Inject constructor(private val repo: FileManagementRepository) {
     suspend operator fun invoke(songId: Long, newTitleOnDisk: String): FileOpResult = repo.renameSong(songId, newTitleOnDisk)
 }

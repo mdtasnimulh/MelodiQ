@@ -50,6 +50,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -119,6 +120,16 @@ internal fun SharedTransitionScope.HomeScreen(
             }
         }
     }
+
+    val deleteConsent by viewModel.pendingConsent.collectAsStateWithLifecycle()
+    val deleteConsentLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
+    ) { result -> viewModel.onDeleteConsentResult(result.resultCode == android.app.Activity.RESULT_OK) }
+    LaunchedEffect(deleteConsent) {
+        val sender = deleteConsent ?: return@LaunchedEffect
+        deleteConsentLauncher.launch(androidx.activity.result.IntentSenderRequest.Builder(sender).build())
+    }
+    var deleteTarget by remember { mutableStateOf<MusicEntity?>(null) }
 
     fun openSongActions(song: MusicEntity) {
         actionsSong.value = song
@@ -271,8 +282,21 @@ internal fun SharedTransitionScope.HomeScreen(
                 actionsSong.value = null
                 navigateToSongDetails(song.songId)
             },
-            onDismiss = { actionsSong.value = null }
+            onDismiss = { actionsSong.value = null },
+            onDelete = { song ->
+                actionsSong.value = null
+                deleteTarget = song
+            },
         )
+
+        deleteTarget?.let { target ->
+            com.tasnimulhasan.ui.component.ConfirmDeleteSongsDialog(
+                songCount = 1,
+                firstTitle = target.songTitle,
+                onConfirm = { viewModel.deleteSong(target); deleteTarget = null },
+                onDismiss = { deleteTarget = null },
+            )
+        }
 
         AddToPlaylistSheet(
             song = playlistSong.value,

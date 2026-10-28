@@ -51,6 +51,8 @@ class HomeViewModel @Inject constructor(
     private val insertMusicListToPlaylistUseCase: InsertMusicListToPlaylistUseCase,
     private val observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
     private val toggleFavouriteUseCase: ToggleFavouriteUseCase,
+    private val deleteSongsUseCase: com.tasnimulhasan.domain.localusecase.metadata.DeleteSongsUseCase,
+    private val notifyLibraryChangedUseCase: com.tasnimulhasan.domain.localusecase.metadata.NotifyLibraryChangedUseCase,
 ) : BaseViewModel() {
 
     private val dummyAudio = MusicEntity(
@@ -309,6 +311,30 @@ class HomeViewModel @Inject constructor(
                 return@execute
             }
             addMusicToPlaylist(created.id, song)
+        }
+    }
+
+    // ---- delete from the long-press menu (removes the file from the device) -------------------
+    private val _pendingConsent = MutableStateFlow<android.content.IntentSender?>(null)
+    val pendingConsent: StateFlow<android.content.IntentSender?> = _pendingConsent.asStateFlow()
+
+    fun deleteSong(song: MusicEntity) {
+        viewModelScope.launch {
+            when (val result = deleteSongsUseCase(listOf(song.songId))) {
+                com.tasnimulhasan.entity.metadata.FileOpResult.Success -> _uiEvent.send(UiEvent.ShowToast("Song deleted"))
+                is com.tasnimulhasan.entity.metadata.FileOpResult.NeedsPermission -> _pendingConsent.value = result.intentSender
+                is com.tasnimulhasan.entity.metadata.FileOpResult.Error -> _uiEvent.send(UiEvent.ShowToast(result.message))
+            }
+        }
+    }
+
+    /** After the system's delete prompt: approval means Android already deleted the file. */
+    fun onDeleteConsentResult(granted: Boolean) {
+        _pendingConsent.value = null
+        if (!granted) return
+        viewModelScope.launch {
+            notifyLibraryChangedUseCase()
+            _uiEvent.send(UiEvent.ShowToast("Song deleted"))
         }
     }
 

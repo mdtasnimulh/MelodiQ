@@ -17,8 +17,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QueuePlayNext
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.tasnimulhasan.designsystem.component.Icon
@@ -55,6 +58,10 @@ fun SongActionsSheet(
     onAddToPlaylist: (MusicEntity) -> Unit,
     onSongInfo: (MusicEntity) -> Unit,
     onDismiss: () -> Unit,
+    /** Starts multi-select with this song ticked. Hidden when null. */
+    onSelect: ((MusicEntity) -> Unit)? = null,
+    /** Deletes the file from the device (after a confirmation). Hidden when null. */
+    onDelete: ((MusicEntity) -> Unit)? = null,
 ) {
     if (song == null) return
 
@@ -73,7 +80,9 @@ fun SongActionsSheet(
             SheetAction(Icons.Filled.QueuePlayNext, "Play next") { onPlayNext(song) }
             SheetAction(Icons.AutoMirrored.Filled.QueueMusic, "Add to queue") { onPlayLater(song) }
             SheetAction(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist") { onAddToPlaylist(song) }
+            if (onSelect != null) SheetAction(Icons.Filled.CheckCircle, "Select") { onSelect(song) }
             SheetAction(Icons.Filled.Info, "Song info") { onSongInfo(song) }
+            if (onDelete != null) SheetAction(Icons.Filled.Delete, "Delete") { onDelete(song) }
         }
     }
 }
@@ -83,7 +92,6 @@ fun SongActionsSheet(
  * the user has no playlists yet; tapping it reveals a name field inline. Shown while [song]
  * is non-null.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToPlaylistSheet(
     song: MusicEntity?,
@@ -93,12 +101,50 @@ fun AddToPlaylistSheet(
     onDismiss: () -> Unit,
 ) {
     if (song == null) return
+    PlaylistPickerSheet(
+        title = "Add to playlist",
+        playlists = playlists,
+        onPlaylistSelected = { onPlaylistSelected(song, it) },
+        onCreatePlaylist = { onCreatePlaylist(song, it) },
+        onDismiss = onDismiss,
+    )
+}
+
+/** Same sheet for several songs at once (multi-select). Shown while [visible] is true. */
+@Composable
+fun AddSongsToPlaylistSheet(
+    visible: Boolean,
+    songCount: Int,
+    playlists: List<PlaylistEntity>,
+    onPlaylistSelected: (PlaylistEntity) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (!visible) return
+    PlaylistPickerSheet(
+        title = if (songCount == 1) "Add 1 song to playlist" else "Add $songCount songs to playlist",
+        playlists = playlists,
+        onPlaylistSelected = onPlaylistSelected,
+        onCreatePlaylist = onCreatePlaylist,
+        onDismiss = onDismiss,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlaylistPickerSheet(
+    title: String,
+    playlists: List<PlaylistEntity>,
+    onPlaylistSelected: (PlaylistEntity) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var creating by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
 
     fun submit() {
         val trimmed = name.trim()
-        if (trimmed.isNotEmpty()) onCreatePlaylist(song, trimmed)
+        if (trimmed.isNotEmpty()) onCreatePlaylist(trimmed)
     }
 
     ModalBottomSheet(
@@ -107,7 +153,7 @@ fun AddToPlaylistSheet(
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
-                text = "Add to playlist",
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
@@ -151,13 +197,37 @@ fun AddToPlaylistSheet(
                 LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
                     items(playlists, key = { it.id }) { playlist ->
                         SheetAction(Icons.AutoMirrored.Filled.QueueMusic, playlist.playlistName) {
-                            onPlaylistSelected(song, playlist)
+                            onPlaylistSelected(playlist)
                         }
                     }
                 }
             }
         }
     }
+}
+
+/** "Delete N songs?" confirmation. The files are removed from the device, so it says so. */
+@Composable
+fun ConfirmDeleteSongsDialog(
+    songCount: Int,
+    firstTitle: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (songCount == 1) "Delete this song?" else "Delete $songCount songs?") },
+        text = {
+            Text(
+                if (songCount == 1) "\"$firstTitle\" will be permanently deleted from your device."
+                else "These $songCount songs will be permanently deleted from your device.",
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

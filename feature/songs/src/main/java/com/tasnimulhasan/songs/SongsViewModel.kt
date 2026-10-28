@@ -12,6 +12,9 @@ import com.tasnimulhasan.domain.localusecase.playlistdetails.InsertMusicToPlayli
 import com.tasnimulhasan.domain.localusecase.playlistdetails.IsSongInPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.GetAllPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
+import com.tasnimulhasan.domain.localusecase.metadata.DeleteSongsUseCase
+import com.tasnimulhasan.domain.localusecase.metadata.NotifyLibraryChangedUseCase
+import com.tasnimulhasan.entity.metadata.FileOpResult
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import kotlinx.coroutines.channels.Channel
@@ -41,6 +44,8 @@ class SongsViewModel @Inject constructor(
     private val insertPlaylistUseCase: InsertPlaylistUseCase,
     private val insertMusicToPlaylist: InsertMusicToPlaylistUseCase,
     private val isSongInPlaylistUseCase: IsSongInPlaylistUseCase,
+    private val deleteSongsUseCase: DeleteSongsUseCase,
+    private val notifyLibraryChangedUseCase: NotifyLibraryChangedUseCase,
 ) : BaseViewModel() {
 
     private val _messages = Channel<String>(Channel.BUFFERED)
@@ -141,6 +146,104 @@ class SongsViewModel @Inject constructor(
             addSongToPlaylist(created.id, song)
         }
     }
+
+    /** Adds all [songs] to [playlistId], skipping any already in it, with one summary message. */
+    fun addSongsToPlaylist(playlistId: Int, songs: List<MusicEntity>) {
+        viewModelScope.launch { addAll(playlistId, songs) }
+    }
+
+    /** Creates a playlist called [name] and puts all [songs] into it. */
+    fun createPlaylistAndAddAll(name: String, songs: List<MusicEntity>) {
+        viewModelScope.launch {
+            val createdAt = System.currentTimeMillis()
+            insertPlaylistUseCase(
+                InsertPlaylistUseCase.Params(
+                    PlaylistEntity(playlistName = name, playlistDescription = "", createdAt = createdAt)
+                )
+            )
+            val created = getAllPlaylistUseCase().first()
+                .filter { it.playlistName == name && it.createdAt == createdAt }
+                .maxByOrNull { it.id }
+            if (created == null) {
+                _messages.send("Couldn't create playlist")
+                return@launch
+            }
+            addAll(created.id, songs)
+        }
+    }
+
+    private suspend fun addAll(playlistId: Int, songs: List<MusicEntity>) {
+        var added = 0
+        var skipped = 0
+        songs.forEach { song ->
+            val already = isSongInPlaylistUseCase(
+                IsSongInPlaylistUseCase.Params(playlistId = playlistId, songId = song.songId)
+            )
+            if (already) {
+                skipped++
+            } else {
+                insertMusicToPlaylist(
+                    params = InsertMusicToPlaylistUseCase.Params(
+                        PlaylistDetailsEntity(
+                            playlistId = playlistId,
+                            contentUri = song.contentUri.toString(),
+                            songId = song.songId,
+                            cover = song.contentUri.toString(),
+                            songTitle = song.songTitle,
+                            artist = song.artist,
+                            duration = song.duration,
+                            album = song.album,
+                            albumId = song.albumId,
+                        )
+                    )
+                )
+                added++
+            }
+        }
+        _messages.send(
+            when {
+                added == 0 -> "Already in this playlist"
+                skipped == 0 -> if (added == 1) "Added 1 song to playlist" else "Added $added songs to playlist"
+                else -> "Added $added songs ($skipped already in playlist)"
+            }
+        )
+    }
+
+    // ---- delete (files are removed from the device) ------------------------------------------
+
+    private val _pendingConsent = MutableStateFlow<android.content.IntentSender?>(null)
+    /** Set when Android needs the user's OK to delete; the screen launches it and calls [onConsentResult]. */
+    val pendingConsent: StateFlow<android.content.IntentSender?> = _pendingConsent.asStateFlow()
+    private var pendingDeleteCount = 0
+
+    fun deleteSongs(songs: List<MusicEntity>) {
+        if (songs.isEmpty()) return
+        viewModelScope.launch {
+            val count = songs.size
+            when (val result = deleteSongsUseCase(songs.map { it.songId })) {
+                FileOpResult.Success -> _messages.send(deletedMessage(count))
+                is FileOpResult.NeedsPermission -> {
+                    pendingDeleteCount = count
+                    _pendingConsent.value = result.intentSender
+                }
+                is FileOpResult.Error -> _messages.send(result.message)
+            }
+        }
+    }
+
+    /** After the system's delete prompt: approval means Android already deleted the files. */
+    fun onConsentResult(granted: Boolean) {
+        _pendingConsent.value = null
+        val count = pendingDeleteCount
+        pendingDeleteCount = 0
+        if (!granted) return
+        viewModelScope.launch {
+            notifyLibraryChangedUseCase()
+            _messages.send(deletedMessage(count))
+        }
+    }
+
+    private fun deletedMessage(count: Int) = if (count == 1) "Song deleted" else "$count songs deleted"
 
     private suspend fun addSongToPlaylist(playlistId: Int, song: MusicEntity) {
         val alreadyAdded = isSongInPlaylistUseCase(

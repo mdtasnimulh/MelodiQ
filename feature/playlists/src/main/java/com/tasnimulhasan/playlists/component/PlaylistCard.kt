@@ -1,5 +1,6 @@
 package com.tasnimulhasan.playlists.component
 
+import android.net.Uri
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -183,7 +184,7 @@ fun PlaylistCard(
                         if (glass) Modifier
                             .background(Brush.verticalGradient(listOf(color.copy(alpha = 0.50f), color.copy(alpha = 0.78f))))
                             .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(28.dp))
-                        else Modifier.background(color.copy(alpha = 0.90f))
+                        else Modifier.background(color.copy(alpha = 0.80f))
                     ),
             ) {
                 Box(
@@ -282,18 +283,20 @@ private fun BoxScope.ShelfCover(
         label = "fanTilt",
     )
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "fanAlpha")
+    // Each cover is a gramophone disc: round, grooved, with a centre label and spindle hole.
+    val disc = height * 0.8f
     Box(
         modifier = Modifier
             .align(Alignment.BottomStart)
-            .offset(x = x, y = (-12).dp)
+            .offset(x = x + (width - disc) / 2, y = (-12).dp - (height - disc) / 2)
             .zIndex(z)
             .graphicsLayer {
                 rotationZ = rotation
                 this.alpha = alpha
             }
-            .size(width, height)
-            .shadow(10.dp, RoundedCornerShape(7.dp))
-            .clip(RoundedCornerShape(7.dp)),
+            .size(disc)
+            .shadow(10.dp, CircleShape)
+            .clip(CircleShape),
     ) {
         if (ref != null) {
             AsyncImage(
@@ -318,6 +321,55 @@ private fun BoxScope.ShelfCover(
                 )
             }
         }
+        VinylOverlay(Modifier.fillMaxSize())
+    }
+}
+
+/** Grooves, a soft sheen, the centre label ring and the spindle hole - drawn over the cover art. */
+@Composable
+private fun VinylOverlay(modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier) {
+        val r = size.minDimension / 2f
+        val c = center
+        // Darken the rim a little so the cover reads as a record, not a flat circle.
+        drawCircle(
+            brush = Brush.radialGradient(
+                0.55f to Color.Transparent,
+                1f to Color.Black.copy(alpha = 0.38f),
+                center = c, radius = r,
+            ),
+        )
+        // Fine grooves between the label and the rim.
+        var gr = r * 0.40f
+        var n = 0
+        while (gr < r * 0.97f) {
+            drawCircle(
+                color = (if (n % 2 == 0) Color.Black else Color.White).copy(alpha = 0.10f),
+                radius = gr, center = c,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.8.dp.toPx()),
+            )
+            gr += r * 0.055f
+            n++
+        }
+        // Light sweeping across the vinyl.
+        drawCircle(
+            brush = Brush.sweepGradient(
+                0.00f to Color.Transparent, 0.10f to Color.White.copy(alpha = 0.16f), 0.22f to Color.Transparent,
+                0.50f to Color.Transparent, 0.60f to Color.White.copy(alpha = 0.16f), 0.72f to Color.Transparent,
+                1.00f to Color.Transparent,
+                center = c,
+            ),
+        )
+        // Label ring and spindle hole.
+        drawCircle(
+            color = Color.Black.copy(alpha = 0.45f), radius = r * 0.31f, center = c,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
+        )
+        drawCircle(color = Color(0xFF101010), radius = r * 0.075f, center = c)
+        drawCircle(
+            color = Color.White.copy(alpha = 0.35f), radius = r * 0.075f, center = c,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()),
+        )
     }
 }
 

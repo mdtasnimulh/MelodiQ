@@ -43,6 +43,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -86,6 +90,14 @@ internal fun SongsRouteScreen(
 ) {
     val context = LocalContext.current
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val pendingConsent by viewModel.pendingConsent.collectAsStateWithLifecycle()
+    val consentLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
+    ) { result -> viewModel.onConsentResult(result.resultCode == android.app.Activity.RESULT_OK) }
+    LaunchedEffect(pendingConsent) {
+        val sender = pendingConsent ?: return@LaunchedEffect
+        consentLauncher.launch(androidx.activity.result.IntentSenderRequest.Builder(sender).build())
+    }
     LaunchedEffect(Unit) {
         viewModel.messages.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
@@ -120,6 +132,9 @@ internal fun SongsRouteScreen(
         onAddToPlaylist = viewModel::addToPlaylist,
         onCreatePlaylist = viewModel::createPlaylistAndAdd,
         onSongInfo = { navigateToSongDetails(it.songId) },
+        onAddSongsToPlaylist = viewModel::addSongsToPlaylist,
+        onCreatePlaylistForSongs = viewModel::createPlaylistAndAddAll,
+        onDeleteSongs = viewModel::deleteSongs,
     )
 }
 
@@ -144,6 +159,9 @@ internal fun SongsScreen(
     onAddToPlaylist: (playlistId: Int, song: MusicEntity) -> Unit = { _, _ -> },
     onCreatePlaylist: (name: String, song: MusicEntity) -> Unit = { _, _ -> },
     onSongInfo: (MusicEntity) -> Unit = {},
+    onAddSongsToPlaylist: (playlistId: Int, songs: List<MusicEntity>) -> Unit = { _, _ -> },
+    onCreatePlaylistForSongs: (name: String, songs: List<MusicEntity>) -> Unit = { _, _ -> },
+    onDeleteSongs: (List<MusicEntity>) -> Unit = {},
 ) {
     if (audioList.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -157,11 +175,51 @@ internal fun SongsScreen(
     var actionsSong by remember { mutableStateOf<MusicEntity?>(null) }
     var playlistSong by remember { mutableStateOf<MusicEntity?>(null) }
 
+    // Multi-select: any ticked song means selection mode (tap toggles, long-press opens the menu otherwise).
+    var selectedIds by remember { mutableStateOf(setOf<Long>()) }
+    val selectionMode = selectedIds.isNotEmpty()
+    var showBulkPlaylist by remember { mutableStateOf(false) }
+    var deleteTargets by remember { mutableStateOf<List<MusicEntity>?>(null) }
+    fun selectedSongs() = audioList.filter { it.songId in selectedIds }
+    fun toggle(id: Long) { selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id }
+    androidx.activity.compose.BackHandler(enabled = selectionMode) { selectedIds = emptySet() }
+    // Songs that disappeared (deleted) drop out of the selection.
+    LaunchedEffect(audioList) {
+        if (selectedIds.isNotEmpty()) {
+            val present = audioList.mapTo(HashSet()) { it.songId }
+            val kept = selectedIds.filterTo(HashSet()) { it in present }
+            if (kept.size != selectedIds.size) selectedIds = kept
+        }
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding.current),
     ) {
-        item {
+        if (selectionMode) item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = { selectedIds = emptySet() }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
+                }
+                Text(
+                    text = "${selectedIds.size} selected",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = { selectedIds = audioList.mapTo(HashSet()) { it.songId } }) {
+                    Icon(Icons.Filled.SelectAll, contentDescription = "Select all")
+                }
+                IconButton(onClick = { showBulkPlaylist = true }) {
+                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to playlist")
+                }
+                IconButton(onClick = { deleteTargets = selectedSongs() }) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        } else item {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -212,8 +270,10 @@ internal fun SongsScreen(
                 selectedId = selectedId,
                 isPlaying = isPlaying,
                 isFavourite = favorites.contains(item.songId),
-                onClick = { onSongClicked(item.songId) },
-                onLongClick = { actionsSong = item },
+                selectionMode = selectionMode,
+                isChecked = item.songId in selectedIds,
+                onClick = { if (selectionMode) toggle(item.songId) else onSongClicked(item.songId) },
+                onLongClick = { if (selectionMode) toggle(item.songId) else actionsSong = item },
                 onFavouriteClick = { onFavouriteClicked(item.songId) },
             )
         }
@@ -226,7 +286,39 @@ internal fun SongsScreen(
         onAddToPlaylist = { actionsSong = null; playlistSong = it },
         onSongInfo = { actionsSong = null; onSongInfo(it) },
         onDismiss = { actionsSong = null },
+        onSelect = { selectedIds = setOf(it.songId); actionsSong = null },
+        onDelete = { deleteTargets = listOf(it); actionsSong = null },
     )
+
+    com.tasnimulhasan.ui.component.AddSongsToPlaylistSheet(
+        visible = showBulkPlaylist,
+        songCount = selectedIds.size,
+        playlists = playlists,
+        onPlaylistSelected = { playlist ->
+            onAddSongsToPlaylist(playlist.id, selectedSongs())
+            showBulkPlaylist = false
+            selectedIds = emptySet()
+        },
+        onCreatePlaylist = { name ->
+            onCreatePlaylistForSongs(name, selectedSongs())
+            showBulkPlaylist = false
+            selectedIds = emptySet()
+        },
+        onDismiss = { showBulkPlaylist = false },
+    )
+
+    deleteTargets?.let { targets ->
+        com.tasnimulhasan.ui.component.ConfirmDeleteSongsDialog(
+            songCount = targets.size,
+            firstTitle = targets.firstOrNull()?.songTitle.orEmpty(),
+            onConfirm = {
+                onDeleteSongs(targets)
+                deleteTargets = null
+                selectedIds = emptySet()
+            },
+            onDismiss = { deleteTargets = null },
+        )
+    }
 
     AddToPlaylistSheet(
         song = playlistSong,
@@ -282,15 +374,19 @@ private fun SongCard(
     selectedId: Long,
     isPlaying: Boolean,
     isFavourite: Boolean,
+    selectionMode: Boolean = false,
+    isChecked: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onFavouriteClick: () -> Unit,
 ) {
     val isSelected = selectedId == songId
     Card(
-        border = com.tasnimulhasan.designsystem.theme.glassBorder(),
+        border = if (isChecked) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            else com.tasnimulhasan.designsystem.theme.glassBorder(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
+            containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer
+                else if (isSelected) CardBlueMediumTextColor else MaterialTheme.colorScheme.surface,
         ),
         modifier = modifier
             .pressFeedback()
@@ -348,12 +444,20 @@ private fun SongCard(
                 )
             }
 
-            IconButton(onClick = onFavouriteClick, modifier = Modifier.padding(end = 8.dp)) {
-                Icon(
-                    imageVector = if (isFavourite) Icons.Default.Favorite else Icons.Filled.HeartBroken,
-                    contentDescription = "Favourite Icon",
-                    tint = if (isFavourite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
+            if (selectionMode) {
+                Checkbox(
+                    checked = isChecked,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(end = 8.dp),
                 )
+            } else {
+                IconButton(onClick = onFavouriteClick, modifier = Modifier.padding(end = 8.dp)) {
+                    Icon(
+                        imageVector = if (isFavourite) Icons.Default.Favorite else Icons.Filled.HeartBroken,
+                        contentDescription = "Favourite Icon",
+                        tint = if (isFavourite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
