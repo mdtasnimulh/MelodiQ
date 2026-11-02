@@ -62,6 +62,15 @@ class AlbumDetailsViewModel @Inject constructor(
         if (globalIndex >= 0) viewModelScope.launch { playerUseCases.selectAudioChange(globalIndex) }
     }
 
+    /** Puts the album's songs next in the queue, keeping their order. */
+    fun playNextAll(list: List<MusicEntity>) {
+        viewModelScope.launch { list.asReversed().forEach { playerUseCases.playNext(it) } }
+    }
+
+    fun playLaterAll(list: List<MusicEntity>) {
+        viewModelScope.launch { list.forEach { playerUseCases.playLater(it) } }
+    }
+
     fun toggleFavorite(songId: Long) {
         viewModelScope.launch { toggleFavouriteUseCase(songId) }
     }

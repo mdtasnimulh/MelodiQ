@@ -41,6 +41,7 @@ class DragReorderState internal constructor(
     private val swap: () -> (Int, Int) -> Unit,
     private val drop: () -> (Int, Int) -> Unit,
     private val haptic: () -> Unit,
+    private val canDrag: () -> (Any) -> Boolean = { { true } },
 ) {
     var draggingKey by mutableStateOf<Any?>(null)
         private set
@@ -60,6 +61,7 @@ class DragReorderState internal constructor(
 
     internal fun start(y: Float) {
         val hit = listState.layoutInfo.visibleItemsInfo.firstOrNull { y.toInt() >= it.offset && y.toInt() < it.offset + it.size } ?: return
+        if (!canDrag()(hit.key)) return
         draggingKey = hit.key
         startIndex = hit.index
         currentIndex = hit.index
@@ -76,7 +78,7 @@ class DragReorderState internal constructor(
         val top = initialOffset + draggedDistance
         val center = top + dragged.size / 2f
         val target = info.visibleItemsInfo.firstOrNull {
-            it.key != key && center >= it.offset && center <= it.offset + it.size
+            it.key != key && canDrag()(it.key) && center >= it.offset && center <= it.offset + it.size
         }
         if (target != null && target.index != currentIndex) {
             swap()(currentIndex, target.index)
@@ -111,11 +113,14 @@ fun rememberDragReorderState(
     listState: LazyListState,
     onSwap: (from: Int, to: Int) -> Unit,
     onDrop: (from: Int, to: Int) -> Unit,
+    /** Rows whose key says false (a header, say) can't be picked up and are never swapped with. */
+    canDrag: (key: Any) -> Boolean = { true },
 ): DragReorderState {
     val scope = rememberCoroutineScope()
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     val swap = rememberUpdatedState(onSwap)
     val dropped = rememberUpdatedState(onDrop)
+    val allowed = rememberUpdatedState(canDrag)
     return remember(listState) {
         DragReorderState(
             listState = listState,
@@ -123,6 +128,7 @@ fun rememberDragReorderState(
             swap = { swap.value },
             drop = { dropped.value },
             haptic = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
+            canDrag = { allowed.value },
         )
     }
 }

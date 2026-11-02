@@ -84,6 +84,15 @@ class PlaylistDetailsViewModel @Inject constructor(
         }
     }
 
+    /** Puts the songs next in the queue, keeping their order. */
+    fun playNextAll(list: List<MusicEntity>) {
+        viewModelScope.launch { list.asReversed().forEach { playerUseCases.playNext(it) } }
+    }
+
+    fun playLaterAll(list: List<MusicEntity>) {
+        viewModelScope.launch { list.forEach { playerUseCases.playLater(it) } }
+    }
+
     private fun toggleFavorite(songId: Long) {
         viewModelScope.launch {
             toggleFavouriteUseCase(songId)

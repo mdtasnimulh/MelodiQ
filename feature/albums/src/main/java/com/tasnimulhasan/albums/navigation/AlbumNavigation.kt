@@ -50,6 +50,6 @@ fun NavGraphBuilder.albumDetailsScreen(
         popEnterTransition = { MelodiqMotion.popEnter() },
         popExitTransition = { MelodiqMotion.popExit() }
     ) {
-        AlbumDetailsScreen(navigateToPlayer = navigateToPlayer)
+        AlbumDetailsScreen(navigateToPlayer = navigateToPlayer, navigateBack = navigateBack)
     }
 }

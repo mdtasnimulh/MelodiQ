@@ -18,7 +18,9 @@ import com.tasnimulhasan.ui.reorder.dragItem
 import com.tasnimulhasan.ui.reorder.dragReorder
 import com.tasnimulhasan.ui.reorder.rememberDragReorderState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import com.tasnimulhasan.designsystem.component.Icon
@@ -43,7 +45,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.domain.localusecase.playlistdetails.GetAllMusicFromPlaylistUseCase
 import com.tasnimulhasan.entity.home.MusicEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistDetailsEntity
-import com.tasnimulhasan.playlistdetails.component.MusicCard
+import android.widget.Toast
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.LocalContext
+import com.tasnimulhasan.ui.component.DetailsHero
+import com.tasnimulhasan.ui.component.DetailsSongRow
+import com.tasnimulhasan.ui.component.DetailsSort
+import com.tasnimulhasan.ui.component.DetailsSortSheet
+import com.tasnimulhasan.ui.component.DetailsTopBar
+import com.tasnimulhasan.ui.component.HeroCoverTile
+import com.tasnimulhasan.ui.component.rememberCoverAccent
+import com.tasnimulhasan.ui.component.sortedFor
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -69,10 +81,18 @@ internal fun PlaylistDetailsScreen(
     // Press and hold a song, then drag it up or down to change its place. The list is rearranged
     // here while the finger moves and saved once when it lifts.
     var shown by remember { mutableStateOf<List<PlaylistDetailsEntity>>(emptyList()) }
+    // Only the manual order can be dragged; the header is item 0, so list indexes are shifted by one.
+    var sort by remember { mutableStateOf(DetailsSort.DEFAULT) }
+    var showSort by remember { mutableStateOf(false) }
     val reorder = rememberDragReorderState(
         listState = listState,
-        onSwap = { from, to -> shown = shown.toMutableList().apply { add(to, removeAt(from)) } },
+        onSwap = { from, to ->
+            if (from >= 1 && to >= 1 && from - 1 < shown.size && to - 1 < shown.size) {
+                shown = shown.toMutableList().apply { add(to - 1, removeAt(from - 1)) }
+            }
+        },
         onDrop = { _, _ -> viewModel.action(UiAction.ReorderPlaylist(shown)) },
+        canDrag = { key -> key != HERO_KEY && sort == DetailsSort.DEFAULT },
     )
     LaunchedEffect(musicList.value) { if (!reorder.isDragging) shown = musicList.value }
 
@@ -104,8 +124,11 @@ internal fun PlaylistDetailsScreen(
     // Built once per list emission and handed straight to playCuratedQueue: this is the
     // ENTIRE player queue for this screen, containing only the songs in this playlist - not
     // the full library. Next/Previous can therefore only ever move within these songs.
-    val musicListForPlay = remember(shown) {
-        shown.map { item ->
+    val displayed = remember(shown, sort) {
+        shown.sortedFor(sort, { it.songTitle }, { it.artist ?: "" }, { it.duration.toLongOrNull() ?: 0L })
+    }
+    val musicListForPlay = remember(displayed) {
+        displayed.map { item ->
             MusicEntity(
                 contentUri = item.contentUri.toUri(),
                 songId = item.songId,
@@ -119,117 +142,108 @@ internal fun PlaylistDetailsScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        PlaylistDetailsHeader(
-            playlistName = playlistName,
-            songCount = musicList.value.size,
-            onPlayAll = {
-                if (musicListForPlay.isNotEmpty()) {
-                    viewModel.ensurePlaybackServiceStarted()
-                    viewModel.playFromPlaylist(musicListForPlay, 0)
-                    navigateToPlayer(musicListForPlay.first().songId.toString())
-                }
+    val context = LocalContext.current
+    val first = displayed.firstOrNull()
+    val accent = rememberCoverAccent(first?.contentUri?.toUri(), first?.albumId ?: 0L)
+    val count = musicList.value.size
+
+    fun play(list: List<MusicEntity>) {
+        if (list.isEmpty()) return
+        viewModel.ensurePlaybackServiceStarted()
+        viewModel.playFromPlaylist(list, 0)
+        navigateToPlayer(list.first().songId.toString())
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().dragReorder(reorder),
+            state = listState,
+            userScrollEnabled = !reorder.isDragging,
+        ) {
+            item(key = HERO_KEY) {
+                DetailsHero(
+                    title = playlistName.ifBlank { "Playlist" },
+                    subtitle = if (count == 1) "1 song" else "$count songs",
+                    accent = accent,
+                    canPlay = count > 0,
+                    onPlay = { play(musicListForPlay) },
+                    onShuffle = { play(musicListForPlay.shuffled()) },
+                    cover = {
+                        if (first != null) HeroCoverTile(first.songId, first.contentUri.toUri(), first.albumId ?: 0L, accent)
+                        else Box(Modifier.size(230.dp))
+                    },
+                )
             }
-        )
-
-        if (!isEmpty.value && musicList.value.isNotEmpty()) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        }
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                isEmpty.value -> {
+            if (isEmpty.value) {
+                item(key = "empty") {
                     Text(
                         text = "No songs in this playlist yet",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
                     )
                 }
-
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().dragReorder(reorder),
-                        state = listState,
-                        userScrollEnabled = !reorder.isDragging,
-                    ) {
-                        itemsIndexed(
-                            items = shown,
-                            key = { _, item -> item.songId }
-                        ) { index, item ->
-                            MusicCard(
-                                modifier = (if (reorder.draggingKey == item.songId) Modifier else Modifier.animateItem())
-                                    .dragItem(reorder, item.songId)
-                                    .entrance(index),
-                                contentUri = item.contentUri.toUri(),
-                                albumId = item.albumId,
-                                title = item.songTitle,
-                                artist = item.artist ?: "",
-                                duration = item.duration,
-                                songId = item.songId,
-                                selectedId = currentSelectedAudio?.songId ?: 0L,
-                                isPlaying = isPlaying,
-                                isFavourite = favorites.contains(item.songId),
-                                onMusicClicked = {
-                                    viewModel.ensurePlaybackServiceStarted()
-                                    viewModel.playFromPlaylist(musicListForPlay, index)
-                                    navigateToPlayer(item.songId.toString())
-                                },
-                                onFavouriteIconClicked = {
-                                    viewModel.action(UiAction.ToggleFavorite(item.songId))
-                                },
-                                onRemoveClicked = {
-                                    viewModel.action(UiAction.RemoveFromPlaylist(item))
-                                },
-                            )
-                        }
-                    }
+            } else {
+                itemsIndexed(
+                    items = displayed,
+                    key = { _, item -> item.songId }
+                ) { index, item ->
+                    DetailsSongRow(
+                        modifier = (if (reorder.draggingKey == item.songId) Modifier else Modifier.animateItem())
+                            .dragItem(reorder, item.songId)
+                            .entrance(index),
+                        songId = item.songId,
+                        contentUri = item.contentUri.toUri(),
+                        albumId = item.albumId ?: 0L,
+                        title = item.songTitle,
+                        subtitle = listOfNotNull(item.artist?.takeIf { it.isNotBlank() }, item.album?.takeIf { it.isNotBlank() })
+                            .joinToString(" - "),
+                        selected = (currentSelectedAudio?.songId ?: 0L) == item.songId,
+                        onClick = {
+                            viewModel.ensurePlaybackServiceStarted()
+                            viewModel.playFromPlaylist(musicListForPlay, index)
+                            navigateToPlayer(item.songId.toString())
+                        },
+                        trailing = {
+                            val fav = favorites.contains(item.songId)
+                            IconButton(onClick = { viewModel.action(UiAction.ToggleFavorite(item.songId)) }) {
+                                Icon(
+                                    imageVector = if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                    contentDescription = "Favourite",
+                                    tint = if (fav) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(onClick = { viewModel.action(UiAction.RemoveFromPlaylist(item)) }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = "Remove from playlist",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                    )
                 }
             }
         }
+        DetailsTopBar(
+            onBack = onNavigateUp,
+            onSort = { showSort = true },
+            menuItems = if (count == 0) emptyList() else listOf(
+                "Play next" to {
+                    viewModel.playNextAll(musicListForPlay)
+                    Toast.makeText(context, "Playing next", Toast.LENGTH_SHORT).show()
+                },
+                "Add to queue" to {
+                    viewModel.playLaterAll(musicListForPlay)
+                    Toast.makeText(context, "Added to queue", Toast.LENGTH_SHORT).show()
+                },
+            ),
+        )
+    }
+
+    if (showSort) {
+        DetailsSortSheet(current = sort, onSelect = { sort = it }, onDismiss = { showSort = false })
     }
 }
 
-@Composable
-private fun PlaylistDetailsHeader(
-    playlistName: String,
-    songCount: Int,
-    onPlayAll: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = playlistName.ifBlank { "Playlist" },
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-            )
-            Text(
-                text = if (songCount == 1) "1 song" else "$songCount songs",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        if (songCount > 0) {
-            FilledIconButton(
-                onClick = onPlayAll,
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play all")
-            }
-        }
-    }
-}
+private const val HERO_KEY = "hero"
