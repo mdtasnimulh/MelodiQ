@@ -109,17 +109,33 @@ fun rememberCoverAccent(contentUri: Uri?, albumId: Long): Color {
 @Composable
 fun DetailsTopBar(
     onBack: () -> Unit,
-    onSort: () -> Unit,
-    menuItems: List<Pair<String, () -> Unit>>,
+    onSort: (() -> Unit)? = null,
+    menuItems: List<Pair<String, () -> Unit>> = emptyList(),
     modifier: Modifier = Modifier,
+    withStatusBarPadding: Boolean = true,
+    title: String? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val chip = scheme.surface.copy(alpha = 0.40f)
     var menuOpen by remember { mutableStateOf(false) }
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .statusBarsPadding()
+            .then(if (withStatusBarPadding) Modifier.statusBarsPadding() else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+    if (title != null) Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        color = scheme.onSurface,
+        maxLines = 1,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        modifier = Modifier.padding(horizontal = 76.dp),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -130,11 +146,11 @@ fun DetailsTopBar(
         ) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Back", tint = scheme.onSurface, modifier = Modifier.size(30.dp))
         }
-        Row(
+        if (onSort != null || menuItems.isNotEmpty()) Row(
             Modifier.clip(CircleShape).background(chip),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onSort, modifier = Modifier.size(48.dp)) {
+            if (onSort != null) IconButton(onClick = onSort, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.AutoMirrored.Filled.Sort, "Sort", tint = scheme.onSurface)
             }
             if (menuItems.isNotEmpty()) {
@@ -150,6 +166,7 @@ fun DetailsTopBar(
                 }
             }
         }
+    }
     }
 }
 

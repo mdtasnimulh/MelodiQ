@@ -319,7 +319,40 @@ internal fun MmApp(
                     val mainScreen = appState.currentTopLevelDestination != null
                     // No screen title any more: the search pill takes its place. currentTitleRes
                     // above is intentionally kept (unused) in case titles come back.
-                    MelodiqSearchTopBar(
+                    fun at(c: KClass<*>) = currentDestination.isRouteInHierarchy(c)
+                    val secondaryTitle: String = when {
+                        at(AlbumRoute::class) -> stringResource(Res.string.title_albums)
+                        at(FavouriteRoute::class) -> stringResource(Res.string.title_favourite)
+                        at(QueueRoute::class) -> stringResource(Res.string.title_queue)
+                        at(SettingsRoute::class) -> stringResource(Res.string.title_settings)
+                        at(AboutRoute::class) -> stringResource(Res.string.title_about)
+                        at(FeedbackRoute::class) -> stringResource(Res.string.title_feedback)
+                        at(EqualizerRoute::class) -> stringResource(Res.string.equalizer_title_text)
+                        at(SearchNavRoute::class) -> "Search"
+                        at(com.tasnimulhasan.library.navigation.ArtistsNavRoute::class) -> "Artists"
+                        at(com.tasnimulhasan.library.navigation.ArtistDetailsNavRoute::class) -> "Artist"
+                        at(com.tasnimulhasan.library.navigation.GenresNavRoute::class) -> "Genres"
+                        at(com.tasnimulhasan.library.navigation.GenreDetailsNavRoute::class) -> "Genre"
+                        at(com.tasnimulhasan.library.navigation.FoldersNavRoute::class) -> "Folders"
+                        at(com.tasnimulhasan.library.navigation.RecentlyPlayedNavRoute::class) -> "Recently played"
+                        at(com.tasnimulhasan.library.navigation.NeverPlayedNavRoute::class) -> "Never played"
+                        at(com.tasnimulhasan.library.navigation.SmartPlaylistsNavRoute::class) -> "Smart playlists"
+                        at(com.tasnimulhasan.library.navigation.SmartPlaylistNavRoute::class) -> "Smart playlist"
+                        at(com.tasnimulhasan.library.navigation.StatsNavRoute::class) -> "Stats"
+                        at(com.tasnimulhasan.library.navigation.DuplicatesNavRoute::class) -> "Duplicates"
+                        at(com.tasnimulhasan.featureplayer.navigation.LyricsNavRoute::class) -> "Lyrics"
+                        at(com.tasnimulhasan.songdetails.navigation.SongDetailsNavRoute::class) -> "Song details"
+                        else -> stringResource(Res.string.app_name)
+                    }
+                    if (!mainScreen) {
+                        // Secondary screens: same round back button as the Album / Playlist details
+                        // (no sort / more here - the screen's own bar can add them when needed).
+                        com.tasnimulhasan.ui.component.DetailsTopBar(
+                            onBack = { appState.navigateBack() },
+                            withStatusBarPadding = false,
+                            title = secondaryTitle,
+                        )
+                    } else MelodiqSearchTopBar(
                         navigationIcon = navigationIcon,
                         navigationIconContentDescription = navigationIconContentDescription,
                         onNavigationClick = {
