@@ -55,6 +55,7 @@ fun LibrarySongRow(
     trailingText: String? = null,
     onClick: () -> Unit,
     onFavouriteClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
 ) {
     Card(
         border = com.tasnimulhasan.designsystem.theme.glassBorder(),
@@ -66,7 +67,7 @@ fun LibrarySongRow(
             .fillMaxWidth()
             .height(76.dp)
             .padding(vertical = 4.dp, horizontal = 16.dp)
-            .combinedClickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         elevation = CardDefaults.cardElevation(com.tasnimulhasan.designsystem.theme.glassElevation(1.dp)),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

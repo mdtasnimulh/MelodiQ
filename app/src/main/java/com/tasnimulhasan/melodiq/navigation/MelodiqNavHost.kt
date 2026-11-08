@@ -92,6 +92,7 @@ fun MelodiQNavHost(
             navigateToPlayer = navigateToPlayer,
             navigateBack = navigateBack,
             navigateToAlbums = { appState.navigateToAlbumsList() },
+            navigateToSongDetails = { songId -> navController.navigateToSongDetails(songId) },
         )
         aboutScreen()
         audioBookScreens(

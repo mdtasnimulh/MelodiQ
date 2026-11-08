@@ -59,6 +59,7 @@ fun NavGraphBuilder.libraryScreens(
     navigateToPlayer: (musicId: String) -> Unit,
     navigateBack: () -> Unit,
     navigateToAlbums: () -> Unit,
+    navigateToSongDetails: (Long) -> Unit = {},
 ) {
     composable<LibraryHubNavRoute>(
         enterTransition = { MelodiqMotion.pushEnter() },
@@ -131,7 +132,7 @@ fun NavGraphBuilder.libraryScreens(
         popEnterTransition = { MelodiqMotion.popEnter() },
         popExitTransition = { MelodiqMotion.popExit() }
     ) {
-        SearchRoute(navigateToPlayer = navigateToPlayer)
+        SearchRoute(navigateToPlayer = navigateToPlayer, navigateToSongDetails = navigateToSongDetails)
     }
 
     composable<RecentlyPlayedNavRoute>(
@@ -140,7 +141,7 @@ fun NavGraphBuilder.libraryScreens(
         popEnterTransition = { MelodiqMotion.popEnter() },
         popExitTransition = { MelodiqMotion.popExit() }
     ) {
-        RecentlyPlayedRoute(navigateToPlayer = navigateToPlayer)
+        RecentlyPlayedRoute(navigateToPlayer = navigateToPlayer, navigateToSongDetails = navigateToSongDetails)
     }
 
     composable<NeverPlayedNavRoute>(

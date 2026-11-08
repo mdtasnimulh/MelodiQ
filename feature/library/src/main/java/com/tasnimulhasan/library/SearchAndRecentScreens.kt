@@ -30,8 +30,10 @@ import com.tasnimulhasan.ui.motion.entrance
 internal fun SearchRoute(
     modifier: Modifier = Modifier,
     navigateToPlayer: (musicId: String) -> Unit,
+    navigateToSongDetails: (Long) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
+    val openActions = rememberLibrarySongActions(navigateToSongDetails)
     val query by viewModel.query.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
@@ -83,6 +85,7 @@ internal fun SearchRoute(
                             navigateToPlayer(item.songId.toString())
                         },
                         onFavouriteClick = { viewModel.playback.toggleFavorite(item.songId) },
+                        onLongClick = { openActions(item) },
                     )
                 }
             }
@@ -94,8 +97,10 @@ internal fun SearchRoute(
 internal fun RecentlyPlayedRoute(
     modifier: Modifier = Modifier,
     navigateToPlayer: (musicId: String) -> Unit,
+    navigateToSongDetails: (Long) -> Unit = {},
     viewModel: RecentlyPlayedViewModel = hiltViewModel(),
 ) {
+    val openActions = rememberLibrarySongActions(navigateToSongDetails)
     val recentlyPlayed by viewModel.recentlyPlayed.collectAsStateWithLifecycle()
     val mostPlayed by viewModel.mostPlayed.collectAsStateWithLifecycle()
     val current by viewModel.playback.currentSelectedAudio.collectAsStateWithLifecycle()
@@ -132,6 +137,7 @@ internal fun RecentlyPlayedRoute(
                         navigateToPlayer(item.songId.toString())
                     },
                     onFavouriteClick = { viewModel.playback.toggleFavorite(item.songId) },
+                    onLongClick = { openActions(item) },
                 )
             }
         }
@@ -156,6 +162,7 @@ internal fun RecentlyPlayedRoute(
                         navigateToPlayer(item.songId.toString())
                     },
                     onFavouriteClick = { viewModel.playback.toggleFavorite(item.songId) },
+                    onLongClick = { openActions(item) },
                 )
             }
         }
