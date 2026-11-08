@@ -359,21 +359,12 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun startSleepTimer(totalDurationMillis: Long, fadeOutSeconds: Int = 10) {
-        sleepTimerController.start(totalDurationMillis) {
-            viewModelScope.launch {
-                playerUseCases.fadeOutAndPause(fadeOutSeconds * 1000L)
-                android.os.Process.killProcess(android.os.Process.myPid())
-            }
-        }
+        sleepTimerController.start(totalDurationMillis, fadeOutSeconds)
     }
 
     fun startEndOfSongSleepTimer(fadeOutSeconds: Int = 10) {
-        sleepTimerController.startEndOfSong {
-            viewModelScope.launch {
-                playerUseCases.fadeOutAndPause(fadeOutSeconds * 1000L)
-                android.os.Process.killProcess(android.os.Process.myPid())
-            }
-        }
+        // The song is already ending, so pause right away instead of fading into the next track.
+        sleepTimerController.startEndOfSong(fadeOutSeconds = 0)
     }
 
     fun cancelSleepTimer() {

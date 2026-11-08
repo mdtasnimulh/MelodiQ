@@ -34,7 +34,7 @@ class SleepTimerController @Inject constructor(
     private val _remainingMillis = MutableStateFlow(0L)
     val remainingMillis: StateFlow<Long> = _remainingMillis.asStateFlow()
 
-    fun start(totalDurationMillis: Long, onFinished: () -> Unit) {
+    fun start(totalDurationMillis: Long, fadeOutSeconds: Int = 10, onFinished: () -> Unit = {}) {
         if (totalDurationMillis <= 0L) return
         tickingJob?.cancel()
         val endAtMillis = System.currentTimeMillis() + totalDurationMillis
@@ -44,7 +44,7 @@ class SleepTimerController @Inject constructor(
             while (_isRunning.value) {
                 val remaining = endAtMillis - System.currentTimeMillis()
                 if (remaining <= 0L) {
-                    finish(onFinished)
+                    finish(fadeOutSeconds, onFinished)
                 } else {
                     _remainingMillis.value = remaining
                     delay(1000L.milliseconds)
@@ -53,7 +53,7 @@ class SleepTimerController @Inject constructor(
         }
     }
 
-    fun startEndOfSong(onFinished: () -> Unit) {
+    fun startEndOfSong(fadeOutSeconds: Int = 10, onFinished: () -> Unit = {}) {
         tickingJob?.cancel()
         _isRunning.value = true
         tickingJob = controllerScope.launch {
@@ -66,7 +66,7 @@ class SleepTimerController @Inject constructor(
                 val trackHasEnded = snapshot.duration > 0L && remaining <= 500L
 
                 if (trackHasChanged || trackHasEnded) {
-                    finish(onFinished)
+                    finish(fadeOutSeconds, onFinished)
                 } else {
                     _remainingMillis.value = remaining
                     delay(400L.milliseconds)
@@ -82,11 +82,22 @@ class SleepTimerController @Inject constructor(
         _remainingMillis.value = 0L
     }
 
-    private fun finish(onFinished: () -> Unit) {
-        tickingJob?.cancel()
+    /**
+     * The fade-out + pause runs here, in this singleton's own scope. It used to be launched in the
+     * Player screen's viewModelScope, which is cancelled as soon as the user leaves the Player
+     * screen - so the timer reached zero and nothing happened.
+     */
+    private fun finish(fadeOutSeconds: Int, onFinished: () -> Unit) {
+        // Don't cancel tickingJob here: this runs inside it and the fade has to be allowed to finish.
         tickingJob = null
         _remainingMillis.value = 0L
         _isRunning.value = false
-        onFinished()
+        controllerScope.launch {
+            playerUseCases.fadeOutAndPause(fadeOutSeconds * 1000L)
+            // Close the player the same way its Close button does: stops playback and removes the
+            // mini player and the notification (pausing alone left them on screen).
+            playerUseCases.stopPlayback()
+            onFinished()
+        }
     }
 }

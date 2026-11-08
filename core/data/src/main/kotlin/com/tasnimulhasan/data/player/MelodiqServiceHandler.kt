@@ -201,6 +201,22 @@ class MelodiqServiceHandler @Inject constructor(
      * it immediately at [startIndex] - distinct from [updateMediaItems], which is used for
      * loading/refreshing the full library and preserves whatever was already playing. */
     fun playCuratedQueue(audioList: List<MusicEntity>, sortType: SortType, startIndex: Int) {
+        // Tapping a song of the list that is ALREADY loaded must behave like a normal list: jump to
+        // that song (or just keep playing it) instead of rebuilding the queue and restarting.
+        val sameQueue = exoPlayer.mediaItemCount == audioList.size && audioList.isNotEmpty() &&
+            this.audioList.value.map { it.songId } == audioList.map { it.songId }
+        if (sameQueue) {
+            val target = startIndex.coerceIn(0, audioList.lastIndex)
+            if (exoPlayer.currentMediaItemIndex != target) exoPlayer.seekTo(target, 0L)
+            else if (exoPlayer.playbackState == Player.STATE_ENDED) exoPlayer.seekTo(target, 0L)
+            if (exoPlayer.playbackState == Player.STATE_IDLE) exoPlayer.prepare()
+            exoPlayer.playWhenReady = true
+            exoPlayer.play()
+            _currentIndex.value = target
+            _isPlayingState.value = true
+            startProgressUpdate()
+            return
+        }
         this.sortType.value = sortType
         this.audioList.value = audioList.toList()
         val mediaItems = buildMediaItems(audioList)
@@ -447,6 +463,14 @@ class MelodiqServiceHandler @Inject constructor(
         when (playbackState) {
             ExoPlayer.STATE_BUFFERING -> _audioState.value = MelodiqAudioState.Buffering(exoPlayer.currentPosition)
             ExoPlayer.STATE_READY -> _audioState.value = MelodiqAudioState.Ready(exoPlayer.duration)
+            ExoPlayer.STATE_ENDED -> {
+                // The whole queue finished (no repeat). ExoPlayer leaves playWhenReady = true here,
+                // which kept the play/pause icon (and animations) in the "playing" state with nothing
+                // playing. Clear the intent so every screen and the notification show "paused".
+                exoPlayer.playWhenReady = false
+                _isPlayingState.value = false
+                job?.cancel()
+            }
             else -> Unit
         }
     }
@@ -625,6 +649,8 @@ class MelodiqServiceHandler @Inject constructor(
             exoPlayer.pause()
             stopProgressUpdate()
         } else {
+            // After the queue has finished, play restarts it from the first song.
+            if (exoPlayer.playbackState == ExoPlayer.STATE_ENDED) exoPlayer.seekToDefaultPosition(0)
             exoPlayer.play()
             _isPlayingState.value = true
             startProgressUpdate()
