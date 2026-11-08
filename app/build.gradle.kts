@@ -62,6 +62,7 @@ android {
             // No abiFilters: the Play bundle already delivers only the right ABI per device, and a filter
             // to arm64-only would make the app uninstallable on 32-bit / x86 devices.
             ndk {
+                abiFilters.addAll(setOf("arm64-v8a"))
                 debugSymbolLevel = "SYMBOL_TABLE" // native crash symbols for Play Console
             }
         }
