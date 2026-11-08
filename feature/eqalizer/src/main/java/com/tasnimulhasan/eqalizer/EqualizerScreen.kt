@@ -41,7 +41,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,9 +70,9 @@ import com.tasnimulhasan.ui.motion.entrance
 internal fun EqualizerScreen(
     viewModel: EqualizerViewModel = hiltViewModel()
 ) {
-    val enableEqualizer by viewModel.enableEqualizer.collectAsState()
-    val enableTenBand by viewModel.enableTenBand.collectAsState()
-    val equalizerError by viewModel.equalizerError.collectAsState()
+    val enableEqualizer by viewModel.enableEqualizer.collectAsStateWithLifecycle()
+    val enableTenBand by viewModel.enableTenBand.collectAsStateWithLifecycle()
+    val equalizerError by viewModel.equalizerError.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.onStart() }
 
@@ -223,7 +223,7 @@ color = MaterialTheme.colorScheme.onBackground,
 @Composable
 fun PresetsView(viewModel: EqualizerViewModel) {
     Column {
-        val audioEffects by viewModel.audioEffects.collectAsState()
+        val audioEffects by viewModel.audioEffects.collectAsStateWithLifecycle()
 
         Row(
             verticalAlignment = Alignment.CenterVertically
@@ -289,7 +289,7 @@ fun PresetsView(viewModel: EqualizerViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EqualizerView(viewModel: EqualizerViewModel) {
-    val audioEffects by viewModel.audioEffects.collectAsState()
+    val audioEffects by viewModel.audioEffects.collectAsStateWithLifecycle()
 
     // Fixed labels: this view stays on screen while it fades out after a switch to 10 bands, and
     // must not pick up the 10-band label list meanwhile.
@@ -305,7 +305,7 @@ fun EqualizerView(viewModel: EqualizerViewModel) {
 @Composable
 fun EqualizerView10Band(viewModel: EqualizerViewModel) {
     val frequencyLabels = com.tasnimulhasan.common.audio.EqBands.labelsFor(10)
-    val audioEffects by viewModel.audioEffects.collectAsState()
+    val audioEffects by viewModel.audioEffects.collectAsStateWithLifecycle()
 
     // One full-width row per band (frequency, slider, dB) - easier to drag precisely than ten
     // narrow columns, and it fits any screen width.

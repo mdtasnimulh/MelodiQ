@@ -25,14 +25,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Shortcut
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Widgets
@@ -46,7 +44,6 @@ import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
@@ -81,15 +78,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tasnimulhasan.ui.component.MelodiqSheet
 import androidx.compose.material3.IconButton
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.Shortcut
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
 
 private const val DEV_NAME = "Md. Tasnimul Hasan"
 private const val DEV_EMAIL = "mdtasnimulh@gmail.com"
@@ -122,11 +124,11 @@ private val features = listOf(
     FeatureItem(Icons.Filled.TouchApp, "Long-press song menu", "Press and hold any song on Home or Songs to play it next, add it to the queue, add it to a playlist (or create a new one) and see its info."),
     FeatureItem(Icons.Filled.Widgets, "Home screen widgets", "Five widgets: Player, Compact, Cover, Recently Played and Favourites, with play, skip and favourite controls right on your home screen."),
     FeatureItem(Icons.Filled.Speed, "Speed & pitch", "Change playback speed and pitch from the player with presets, and optionally remember the setting for each song."),
-    FeatureItem(Icons.Filled.Shortcut, "App shortcuts", "Press and hold the launcher icon for Shuffle all, Favourites and Continue listening."),
+    FeatureItem(Icons.AutoMirrored.Filled.Shortcut, "App shortcuts", "Press and hold the launcher icon for Shuffle all, Favourites and Continue listening."),
     FeatureItem(Icons.Filled.ContentCopy, "Duplicate finder", "Scan your library for repeated songs (same title, artist and length) and delete the extra copies in one go."),
     FeatureItem(Icons.Filled.MusicNote, "Player B: iPod style", "In Settings, switch Player type to B for a whole-app iPod look. It opens on a Cover Flow of your songs; press MENU on the click wheel for the menu (MENU again closes it). Turn the wheel or drag the display to browse, press the centre or tap to play, and use the labels for previous, next and play / pause.", new = listOf("Delete playlists from the iPod menu"), fixed = listOf()),
     FeatureItem(Icons.Filled.Headphones, "Audio Books", "Add PDF or EPUB books from your phone (they stay where they are, nothing is copied) and keep them in an animated shelf with All and Favourites tabs. Add new books right from the shelf. Book covers come from the book itself.", new = listOf("Modern shelf look shared with playlists"), fixed = listOf()),
-    FeatureItem(Icons.Filled.MenuBook, "Built-in book reader", "Read books inside the app with page-by-page scrolling, zoom for PDFs and adjustable text size for EPUBs. Press and hold to select a single word or extend the selection across words."),
+    FeatureItem(Icons.AutoMirrored.Filled.MenuBook, "Built-in book reader", "Read books inside the app with page-by-page scrolling, zoom for PDFs and adjustable text size for EPUBs. Press and hold to select a single word or extend the selection across words."),
     FeatureItem(Icons.Filled.RecordVoiceOver, "Read aloud", "Press play to have a book narrated, with four narrator voices (two female, two male), speed from 0.75x to 2x and playback controls in the notification. The sentence being read is highlighted and the current word is marked in orange, in both PDFs and EPUBs."),
     FeatureItem(Icons.Filled.Bookmark, "Resume where you stopped", "The page and the spot on it are remembered for every book, for reading and listening alike."),
     FeatureItem(Icons.Filled.Bedtime, "Sleep timer", "Fall asleep to music; playback fades out and stops on its own."),
@@ -194,7 +196,7 @@ internal fun AboutScreen(modifier: Modifier = Modifier) {
 private fun Reveal(index: Int, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(index * 70L)
+        delay((index * 70L).milliseconds)
         visible = true
     }
     AnimatedVisibility(
@@ -389,7 +391,7 @@ private fun FeaturesSheet(versionName: String, onDismiss: () -> Unit) {
 private fun FeatureDetail(item: FeatureItem, versionName: String, onBack: () -> Unit) {
     Column(modifier = Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState())) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
             Box(
                 modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
                 contentAlignment = Alignment.Center,
@@ -502,7 +504,7 @@ private fun InfoRow(icon: ImageVector, text: String, onClick: (() -> Unit)? = nu
 
 /** Opens Gmail's compose screen addressed to the developer; falls back to any mail app. */
 private fun sendEmail(context: Context) {
-    val uri = Uri.parse("mailto:$DEV_EMAIL?subject=" + Uri.encode("MelodiQ"))
+    val uri = ("mailto:$DEV_EMAIL?subject=" + Uri.encode("MelodiQ")).toUri()
     val gmail = Intent(Intent.ACTION_SENDTO, uri).setPackage("com.google.android.gm")
     try {
         context.startActivity(gmail)

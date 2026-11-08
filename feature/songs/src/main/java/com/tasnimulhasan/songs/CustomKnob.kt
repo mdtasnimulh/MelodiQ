@@ -1,7 +1,9 @@
 package com.tasnimulhasan.songs
 
 import android.content.Context
+import android.os.Build
 import android.os.VibrationEffect
+import android.os.VibratorManager
 import android.os.Vibrator
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -49,7 +51,11 @@ fun CustomKnob(
 
     val context = LocalContext.current
     var lastStep by remember { mutableFloatStateOf(-1f) }
-    val vibrator = remember { context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator }
+    val vibrator = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        else @Suppress("DEPRECATION") (context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
+    }
 
     Box(
         modifier = modifier

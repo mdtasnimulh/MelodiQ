@@ -1,5 +1,13 @@
 import com.tasnimulhasan.melodiq.AppConfig
 import com.tasnimulhasan.melodiq.MelodiqBuildType
+import java.util.Properties
+
+val keystoreProps = Properties().apply {
+    val f = file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun signingValue(prop: String, env: String): String? =
+    keystoreProps.getProperty(prop) ?: System.getenv(env)
 
 plugins {
     alias(libs.plugins.melodiq.android.application)
@@ -29,10 +37,13 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("app-credential/melodiq.jks")
-            storePassword = "Melodiq@#$123"
-            keyAlias = "melodiq"
-            keyPassword = "Melodiq@#$123"
+            val storePath = signingValue("storeFile", "MELODIQ_STORE_FILE")
+            if (storePath != null) {
+                storeFile = file(storePath)
+                storePassword = signingValue("storePassword", "MELODIQ_STORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "MELODIQ_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "MELODIQ_KEY_PASSWORD")
+            }
         }
     }
 
@@ -45,10 +56,13 @@ android {
             isShrinkResources = true
             applicationIdSuffix = MelodiqBuildType.RELEASE.applicationIdSuffix
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.named("debug").get()
+            // Was signed with the DEBUG key, which Google Play rejects. Use the release key when configured.
+            signingConfig = signingConfigs.getByName("release").takeIf { it.storeFile != null }
 
+            // No abiFilters: the Play bundle already delivers only the right ABI per device, and a filter
+            // to arm64-only would make the app uninstallable on 32-bit / x86 devices.
             ndk {
-                abiFilters.addAll(setOf("arm64-v8a"))
+                debugSymbolLevel = "SYMBOL_TABLE" // native crash symbols for Play Console
             }
         }
     }

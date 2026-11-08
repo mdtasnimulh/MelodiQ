@@ -27,9 +27,6 @@
 
 #-----------------------SAFE ARGS and model--------------------------------
 #noinspection ShrinkerUnresolvedReference
--keepnames class com.path.to.your.ParcelableArg
--keepnames class com.path.to.your.SerializableArg
--keepnames class com.path.to.your.EnumArg
 -keep class com.tasnimulhasan.domain.** { *; }
 -keep class com.tasnimulhasan.entity.** { *; }
 -keep class com.tasnimulhasan.apiresponse.** { *; }
@@ -76,8 +73,6 @@
 -dontwarn android.net.http.AndroidHttpClient
 -dontwarn sun.misc.**
 #------------------------------  FIREBASE PROGUARD RULES ------------------------------
--keep class com.google.firebase.quickstart.database.java.viewholder.** { *; }
--keepclassmembers class com.google.firebase.quickstart.database.java.models.** { *; }
 #------------------image picker--------------------------
 -keep class androidx.appcompat.widget.** { *; }
 #---------------------life cycle----------------------
@@ -136,3 +131,16 @@
 # android.hardware.radio is a @SystemApi used by feature:radio via compile-only stubs; absent from the SDK jar.
 -dontwarn android.hardware.radio.**
 -dontwarn com.gemalto.jp2.JP2Decoder
+
+# ----------------------------- RELEASE HARDENING -----------------------------
+# Strip verbose/debug logging (song titles, file paths, queue state) from release builds.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}
+-assumenosideeffects class timber.log.Timber {
+    public static void v(...);
+    public static void d(...);
+    public static void i(...);
+}

@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.tasnimulhasan.settings.AppIconManager
@@ -42,7 +42,7 @@ fun CustomDrawer(
 ) {
     // The logo follows the launcher icon the user picked in Settings > App icon.
     val context = androidx.compose.ui.platform.LocalContext.current
-    val selectedIcon by AppIconManager.selected.collectAsState()
+    val selectedIcon by AppIconManager.selected.collectAsStateWithLifecycle()
     androidx.compose.runtime.LaunchedEffect(Unit) { AppIconManager.refresh(context) }
     val logoRes = remember(selectedIcon) {
         AppIconManager.previewResId(context, selectedIcon ?: AppIconOption.DEFAULT)

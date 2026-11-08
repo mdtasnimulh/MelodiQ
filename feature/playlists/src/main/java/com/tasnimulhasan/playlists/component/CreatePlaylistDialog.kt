@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,7 +34,7 @@ fun CreatePlaylistDialog(
     var description by remember { mutableStateOf(initialDescription) }
 
     MelodiqSheet(onDismiss = onDismiss) { dismiss ->
-        SheetHeader(title = if (editing) "Edit Playlist" else "New Playlist", icon = Icons.Filled.QueueMusic)
+        SheetHeader(title = if (editing) "Edit Playlist" else "New Playlist", icon = Icons.AutoMirrored.Filled.QueueMusic)
         Spacer(Modifier.height(18.dp))
         OutlinedTextField(
             value = name,

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Backup
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -130,7 +130,7 @@ private val pages = listOf(
         title = "Audio Books",
         subtitle = "Turn the PDF and EPUB books on your phone into audio books.",
         highlights = listOf(
-            Highlight(Icons.Filled.MenuBook, "Your books, where they are", "Add PDF or EPUB files from your phone. Nothing is copied into the app."),
+            Highlight(Icons.AutoMirrored.Filled.MenuBook, "Your books, where they are", "Add PDF or EPUB files from your phone. Nothing is copied into the app."),
             Highlight(Icons.Filled.RecordVoiceOver, "Read aloud", "Listen with four narrator voices, two female and two male, at the speed you like."),
             Highlight(Icons.Filled.Bookmark, "Pick up where you stopped", "MelodiQ remembers the page and the spot on it, for reading and listening."),
         ),

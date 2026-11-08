@@ -22,5 +22,7 @@ internal object DatabaseModule {
         MelodiQDatabase::class.java,
         "melodiq_database"
     ).addMigrations(com.tasnimulhasan.database.migration.MIGRATION_2_3, com.tasnimulhasan.database.migration.MIGRATION_3_4)
-        .fallbackToDestructiveMigration(dropAllTables = true).build()
+        // Only the never-shipped schema v1 may be wiped. Any other missing migration must FAIL loudly in testing
+        // instead of silently deleting a user's playlists and favourites after an update.
+        .fallbackToDestructiveMigrationFrom(true, 1).build()
 }
