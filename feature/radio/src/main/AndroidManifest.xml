@@ -15,15 +15,11 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <!--
-        Hardware FM tuner (android.hardware.radio.RadioManager). This is a signature|privileged
-        permission: it is granted only to system / privileged apps or on a custom ROM. On a normal
-        install it is NOT granted, RadioManager yields null or throws SecurityException, and the
-        Radio screen shows its "hardware unavailable" warning. It is declared so a privileged build
-        works, and lint's ProtectedPermissions check is silenced because that is intended.
+        The hardware FM tuner needs android.permission.ACCESS_BROADCAST_RADIO, a system-only permission
+        that Play-installed apps are never granted, so it is deliberately NOT declared (it only caused
+        store/lint warnings). The Radio screen already shows "hardware unavailable" without it.
+        Add it back only for a privileged / custom-ROM build.
     -->
-    <uses-permission
-        android:name="android.permission.ACCESS_BROADCAST_RADIO"
-        tools:ignore="ProtectedPermissions" />
 
     <!-- FM hardware is optional: the app must still install on phones without it. -->
     <uses-feature android:name="android.hardware.broadcastradio" android:required="false" />
