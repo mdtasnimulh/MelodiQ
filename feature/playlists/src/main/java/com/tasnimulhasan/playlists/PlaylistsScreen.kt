@@ -44,7 +44,9 @@ import com.tasnimulhasan.domain.localusecase.playlists.InsertPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.UpdatePlaylistUseCase
 import com.tasnimulhasan.entity.room.playlist.PlaylistEntity
 import com.tasnimulhasan.entity.room.playlist.PlaylistWithStats
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tasnimulhasan.playlists.component.CreatePlaylistDialog
+import com.tasnimulhasan.playlists.component.FavouritesPlaylistCard
 import com.tasnimulhasan.playlists.component.PlaylistCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -52,9 +54,11 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun PlaylistsRoute(
     onPlaylistClicked: (Int, String) -> Unit,
+    onFavouritesClicked: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
+    val favouriteCount by viewModel.favouriteCount.collectAsStateWithLifecycle()
     val playlists = remember { mutableStateOf<List<PlaylistWithStats>>(emptyList()) }
     val isLoading = remember { mutableStateOf(false) }
     val isEmpty = remember { mutableStateOf(false) }
@@ -90,6 +94,8 @@ internal fun PlaylistsRoute(
         modifier = modifier,
         playlists = playlists.value,
         isEmpty = isEmpty.value,
+        favouriteCount = favouriteCount,
+        onFavouritesClicked = onFavouritesClicked,
         onCreatePlaylist = { name, desc ->
             viewModel.action(
                 UiAction.InsertPlaylist(
@@ -126,6 +132,8 @@ internal fun PlaylistsScreen(
     isEmpty: Boolean,
     onCreatePlaylist: (String, String) -> Unit,
     onPlaylistClicked: (Int, String) -> Unit,
+    favouriteCount: Int = 0,
+    onFavouritesClicked: () -> Unit = {},
     snackBarHostState: SnackbarHostState,
     onDeletePlaylist: (PlaylistEntity) -> Unit = {},
     onEditPlaylist: (PlaylistEntity, String, String) -> Unit = { _, _, _ -> },
@@ -176,13 +184,23 @@ internal fun PlaylistsScreen(
 
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
-                    isEmpty -> EmptyPlaylistsState(onCreateClicked = { showDialog = true })
+                    isEmpty -> Column(Modifier.fillMaxSize()) {
+                        FavouritesPlaylistCard(songCount = favouriteCount, onClick = onFavouritesClicked)
+                        Box(Modifier.weight(1f)) { EmptyPlaylistsState(onCreateClicked = { showDialog = true }) }
+                    }
 
                     playlists.isNotEmpty() -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 24.dp + com.tasnimulhasan.designsystem.component.LocalFloatingBarPadding.current),
                         ) {
+                            item(key = "favourites_playlist") {
+                                FavouritesPlaylistCard(
+                                    modifier = Modifier.animateItem().entrance(0),
+                                    songCount = favouriteCount,
+                                    onClick = onFavouritesClicked,
+                                )
+                            }
                             itemsIndexed(playlists, key = { _, it -> it.playlist.id }) { index, playlist ->
                                 PlaylistCard(
                                     modifier = Modifier.animateItem().entrance(index),

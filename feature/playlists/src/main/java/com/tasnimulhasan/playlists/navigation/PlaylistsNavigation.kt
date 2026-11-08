@@ -18,6 +18,7 @@ fun NavController.navigateToPlaylists(navOptions: NavOptions) =
 
 fun NavGraphBuilder.playlistsScreen(
     onPlaylistClicked: (Int, String) -> Unit,
+    onFavouritesClicked: () -> Unit = {},
 ) {
     composable<PlaylistsRoute>(
         enterTransition = { MelodiqMotion.pushEnter() },
@@ -26,6 +27,7 @@ fun NavGraphBuilder.playlistsScreen(
         popExitTransition = { MelodiqMotion.popExit() }
     ) {
         PlaylistsRoute(
+            onFavouritesClicked = onFavouritesClicked,
             onPlaylistClicked = { playlistId, playlistName -> onPlaylistClicked.invoke(playlistId, playlistName) }
         )
     }

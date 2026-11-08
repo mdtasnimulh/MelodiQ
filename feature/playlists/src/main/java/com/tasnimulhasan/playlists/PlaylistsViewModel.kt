@@ -1,6 +1,8 @@
 package com.tasnimulhasan.playlists
 
+import androidx.lifecycle.viewModelScope
 import com.tasnimulhasan.domain.base.BaseViewModel
+import com.tasnimulhasan.domain.localusecase.favourite.ObserveFavouriteIdsUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.DeleteAllPlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.DeletePlaylistUseCase
 import com.tasnimulhasan.domain.localusecase.playlists.GetAllPlaylistsWithStatsUseCase
@@ -10,7 +12,11 @@ import com.tasnimulhasan.domain.localusecase.playlists.UpdatePlaylistUseCase
 import com.tasnimulhasan.entity.room.playlist.PlaylistWithStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @HiltViewModel
@@ -20,8 +26,14 @@ class PlaylistsViewModel @Inject constructor(
     private val deletePlaylistUseCase: DeletePlaylistUseCase,
     private val deleteAllPlaylistUseCase: DeleteAllPlaylistUseCase,
     private val getAllPlaylistsWithStatsUseCase: GetAllPlaylistsWithStatsUseCase,
-    private val searchPlaylistByNameUseCase: SearchPlaylistByNameUseCase
+    private val searchPlaylistByNameUseCase: SearchPlaylistByNameUseCase,
+    observeFavouriteIdsUseCase: ObserveFavouriteIdsUseCase,
 ) : BaseViewModel() {
+
+    /** Number of favourite songs, shown on the pinned Favourites playlist. */
+    val favouriteCount: StateFlow<Int> = observeFavouriteIdsUseCase()
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     private val _uiEvent = Channel<UiEvent>()
     val uiEvent get() = _uiEvent.receiveAsFlow()

@@ -72,6 +72,7 @@ fun MelodiQNavHost(
             navigateToPlayer = navigateToPlayer,
         )
         playlistsScreen(
+            onFavouritesClicked = { appState.navigateToFavourite() },
             onPlaylistClicked = { playlistId, playlistName ->
                 onPlaylistClicked.invoke(playlistId, playlistName)
             }
