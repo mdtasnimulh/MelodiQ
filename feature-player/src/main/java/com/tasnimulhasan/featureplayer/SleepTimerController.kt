@@ -98,6 +98,10 @@ class SleepTimerController @Inject constructor(
             // mini player and the notification (pausing alone left them on screen).
             playerUseCases.stopPlayback()
             onFinished()
+            // Close the whole app: give the service a moment to shut down and drop its notification,
+            // then end the process (works from any screen, even with the UI in the foreground).
+            delay(700L.milliseconds)
+            android.os.Process.killProcess(android.os.Process.myPid())
         }
     }
 }
