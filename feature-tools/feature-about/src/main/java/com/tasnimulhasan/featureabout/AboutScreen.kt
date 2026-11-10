@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -19,43 +20,54 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.Shortcut
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material.icons.filled.Widgets
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Equalizer
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.RecordVoiceOver
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
-import com.tasnimulhasan.designsystem.component.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,22 +88,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
+import com.tasnimulhasan.designsystem.component.Icon
 import com.tasnimulhasan.ui.component.MelodiqSheet
-import androidx.compose.material3.IconButton
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.NewReleases
-import androidx.activity.compose.BackHandler
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.Shortcut
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.net.toUri
 
 private const val DEV_NAME = "Md. Tasnimul Hasan"
 private const val DEV_EMAIL = "mdtasnimulh@gmail.com"
@@ -139,12 +140,12 @@ private val features = listOf(
 )
 
 @Composable
-internal fun AboutRoute(modifier: Modifier = Modifier) {
-    AboutScreen(modifier)
+internal fun AboutRoute(modifier: Modifier = Modifier, onPrivacyPolicyClick: () -> Unit = {}) {
+    AboutScreen(modifier, onPrivacyPolicyClick)
 }
 
 @Composable
-internal fun AboutScreen(modifier: Modifier = Modifier) {
+internal fun AboutScreen(modifier: Modifier = Modifier, onPrivacyPolicyClick: () -> Unit = {}) {
     val context = LocalContext.current
     val versionName = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0"
@@ -167,7 +168,9 @@ internal fun AboutScreen(modifier: Modifier = Modifier) {
 
         Reveal(3) { DeveloperCard(context) }
 
-        Reveal(4) {
+        Reveal(4) { PrivacyPolicyEntry(onPrivacyPolicyClick) }
+
+        Reveal(5) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -478,6 +481,28 @@ private fun DeveloperCard(context: Context) {
                 Icon(Icons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text("Get in touch", modifier = Modifier.padding(start = 8.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyPolicyEntry(onOpen: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable(onClick = onOpen),
+    ) {
+        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.PrivacyTip, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
+                Text("Privacy Policy", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                Text(
+                    "What the app stores, which permissions it uses and what it sends online",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

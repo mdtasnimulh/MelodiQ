@@ -8,6 +8,8 @@ import com.tasnimulhasan.albums.navigation.albumDetailsScreen
 import com.tasnimulhasan.albums.navigation.albumScreen
 import com.tasnimulhasan.eqalizer.navigation.equalizerScreen
 import com.tasnimulhasan.featureabout.navigation.aboutScreen
+import com.tasnimulhasan.featureabout.navigation.navigateToPrivacyPolicy
+import com.tasnimulhasan.featureabout.navigation.privacyPolicyScreen
 import com.tasnimulhasan.featurefavourite.navigation.favouriteScreen
 import com.tasnimulhasan.featurefeedback.navigation.feedbackScreen
 import com.tasnimulhasan.featureaudiobook.navigation.audioBookScreens
@@ -95,7 +97,8 @@ fun MelodiQNavHost(
             navigateToAlbums = { appState.navigateToAlbumsList() },
             navigateToSongDetails = { songId -> navController.navigateToSongDetails(songId) },
         )
-        aboutScreen()
+        aboutScreen(onPrivacyPolicyClick = { navController.navigateToPrivacyPolicy() })
+        privacyPolicyScreen()
         audioBookScreens(
             navigateToDetails = { bookId -> navController.navigateToBookDetails(bookId) },
             navigateToReader = { bookId, autoPlay -> navController.navigateToBookReader(bookId, autoPlay) },

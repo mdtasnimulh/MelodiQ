@@ -81,6 +81,7 @@ import com.tasnimulhasan.designsystem.component.MelodiqSearchTopBar
 import com.tasnimulhasan.designsystem.icon.MelodiqIcons
 import com.tasnimulhasan.eqalizer.navigation.EqualizerRoute
 import com.tasnimulhasan.featureabout.navigation.AboutRoute
+import com.tasnimulhasan.featureabout.navigation.PrivacyPolicyRoute
 import com.tasnimulhasan.library.navigation.LibraryHubNavRoute
 import com.tasnimulhasan.featurefavourite.navigation.FavouriteRoute
 import com.tasnimulhasan.featurefeedback.navigation.FeedbackRoute
@@ -212,7 +213,8 @@ internal fun MmApp(
         currentDestination.isRouteInHierarchy(RadioRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.RADIO
         currentDestination.isRouteInHierarchy(FavouriteRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.FAVOURITE
         currentDestination.isRouteInHierarchy(LibraryHubNavRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.LIBRARY
-        currentDestination.isRouteInHierarchy(AboutRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.ABOUT
+        currentDestination.isRouteInHierarchy(AboutRoute::class) ||
+            currentDestination.isRouteInHierarchy(PrivacyPolicyRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.ABOUT
         currentDestination.isRouteInHierarchy(FeedbackRoute::class) -> com.tasnimulhasan.melodiq.navigation.CustomNavigationItem.FEEDBACK
         else -> null
     }
@@ -326,6 +328,7 @@ internal fun MmApp(
                         at(QueueRoute::class) -> stringResource(Res.string.title_queue)
                         at(SettingsRoute::class) -> stringResource(Res.string.title_settings)
                         at(AboutRoute::class) -> stringResource(Res.string.title_about)
+                        at(PrivacyPolicyRoute::class) -> "Privacy Policy"
                         at(FeedbackRoute::class) -> stringResource(Res.string.title_feedback)
                         at(EqualizerRoute::class) -> stringResource(Res.string.equalizer_title_text)
                         at(SearchNavRoute::class) -> "Search"

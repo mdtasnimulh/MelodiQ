@@ -8,6 +8,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
 import com.tasnimulhasan.featureabout.AboutRoute
+import com.tasnimulhasan.featureabout.PrivacyPolicyScreen
 import kotlinx.serialization.Serializable
 
 @Serializable object AboutRoute
@@ -18,13 +19,30 @@ fun NavController.navigateToAbout(navOptions: NavOptionsBuilder.() -> Unit = {})
     }
 }
 
-fun NavGraphBuilder.aboutScreen() {
+fun NavGraphBuilder.aboutScreen(onPrivacyPolicyClick: () -> Unit = {}) {
     composable<AboutRoute>(
         enterTransition = { MelodiqMotion.pushEnter() },
         exitTransition = { MelodiqMotion.pushExit() },
         popEnterTransition = { MelodiqMotion.popEnter() },
         popExitTransition = { MelodiqMotion.popExit() }
     ) {
-        AboutRoute()
+        AboutRoute(onPrivacyPolicyClick = onPrivacyPolicyClick)
+    }
+}
+
+@Serializable object PrivacyPolicyRoute
+
+fun NavController.navigateToPrivacyPolicy(navOptions: NavOptionsBuilder.() -> Unit = {}) {
+    navigate(route = PrivacyPolicyRoute) { navOptions() }
+}
+
+fun NavGraphBuilder.privacyPolicyScreen() {
+    composable<PrivacyPolicyRoute>(
+        enterTransition = { MelodiqMotion.pushEnter() },
+        exitTransition = { MelodiqMotion.pushExit() },
+        popEnterTransition = { MelodiqMotion.popEnter() },
+        popExitTransition = { MelodiqMotion.popExit() }
+    ) {
+        PrivacyPolicyScreen()
     }
 }
